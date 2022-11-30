@@ -5,8 +5,9 @@ using SpecialFunctions
 using Statistics
 using LinearAlgebra
 
-greet() = print("Hello World!")
-
 include("types.jl")
+
+include("cylindrical/boundary_conditions.jl")
+include("cylindrical/displacement.jl")
 
 end # module
