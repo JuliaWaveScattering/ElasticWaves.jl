@@ -27,7 +27,6 @@ end
 
 name(a::Elasticity{T,Dim}) where {Dim,T} = "$(Dim)D Elasticity"
 
-
 struct Bearing{T,Dim}
     medium::Elasticity{T,Dim} # defining medium
     r1::T # inner radius
@@ -36,4 +35,38 @@ end
 
 function Bearing(Dim::Int; medium::Elasticity, r1::T=0.0,r2::T=0.0) where {T<:Number}
     Bearing{T,Dim}(medium,r1,r2)
+end
+
+## Boundary condtion types
+
+abstract type AbstractBoundaryCondition end
+
+AbstractBoundaryConditions = Vector{BC} where BC <: AbstractBoundaryCondition
+
+# Art NOTE: we should create a type called BearingBoundaryConditions, which holds both the forcing and the BCs.
+
+struct DisplacementBoundary <: AbstractBoundaryCondition
+    inner::Bool
+    outer::Bool
+end
+
+function DisplacementBoundary(;inner::Bool = false, outer::Bool = false)
+    if inner == outer
+        @error "this type represents only one boundary, either the inner or outer boundary, and not both or neither."
+    end
+
+    return DisplacementBoundary(inner,outer)
+end
+
+struct StressBoundary <: AbstractBoundaryCondition
+    inner::Bool
+    outer::Bool
+end
+
+function StressBoundary(;inner::Bool = false, outer::Bool = false)
+    if inner == outer
+        @error "this type represents only one boundary, either the inner or outer boundary, and not both or neither."
+    end
+
+    return StressBoundary(inner,outer)
 end

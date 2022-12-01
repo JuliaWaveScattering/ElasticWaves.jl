@@ -1,4 +1,7 @@
-function stress_matrix_pmode(ω::T, order::Int, r::T, bearing::Bearing{T,2}) where {T<:Number}
+function boundarycondition_pmode(ω::T, order::Int, bc::StressBoundary, bearing::Bearing{T,2}) where {T<:Number}
+
+    r = (bc.inner == true) ? bearing.r1 : bearing.r2
+
     ρ = bearing.medium.ρ
     cp = bearing.medium.cp
     cs = bearing.medium.cs
@@ -15,7 +18,10 @@ function stress_matrix_pmode(ω::T, order::Int, r::T, bearing::Bearing{T,2}) whe
     return hcat(stress_column_p(besselj), stress_column_p(hankelh1))
 end
 
-function stress_matrix_smode(ω::T, order::Int, r::T, bearing::Bearing{T,2}) where {T<:Number}
+function boundarycondition_smode(ω::T, order::Int, bc::StressBoundary, bearing::Bearing{T,2}) where {T<:Number}
+
+    r = (bc.inner == true) ? bearing.r1 : bearing.r2
+
     ρ = bearing.medium.ρ
     cp = bearing.medium.cp
     cs = bearing.medium.cs
@@ -30,7 +36,10 @@ function stress_matrix_smode(ω::T, order::Int, r::T, bearing::Bearing{T,2}) whe
     return hcat(stress_column_s(besselj), stress_column_s(hankelh1))
 end
 
-function displacement_matrix_pmode(ω::T, order::Int, r::T, bearing::Bearing{T,2}) where T<:Number
+function boundarycondition_pmode(ω::T, order::Int, bc::DisplacementBoundary, bearing::Bearing{T,2}) where T<:Number
+
+    r = (bc.inner == true) ? bearing.r1 : bearing.r2
+
     n = order
     cp = bearing.medium.cp
     kP = ω / cp
@@ -44,7 +53,10 @@ function displacement_matrix_pmode(ω::T, order::Int, r::T, bearing::Bearing{T,2
     )
 end
 
-function displacement_matrix_smode(ω::T, order::Int, r::T, bearing::Bearing{T,2}) where {T<:Number}
+function boundarycondition_smode(ω::T, order::Int, bc::DisplacementBoundary, bearing::Bearing{T,2}) where {T<:Number}
+
+    r = (bc.inner == true) ? bearing.r1 : bearing.r2
+
     n = order
     cs = bearing.medium.cs
     kS = ω / cs
@@ -57,37 +69,30 @@ function displacement_matrix_smode(ω::T, order::Int, r::T, bearing::Bearing{T,2
     )
 end
 
-function stress_matrix_half(ω::T,  order::Int, r::T, bearing::Bearing{T,2}) where T<:Number
-    return hcat(
-        stress_matrix_pmode(ω,order,r,bearing), stress_matrix_smode(ω,order,r,bearing)
+function system_matrix(ω::T, order::Int, bearing::Bearing{T,2}, bcs::AbstractBoundaryConditions) where T<:Number
+
+    first_boundary = hcat(
+        boundarycondition_pmode(ω, order, bcs[1], bearing), boundarycondition_smode(ω, order, bcs[1], bearing)
     )
-end
 
-function displacement_matrix_half(ω::T,  order::Int, r::T, bearing::Bearing{T,2}) where T<:Number
-    return hcat(
-        displacment_matrix_pmode(ω,order,r,bearing), displacment_matrix_smode(ω,order,r,bearing)
+    second_boundary = hcat(
+        boundarycondition_pmode(ω, order, bcs[2], bearing), boundarycondition_smode(ω, order, bcs[2], bearing)
     )
+
+    return vcat(first_boundary, second_boundary)
 end
 
-function stress_matrix_full(order::Int; ω::T, bearing::Bearing{T,2}) where T<:Number
-    return vcat(
-        stress_matrix_half(ω,  order, bearing.r1, bearing),
-        stress_matrix_half(ω,  order, bearing.r2, bearing)
-    )
-end
+function mode_coefficients(ω::T, bearing::Bearing{T,2}, bcs::AbstractBoundaryConditions, forcing::Matrix{Complex{T}}) where T
 
+    basis_order = Int( (size(forcing,1) - 1) / 2)
 
-function forcings(order::Int;fp_coefficients::Vector, fs_coefficients::Vector)
-    fourier_coes=transpose(hcat(fp_coefficients,fs_coefficients))
-    n = order
-    return fourier_coes[:,convert(Int,n+(1+size(fourier_coes,2))/2)]
-end
+    coefficients = map(-basis_order:basis_order) do m
+        A = system_matrix(ω, m, bearing, bcs)
+        b = forcing[m+basis_order+1,:]
+        A \ b
+    end
 
-function coes(order::Int; ω::T, bearing::Bearing{T,2}, fp_coefficients::Vector,fs_coefficients::Vector) where {T<:Number}
-    n=order
-    f=forcings(n; fp_coefficients, fs_coefficients)
-    f_new = [f[1],f[2],0.0,0.0]
+    coefficients = transpose(hcat(coefficients...)) |> collect
 
-
-    return stress_matrix_full(n; ω, bearing) \ f_new
+    return coefficients
 end

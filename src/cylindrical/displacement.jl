@@ -1,12 +1,12 @@
 
-function potentialϕ(order::Int;ω::T,r::T,θ::T,bearing::Bearing{T,2},fp_coefficients::Vector,fs_coefficients::Vector) where {T<:Number}
+function pressure_potential(order::Int; ω::T,r::T,θ::T,bearing::Bearing{T,2},fp_coefficients::Vector,fs_coefficients::Vector) where {T<:Number}
     n = order
     f = coes(n;ω,bearing,fp_coefficients, fs_coefficients)
     kp = ω/bearing.medium.cp
-    return (f[1]*besselj(n,kp*r)+f[2]*hankelh1(n,kp*r))*ℯ^(im*n*θ)
+    return (f[1]*besselj(n,kp*r) + f[2]*hankelh1(n,kp*r))*ℯ^(im*n*θ)
 end
 
-function potentialψ(order::Int;ω::T,r::T,θ::T,bearing::Bearing{T,2},fp_coefficients::Vector,fs_coefficients::Vector) where {T<:Number}
+function shear_potential(order::Int; ω::T,r::T,θ::T,bearing::Bearing{T,2},fp_coefficients::Vector,fs_coefficients::Vector) where {T<:Number}
     n = order
     f = coes(n;ω,bearing,fp_coefficients, fs_coefficients)
     ks = ω/bearing.medium.cs
