@@ -31,7 +31,7 @@ function boundarycondition_smode(ω::T, order::Int, bc::StressBoundary, bearing:
 
     stress_column_s(J)=[
         im * n * ρs * (kS*r*J(n-1, kS*r) - 2J(n, kS*r) - kS*r*J(n+1, kS*r)),
-        ρs * (2kS*r*J(n-1, kS*r) + (-2*n - 2*n^2 + kS^2*r^2) * J(n, kS*r))
+        ρs * (2kS*r*J(n-1, kS*r) + (-2*n - 2*n^2 + kS^2 * r^2) * J(n, kS*r))
     ]
     return hcat(stress_column_s(besselj), stress_column_s(hankelh1))
 end
@@ -69,7 +69,7 @@ function boundarycondition_smode(ω::T, order::Int, bc::DisplacementBoundary, be
     )
 end
 
-function system_matrix(ω::T, order::Int, bearing::Bearing{T,2}, bcs::AbstractBoundaryConditions) where T<:Number
+function boundarycondition_system(ω::T, order::Int, bearing::Bearing{T,2}, bcs::AbstractBoundaryConditions) where T<:Number
 
     first_boundary = hcat(
         boundarycondition_pmode(ω, order, bcs[1], bearing), boundarycondition_smode(ω, order, bcs[1], bearing)
@@ -87,7 +87,7 @@ function mode_coefficients(ω::T, bearing::Bearing{T,2}, bcs::AbstractBoundaryCo
     basis_order = Int( (size(forcing,1) - 1) / 2)
 
     coefficients = map(-basis_order:basis_order) do m
-        A = system_matrix(ω, m, bearing, bcs)
+        A = boundarycondition_system(ω, m, bearing, bcs)
         b = forcing[m+basis_order+1,:]
         A \ b
     end

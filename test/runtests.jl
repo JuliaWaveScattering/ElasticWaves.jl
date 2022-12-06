@@ -13,8 +13,8 @@ M1 = system_matrix(ω, 2, bearing, stress_bcs)
 # M2 = stress_matrix_full(2; ω=ω, bearing=bearing)
 # M1 - M2 == zeros(Complex{Float64},4,4)
 
-Vector{StressBoundary} <: Vector{AbstractBoundaryCondition}
-Vector{StressBoundary} <: (Vector{BC} where BC <: AbstractBoundaryCondition)
+@test Vector{StressBoundary} <: Vector{AbstractBoundaryCondition}
+@test Vector{StressBoundary} <: (Vector{BC} where BC <: AbstractBoundaryCondition)
 
 # How long does it take to get the coefficients?
 
