@@ -1,12 +1,12 @@
 """
-    Elasticity{T<:AbstractFloat,Dim}(ρ::T, c::Complex{T})
+    Elasticity{Dim,T<:AbstractFloat}(ρ::T, c::Complex{T})
     Elasticity(ρ::T, c::Union{T,Complex{AbstractFloat}}, Dim::Integer)
 
 Physical properties for a homogenous isotropic elastic medium with wavespeed (c) and density (ρ)
 
 Simulations in this medium produce scalar (Dim) fields in Dim dimensions.
 """
-struct Elasticity{T,Dim} <: PhysicalMedium{Dim,Dim}
+struct Elasticity{Dim,T} <: PhysicalMedium{Dim,Dim}
     ρ::T # Density (use \greekletter+tab to get the greek letter!)
     cp::Complex{T} # Phase velocity of pressure wave
     cs::Complex{T} # Phase velocity of shear wave
@@ -15,7 +15,7 @@ end
 
 # Constructor which supplies the dimension without explicitly mentioning type
 function Elasticity(Dim::Integer; ρ::T = 0.0, cp::Union{T,Complex{T}} = 0.0, cs::Union{T,Complex{T}} = 0.0) where {T<:Number}
-     Elasticity{T,Dim}(ρ,Complex{T}(cp),Complex{T}(cs))
+     Elasticity{Dim,T}(ρ,Complex{T}(cp),Complex{T}(cs))
 end
 
 import Base.show
@@ -25,17 +25,53 @@ function show(io::IO, p::Elasticity)
     return
 end
 
-name(a::Elasticity{T,Dim}) where {Dim,T} = "$(Dim)D Elasticity"
+name(a::Elasticity{Dim}) where Dim = "$(Dim)D Elasticity"
 
-struct Bearing{T,Dim}
-    medium::Elasticity{T,Dim} # defining medium
+struct Bearing{Dim,T}
+    medium::Elasticity{Dim,T} # defining medium
     r1::T # inner radius
     r2::T # outer radius
 end
 
 function Bearing(Dim::Int; medium::Elasticity, r1::T=0.0,r2::T=0.0) where {T<:Number}
-    Bearing{T,Dim}(medium,r1,r2)
+    Bearing{Dim,T}(medium,r1,r2)
 end
+
+## wave types
+
+struct HelmholtzPotential{Dim,T}
+    wavenumber::Complex{T}
+    basis_order::Int
+    bessel_coefficients::Vector{Complex{T}}
+    hankel_coefficients::Vector{Complex{T}}
+
+    function HelmholtzPotential{Dim}(wavenumber::Complex{T}, basis_order::Int, hankel_coefficients::Vector{Complex{T}}, bessel_coefficients::Vector{Complex{T}}) where {Dim,T}
+        if length(hankel_coefficients) != basisorder_to_basislength(Acoustic{T,2}, basis_order) ||
+                length(bessel_coefficients) != basisorder_to_basislength(Acoustic{T,2}, basis_order)
+            @error "the length of hankel_coefficients and bessel_coefficients has to match the basis_order given"
+        end
+
+        if imag(wavenumber) < 0
+            @warn "It is usual to have a wavenumber with a negative imaginary part. Our convention of the Fourier transform implies that this wave is growing exponentially when propagating forward in time."
+        end
+
+        new{Dim,T}(wavenumber, basis_order, bessel_coefficients, hankel_coefficients)
+    end
+end
+
+struct ElasticWave{Dim,T}
+    ω::T
+    medium::Elasticity{Dim,T}
+    pressure::HelmholtzPotential{Dim,T}
+    shear::HelmholtzPotential{Dim,T}
+
+    function ElasticWave{Dim}(ω::T, medium::Elasticity{Dim,T},pressure::HelmholtzPotential{Dim,T}, shear::HelmholtzPotential{Dim,T}) where {Dim,T}
+        new{Dim,T}(ω, medium,pressure,shear)
+    end
+end
+
+
+
 
 ## Boundary condtion types
 
@@ -58,15 +94,15 @@ function DisplacementBoundary(;inner::Bool = false, outer::Bool = false)
     return DisplacementBoundary(inner,outer)
 end
 
-struct StressBoundary <: AbstractBoundaryCondition
+struct TractionBoundary <: AbstractBoundaryCondition
     inner::Bool
     outer::Bool
 end
 
-function StressBoundary(;inner::Bool = false, outer::Bool = false)
+function TractionBoundary(;inner::Bool = false, outer::Bool = false)
     if inner == outer
         @error "this type represents only one boundary, either the inner or outer boundary, and not both or neither."
     end
 
-    return StressBoundary(inner,outer)
+    return TractionBoundary(inner,outer)
 end

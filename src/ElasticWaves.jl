@@ -8,6 +8,6 @@ using LinearAlgebra
 include("types.jl")
 
 include("cylindrical/boundary_conditions.jl")
-include("cylindrical/displacement.jl")
+include("cylindrical/fields.jl")
 
 # end # module
