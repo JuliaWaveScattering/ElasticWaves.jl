@@ -1,11 +1,46 @@
-function displacement(x::Vector{V}, ElasticWave::ElasticWave{2}) where V <: AbstractVector
+function displacement(x::Vector{T}, wave::ElasticWave{2}) where T <: AbstractFloat
+
+    r, θ = cartesian_to_radial_coordinates(x)
+    # exps = exp.(im * θ .* (-basis_order:basis_order))
+
+    basis_order = wave.pressure.basis_order
+    modes = hcat([
+        pressure_displacement_mode(wave.ω, r, m, wave.medium) .*  exp(im * θ * m)
+    for m = -basis_order:basis_order]...)
+
+    displace_p = modes * wave.pressure.coefficients[:]
+
+    # displace_p = exp(im * m * θ) .* mode * wave.pressure.coefficients[m + basis_order + 1,:]
+
+    basis_order = wave.shear.basis_order
+    modes = hcat([
+        shear_displacement_mode(wave.ω, r, m, wave.medium) .*  exp(im * θ * m)
+    for m = -basis_order:basis_order]...)
+
+    displace_s = modes * wave.shear.coefficients[:]
+
+    return displace_p + displace_s
+end
+
+function traction(x::Vector{T}, wave::ElasticWave{2}) where T <: AbstractFloat
 
     r, θ = cartesian_to_radial_coordinates(x)
 
-    pjs, phs = pressure_displacement_modes(ElasticWave.ω, r, ElasticWave.basis_order, ElasticWave.medium)
-    sjs, shs = shear_displacement_modes(ElasticWave.ω, r, ElasticWave.basis_order, ElasticWave.medium)
+    basis_order = wave.pressure.basis_order
+    modes = hcat([
+        pressure_traction_mode(wave.ω, r, m, wave.medium) .*  exp(im * θ * m)
+    for m = -basis_order:basis_order]...)
 
-    return modes
+    traction_p = modes * wave.pressure.coefficients[:]
+
+    basis_order = wave.shear.basis_order
+    modes = hcat([
+        shear_traction_mode(wave.ω, r, m, wave.medium) .*  exp(im * θ * m)
+    for m = -basis_order:basis_order]...)
+
+    traction_s = modes * wave.shear.coefficients[:]
+
+    return traction_p + traction_s
 end
 
 function pressure_displacement_modes(ω::AbstractFloat, r::AbstractFloat, basis_order::Int, medium::Elasticity{2})

@@ -42,20 +42,19 @@ end
 struct HelmholtzPotential{Dim,T}
     wavenumber::Complex{T}
     basis_order::Int
-    bessel_coefficients::Vector{Complex{T}}
-    hankel_coefficients::Vector{Complex{T}}
+    "The first (second) row is for besselj (hankelh1) modes"
+    coefficients::Matrix{Complex{T}}
 
-    function HelmholtzPotential{Dim}(wavenumber::Complex{T}, basis_order::Int, hankel_coefficients::Vector{Complex{T}}, bessel_coefficients::Vector{Complex{T}}) where {Dim,T}
-        if length(hankel_coefficients) != basisorder_to_basislength(Acoustic{T,2}, basis_order) ||
-                length(bessel_coefficients) != basisorder_to_basislength(Acoustic{T,2}, basis_order)
-            @error "the length of hankel_coefficients and bessel_coefficients has to match the basis_order given"
+    function HelmholtzPotential{Dim}(wavenumber::Complex{T}, basis_order::Int, coefficients::AbstractMatrix{Complex{T}}) where {Dim,T}
+        if size(coefficients) != (2, basisorder_to_basislength(Acoustic{T,2}, basis_order))
+            @error "the number of rows in coefficients has to match the basis_order given. There should also be two columns, one for besselj coefficients and another for hankelh1"
         end
 
         if imag(wavenumber) < 0
             @warn "It is usual to have a wavenumber with a negative imaginary part. Our convention of the Fourier transform implies that this wave is growing exponentially when propagating forward in time."
         end
 
-        new{Dim,T}(wavenumber, basis_order, bessel_coefficients, hankel_coefficients)
+        new{Dim,T}(wavenumber, basis_order, coefficients)
     end
 end
 
@@ -66,6 +65,9 @@ struct ElasticWave{Dim,T}
     shear::HelmholtzPotential{Dim,T}
 
     function ElasticWave{Dim}(ω::T, medium::Elasticity{Dim,T},pressure::HelmholtzPotential{Dim,T}, shear::HelmholtzPotential{Dim,T}) where {Dim,T}
+        if pressure.basis_order != shear.basis_order
+            @error "The basis_order for both potentials is expected to be the same."
+        end     
         new{Dim,T}(ω, medium,pressure,shear)
     end
 end

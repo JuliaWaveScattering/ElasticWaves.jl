@@ -14,15 +14,20 @@ function boundarycondition_modes(ω::AbstractFloat, basis_order::Int, bc::Displa
     ]
 end
 
-
 function boundarycondition_mode(ω::AbstractFloat, basis_order::Int, bc::TractionBoundary, bearing::Bearing{2})
     r = (bc.inner == true) ? bearing.r1 : bearing.r2
-    return hcat(pressure_traction_mode(ω, r, basis_order, bearing.medium), shear_traction_mode(ω, r, basis_order, bearing.medium))
+    return hcat(
+        pressure_traction_mode(ω, r, basis_order, bearing.medium),
+        shear_traction_mode(ω, r, basis_order, bearing.medium)
+    )
 end
 
 function boundarycondition_mode(ω::AbstractFloat, basis_order::Int, bc::DisplacementBoundary, bearing::Bearing{2})
     r = (bc.inner == true) ? bearing.r1 : bearing.r2
-    return hcat(pressure_displacement_mode(ω, r, basis_order, bearing.medium), shear_displacement_mode(ω, r, basis_order, bearing.medium))
+    return hcat(
+        pressure_displacement_mode(ω, r, basis_order, bearing.medium),
+        shear_displacement_mode(ω, r, basis_order, bearing.medium)
+    )
 end
 
 function boundarycondition_system(ω::AbstractFloat, basis_order::Int, bearing::Bearing{2}, bcs::AbstractBoundaryConditions)
@@ -61,14 +66,11 @@ function ElasticWave(ω::T, bearing::Bearing{2}, bcs::AbstractBoundaryConditions
 
     coefficients = transpose(hcat(coefficients...)) |> collect
 
-    pressure_bessel_coefficients = coefficients[:,1]
-    pressure_hankel_coefficients = coefficients[:,2]
+    pressure_coefficients = coefficients[:,1:2] |> transpose
+    shear_coefficients = coefficients[:,3:4] |> transpose
 
-    shear_bessel_coefficients = coefficients[:,3]
-    shear_hankel_coefficients = coefficients[:,4]
-
-    φ = HelmholtzPotential{2}(kP,basis_order,pressure_bessel_coefficients,pressure_hankel_coefficients)
-    ψ = HelmholtzPotential{2}(kS,basis_order,shear_bessel_coefficients,shear_hankel_coefficients)
+    φ = HelmholtzPotential{2}(kP,basis_order,pressure_coefficients)
+    ψ = HelmholtzPotential{2}(kS,basis_order,shear_coefficients)
 
     return ElasticWave{2}(ω,bearing.medium, φ, ψ)
 end
