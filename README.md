@@ -10,4 +10,4 @@ If you want to contribute to this package then type
 ```julia
 pkg> dev ElasticWaves.jl
 ```
-By default the package source will now be in <your julia directory>/dev/ElasticWaves. 
+By default the package source will now be in \<your julia directory\>/dev/ElasticWaves. 
