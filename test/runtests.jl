@@ -46,6 +46,6 @@ M2 = vcat(
 basis_order = 121
 basis_length = basisorder_to_basislength(Acoustic{Float64,2}, basis_order)
 forcing = rand(basis_length,4) + rand(basis_length,4) .* im
-wave = ElasticWave(ω, bearing, bcs, forcing)
+@time wave = ElasticWave(ω, bearing, bcs, forcing);
 
 # Do both coefficient functions give the same output?
