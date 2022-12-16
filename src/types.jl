@@ -45,7 +45,7 @@ struct HelmholtzPotential{Dim,T}
     "The first (second) row is for besselj (hankelh1) modes"
     coefficients::Matrix{Complex{T}}
 
-    function HelmholtzPotential{Dim}(wavenumber::Complex{T}, basis_order::Int, coefficients::AbstractMatrix{Complex{T}}) where {Dim,T}
+    function HelmholtzPotential{Dim}(wavenumber::Complex{T}, coefficients::AbstractMatrix{Complex{T}}, basis_order::Int = size(coefficients,2)) where {Dim,T}
         if size(coefficients) != (2, basisorder_to_basislength(Acoustic{T,2}, basis_order))
             @error "the number of rows in coefficients has to match the basis_order given. There should also be two columns, one for besselj coefficients and another for hankelh1"
         end
@@ -67,7 +67,7 @@ struct ElasticWave{Dim,T}
     function ElasticWave{Dim}(ω::T, medium::Elasticity{Dim,T},pressure::HelmholtzPotential{Dim,T}, shear::HelmholtzPotential{Dim,T}) where {Dim,T}
         if pressure.basis_order != shear.basis_order
             @error "The basis_order for both potentials is expected to be the same."
-        end     
+        end
         new{Dim,T}(ω, medium,pressure,shear)
     end
 end

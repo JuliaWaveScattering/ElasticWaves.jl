@@ -1,3 +1,24 @@
+function displacement_modes(r::T, wave::ElasticWave{2}) where T <: AbstractFloat
+
+    basis_order = wave.pressure.basis_order
+    modes = hcat([
+        pressure_displacement_mode(wave.ω, r, m, wave.medium) .*  exp(im * θ * m)
+    for m = -basis_order:basis_order]...)
+
+    displace_p = modes * wave.pressure.coefficients[:]
+
+    # displace_p = exp(im * m * θ) .* mode * wave.pressure.coefficients[m + basis_order + 1,:]
+
+    basis_order = wave.shear.basis_order
+    modes = hcat([
+        shear_displacement_mode(wave.ω, r, m, wave.medium) .*  exp(im * θ * m)
+    for m = -basis_order:basis_order]...)
+
+    displace_s = modes * wave.shear.coefficients[:]
+
+    return displace_p + displace_s
+end
+
 function displacement(x::Vector{T}, wave::ElasticWave{2}) where T <: AbstractFloat
 
     r, θ = cartesian_to_radial_coordinates(x)
@@ -43,7 +64,7 @@ function traction(x::Vector{T}, wave::ElasticWave{2}) where T <: AbstractFloat
     return traction_p + traction_s
 end
 
-function pressure_displacement_modes(ω::AbstractFloat, r::AbstractFloat, basis_order::Int, medium::Elasticity{2})
+function pressure_displacement_modes(ω::AbstractFloat, r::AbstractFloat, medium::Elasticity{2}, basis_order::Int)
 
     cp = medium.cp
     kP = ω / cp;
@@ -59,7 +80,7 @@ function pressure_displacement_modes(ω::AbstractFloat, r::AbstractFloat, basis_
 
 end
 
-function shear_displacement_modes(ω::AbstractFloat, r::AbstractFloat, basis_order::Int, medium::Elasticity{2})
+function shear_displacement_modes(ω::AbstractFloat, r::AbstractFloat, medium::Elasticity{2}, basis_order::Int)
 
     cs = medium.cs
     kS = ω / cs
@@ -74,7 +95,7 @@ function shear_displacement_modes(ω::AbstractFloat, r::AbstractFloat, basis_ord
     return [besselj_modes, hankelh1_modes]
 end
 
-function pressure_traction_modes(ω::AbstractFloat, r::AbstractFloat, basis_order::Int, medium::Elasticity{2})
+function pressure_traction_modes(ω::AbstractFloat, r::AbstractFloat, medium::Elasticity{2}, basis_order::Int)
 
     ρ = medium.ρ
     cp = medium.cp; cs = medium.cs
@@ -95,7 +116,7 @@ function pressure_traction_modes(ω::AbstractFloat, r::AbstractFloat, basis_orde
 
 end
 
-function shear_traction_modes(ω::AbstractFloat, r::AbstractFloat, basis_order::Int, medium::Elasticity{2})
+function shear_traction_modes(ω::AbstractFloat, r::AbstractFloat, medium::Elasticity{2}, basis_order::Int)
 
     ρ = medium.ρ
     cp = medium.cp; cs = medium.cs
@@ -114,7 +135,7 @@ function shear_traction_modes(ω::AbstractFloat, r::AbstractFloat, basis_order::
     return [besselj_modes, hankelh1_modes]
 end
 
-function pressure_displacement_mode(ω::AbstractFloat, r::AbstractFloat, basis_order::Int, medium::Elasticity{2})
+function pressure_displacement_mode(ω::AbstractFloat, r::AbstractFloat, medium::Elasticity{2}, basis_order::Int)
 
     kP = ω / medium.cp;
     n = basis_order;
@@ -124,7 +145,7 @@ function pressure_displacement_mode(ω::AbstractFloat, r::AbstractFloat, basis_o
     return hcat(bessel_modes(besselj), bessel_modes(hankelh1))
 end
 
-function shear_displacement_mode(ω::AbstractFloat, r::AbstractFloat, basis_order::Int, medium::Elasticity{2})
+function shear_displacement_mode(ω::AbstractFloat, r::AbstractFloat, medium::Elasticity{2}, basis_order::Int)
 
     n = basis_order;
     cs = medium.cs
@@ -135,7 +156,7 @@ function shear_displacement_mode(ω::AbstractFloat, r::AbstractFloat, basis_orde
     return hcat(bessel_modes(besselj), bessel_modes(hankelh1))
 end
 
-function pressure_traction_mode(ω::AbstractFloat, r::AbstractFloat, basis_order::Int, medium::Elasticity{2})
+function pressure_traction_mode(ω::AbstractFloat, r::AbstractFloat, medium::Elasticity{2}, basis_order::Int)
 
     ρ = medium.ρ
     n = basis_order;
@@ -151,7 +172,7 @@ function pressure_traction_mode(ω::AbstractFloat, r::AbstractFloat, basis_order
     return hcat(bessel_modes(besselj), bessel_modes(hankelh1))
 end
 
-function shear_traction_mode(ω::AbstractFloat, r::AbstractFloat, basis_order::Int, medium::Elasticity{2})
+function shear_traction_mode(ω::AbstractFloat, r::AbstractFloat, medium::Elasticity{2}, basis_order::Int)
 
     ρ = medium.ρ
     n = basis_order;
@@ -165,54 +186,4 @@ function shear_traction_mode(ω::AbstractFloat, r::AbstractFloat, basis_order::I
     ]
 
     return hcat(bessel_modes(besselj), bessel_modes(hankelh1))
-end
-
-
-
-function pressure_potential(basis_order::Int; ω::T,r::T,θ::T,bearing::Bearing{2},fp_coefficients::Vector,fs_coefficients::Vector) where {T<:Number}
-    n = basis_order
-    f = coes(n;ω,bearing,fp_coefficients, fs_coefficients)
-    kp = ω/bearing.medium.cp
-    return (f[1]*besselj(n,kp*r) + f[2]*hankelh1(n,kp*r))*ℯ^(im*n*θ)
-end
-
-function shear_potential(basis_order::Int; ω::T,r::T,θ::T,bearing::Bearing{2},fp_coefficients::Vector,fs_coefficients::Vector) where {T<:Number}
-    n = basis_order
-    f = coes(n;ω,bearing,fp_coefficients, fs_coefficients)
-    ks = ω/bearing.medium.cs
-    return (f[3]*besselj(n,ks*r) + f[4]*hankelh1(n,ks*r))*ℯ^(im*n*θ)
-end
-
-function displacement_mode(basis_order::Int;ω::T,r::T,θ::T,bearing::Bearing{2},fp_coefficients::Vector,fs_coefficients::Vector) where {T<:Number}
-    n = basis_order
-    kp = ω/bearing.medium.cp
-    ks = ω/bearing.medium.cs
-    f = coes(n;ω,bearing,fp_coefficients,fs_coefficients)
-
-    u1 = cos(θ) * (
-            kp * (f[1]*diffbesselj(n,kp*r) + f[2]*diffhankelh1(n,kp*r)) +
-            ((im*n)/r) * potentialψ(n;ω,r,θ,bearing,fp_coefficients,fs_coefficients)
-        ) - sin(θ) * (
-            ((im*n)/r) * potentialϕ(n;ω,r,θ,bearing,fp_coefficients,fs_coefficients) -ks*(f[3]*diffbesselj(n,ks*r)+f[4]*diffhankelh1(n,ks*r))
-        )
-
-    u2 = sin(θ) * (
-            kp * (f[1]*diffbesselj(n,kp*r)+f[2]*diffhankelh1(n,kp*r)) +
-            ((im*n)/r) * potentialψ(n;ω,r,θ,bearing,fp_coefficients,fs_coefficients)
-        ) + cos(θ) * (
-            ((im*n)/r) * potentialϕ(n;ω,r,θ,bearing,fp_coefficients,fs_coefficients) -ks*(f[3]*diffbesselj(n,ks*r)+f[4]*diffhankelh1(n,ks*r))
-        )
-
-    return [u1;u2]*ℯ^(im*n*θ)
-end
-
-function displacement(basis_order::Int;ω::T,r::T,θ::T,bearing::Bearing{2},fp_coefficients::Vector,fs_coefficients::Vector) where {T<:Number}
-
-    u=zeros(2,1)
-
-    for i in 1:basis_order
-        u=u+displacement_mode(convert(Int,i-(basis_order+1)/2);ω,r,θ,bearing,fp_coefficients, fs_coefficients)
-    end
-
-    return u
 end
