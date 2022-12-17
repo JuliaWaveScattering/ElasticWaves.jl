@@ -45,8 +45,10 @@ struct HelmholtzPotential{Dim,T}
     "The first (second) row is for besselj (hankelh1) modes"
     coefficients::Matrix{Complex{T}}
 
-    function HelmholtzPotential{Dim}(wavenumber::Complex{T}, coefficients::AbstractMatrix{Complex{T}}, basis_order::Int = size(coefficients,2)) where {Dim,T}
-        if size(coefficients) != (2, basisorder_to_basislength(Acoustic{T,2}, basis_order))
+    function HelmholtzPotential{Dim}(wavenumber::Complex{T}, coefficients::AbstractMatrix{Complex{T}},
+            basis_order::Int = basislength_to_basisorder(Acoustic{T,Dim},size(coefficients,2))
+        ) where {Dim,T}
+        if size(coefficients,1) != 2
             @error "the number of rows in coefficients has to match the basis_order given. There should also be two columns, one for besselj coefficients and another for hankelh1"
         end
 

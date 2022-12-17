@@ -1,22 +1,31 @@
 function displacement_modes(r::T, wave::ElasticWave{2}) where T <: AbstractFloat
 
     basis_order = wave.pressure.basis_order
-    modes = hcat([
-        pressure_displacement_mode(wave.ω, r, m, wave.medium) .*  exp(im * θ * m)
+    pmodes = hcat([
+        pressure_displacement_mode(wave.ω, r, wave.medium, m) * wave.pressure.coefficients[:,m + basis_order + 1]
     for m = -basis_order:basis_order]...)
-
-    displace_p = modes * wave.pressure.coefficients[:]
-
-    # displace_p = exp(im * m * θ) .* mode * wave.pressure.coefficients[m + basis_order + 1,:]
 
     basis_order = wave.shear.basis_order
-    modes = hcat([
-        shear_displacement_mode(wave.ω, r, m, wave.medium) .*  exp(im * θ * m)
+    smodes = hcat([
+        shear_displacement_mode(wave.ω, r, wave.medium, m) * wave.shear.coefficients[:,m + basis_order + 1]
     for m = -basis_order:basis_order]...)
 
-    displace_s = modes * wave.shear.coefficients[:]
+    return transpose(pmodes + smodes) |> collect
+end
 
-    return displace_p + displace_s
+function traction_modes(r::T, wave::ElasticWave{2}) where T <: AbstractFloat
+
+    basis_order = wave.pressure.basis_order
+    pmodes = hcat([
+        pressure_traction_mode(wave.ω, r, wave.medium, m) * wave.pressure.coefficients[:,m + basis_order + 1]
+    for m = -basis_order:basis_order]...)
+
+    basis_order = wave.shear.basis_order
+    smodes = hcat([
+        shear_traction_mode(wave.ω, r, wave.medium, m) * wave.shear.coefficients[:,m + basis_order + 1]
+    for m = -basis_order:basis_order]...)
+
+    return transpose(pmodes + smodes) |> collect
 end
 
 function displacement(x::Vector{T}, wave::ElasticWave{2}) where T <: AbstractFloat
@@ -26,7 +35,7 @@ function displacement(x::Vector{T}, wave::ElasticWave{2}) where T <: AbstractFlo
 
     basis_order = wave.pressure.basis_order
     modes = hcat([
-        pressure_displacement_mode(wave.ω, r, m, wave.medium) .*  exp(im * θ * m)
+        pressure_displacement_mode(wave.ω, r, wave.medium, m) .*  exp(im * θ * m)
     for m = -basis_order:basis_order]...)
 
     displace_p = modes * wave.pressure.coefficients[:]
@@ -35,7 +44,7 @@ function displacement(x::Vector{T}, wave::ElasticWave{2}) where T <: AbstractFlo
 
     basis_order = wave.shear.basis_order
     modes = hcat([
-        shear_displacement_mode(wave.ω, r, m, wave.medium) .*  exp(im * θ * m)
+        shear_displacement_mode(wave.ω, r, wave.medium, m) .*  exp(im * θ * m)
     for m = -basis_order:basis_order]...)
 
     displace_s = modes * wave.shear.coefficients[:]
@@ -49,14 +58,14 @@ function traction(x::Vector{T}, wave::ElasticWave{2}) where T <: AbstractFloat
 
     basis_order = wave.pressure.basis_order
     modes = hcat([
-        pressure_traction_mode(wave.ω, r, m, wave.medium) .*  exp(im * θ * m)
+        pressure_traction_mode(wave.ω, r, wave.medium, m) .*  exp(im * θ * m)
     for m = -basis_order:basis_order]...)
 
     traction_p = modes * wave.pressure.coefficients[:]
 
     basis_order = wave.shear.basis_order
     modes = hcat([
-        shear_traction_mode(wave.ω, r, m, wave.medium) .*  exp(im * θ * m)
+        shear_traction_mode(wave.ω, r, wave.medium, m) .*  exp(im * θ * m)
     for m = -basis_order:basis_order]...)
 
     traction_s = modes * wave.shear.coefficients[:]
