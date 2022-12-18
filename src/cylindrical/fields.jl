@@ -78,6 +78,7 @@ function pressure_displacement_mode(ω::AbstractFloat, r::AbstractFloat, medium:
     kP = ω / medium.cp;
     n = basis_order;
 
+    # adding errors below. The one comment below is correct.
     bessel_modes(J::Function) = [kP/2 * (J(n-1, kP*r) - J(n+1, kP*r)), im * n * J(n, kP*r) / r]
 
     return hcat(bessel_modes(besselj), bessel_modes(hankelh1))
