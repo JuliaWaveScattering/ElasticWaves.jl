@@ -27,16 +27,6 @@ end
 
 name(a::Elasticity{Dim}) where Dim = "$(Dim)D Elasticity"
 
-struct Bearing{Dim,T}
-    medium::Elasticity{Dim,T} # defining medium
-    r1::T # inner radius
-    r2::T # outer radius
-end
-
-function Bearing(Dim::Int; medium::Elasticity, r1::T=0.0,r2::T=0.0) where {T<:Number}
-    Bearing{Dim,T}(medium,r1,r2)
-end
-
 ## wave types
 
 struct HelmholtzPotential{Dim,T}
@@ -75,6 +65,15 @@ struct ElasticWave{Dim,T}
 end
 
 
+struct RollerBearing{T}
+    medium::Elasticity{2,T} # defining medium
+    r1::T # inner radius
+    r2::T # outer radius
+end
+
+function RollerBearing(; medium::Elasticity{2}, r1::T=0.0, r2::T=0.0) where {T<:Number}
+    RollerBearing{T}(medium,r1,r2)
+end
 
 
 ## Boundary condtion types
@@ -83,14 +82,14 @@ abstract type AbstractBoundaryCondition end
 
 AbstractBoundaryConditions = Vector{BC} where BC <: AbstractBoundaryCondition
 
-# Art NOTE: we should create a type called BearingBoundaryConditions, which holds both the forcing and the BCs.
+# Art NOTE: we should create a type called BearingSystem, which holds both the forcing and the BCs.
 
 struct DisplacementBoundary <: AbstractBoundaryCondition
     inner::Bool
     outer::Bool
 end
 
-function DisplacementBoundary(;inner::Bool = false, outer::Bool = false)
+function DisplacementBoundary(; inner::Bool = false, outer::Bool = false) where T
     if inner == outer
         @error "this type represents only one boundary, either the inner or outer boundary, and not both or neither."
     end
@@ -103,10 +102,71 @@ struct TractionBoundary <: AbstractBoundaryCondition
     outer::Bool
 end
 
-function TractionBoundary(;inner::Bool = false, outer::Bool = false)
+function TractionBoundary(; inner::Bool = false, outer::Bool = false) where T
     if inner == outer
         @error "this type represents only one boundary, either the inner or outer boundary, and not both or neither."
     end
 
     return TractionBoundary(inner,outer)
+end
+
+
+"""
+    BoundaryData{BC <: AbstractBoundaryCondition, T}
+
+Gives all the information on one boundery of a `RollerBearing`. You can specify the forcing either be giving the `modes`, or by specifying the `fields`. The `fields` represent either the displacement or traction when varying the polar angle `θs`.
+
+The relationship between the `fields` and the modes is given by ``f_{j}(\\theta) = \\sum_m \\text{mode}_{mj} e^{i \\theta m}``, where ``f`` represents the `fields`. To calculate the `fields` from the `modes` we can use:
+```julia
+basis_order = (size(modes,1) - 1) / 2
+exps = [
+    exp(im * θ * m)
+for θ in θs, m = -basis_order:basis_order];
+
+field = exps * modes
+```
+
+If the `modes` were specified, then they will be used directly. If the `modes` were not give, then `fields` will be used to calculate the `modes`: `modes = exps \\ fields`.
+"""
+struct BoundaryData{BC <: AbstractBoundaryCondition, T}
+    boundarytype::BC
+    θs::Vector{T}
+    fields::Matrix{Complex{T}}
+    modes::Matrix{Complex{T}}
+end
+
+function BoundaryData(boundarytype::BC, θs::Vector{T} = Float64[], fields::Matrix = reshape(Complex{Float64}[],0,1);
+        modes::Matrix = reshape(Complex{Float64}[],0,1)
+    ) where {BC <: AbstractBoundaryCondition, T}
+
+    if !isempty(modes) && size(modes,2) != 2
+        @error "the modes should have only two columns"
+    end
+
+    if !isempty(fields) && size(fields,2) != 2
+        @error "the fields should have only two columns"
+    end
+
+    return BoundaryData{BC,T}(boundarytype,θs,fields,modes)
+end
+
+
+struct BearingSimulation{BC1 <: AbstractBoundaryCondition, BC2 <: AbstractBoundaryCondition, T}
+    ω::T
+    basis_order::Int
+    bearing::RollerBearing{T}
+    boundarydata1::BoundaryData{BC1,T}
+    boundarydata2::BoundaryData{BC2,T}
+    tol::T
+
+    function BearingSimulation(ω::T, bearing::RollerBearing{T}, boundarydata1::BoundaryData{BC1,T}, boundarydata2::BoundaryData{BC2,T}; tol::T = eps(T)^(1/2)) where {T, BC1 <: AbstractBoundaryCondition, BC2 <: AbstractBoundaryCondition}
+
+        if size(boundarydata1.modes,1) != size(boundarydata2.modes,1)
+            @error "number of modes in boundarydata1 and boundarydata2 needs to be the same"
+        end
+
+        basisorder = basislength_to_basisorder(Acoustic{T,2},size(boundarydata1.modes,1))
+
+        new{BC1,BC2,T}(ω, basisorder, bearing, boundarydata1, boundarydata2, tol)
+    end
 end
