@@ -89,7 +89,26 @@ end
 
     wave = ElasticWave(sim);
 
-    # wave.pressure
+    inner_circle = Circle(bearing.inner_radius)
+    outer_circle = Circle(bearing.outer_radius)
+
+    x_vec, inds = points_in_shape(outer_circle; res = 40,
+        exclude_region = inner_circle
+    )
+    # x_vec is a square grid of points and x_vec[inds] are the points in the region.
+
+    xs = x_vec[inds]
+    field_mat = zeros(Complex{Float64},length(x_vec), 1) # change 1 to number of different frequencies
+
+    fs = [field(wave.pressure,x) for x in xs];
+
+    field_mat[inds,:] = fs
+
+    result = FrequencySimulationResult(field_mat, x_vec, [ω])
+
+    # using Plots
+    # plot(result,ω)
+
 
 end
 

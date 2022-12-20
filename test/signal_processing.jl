@@ -9,14 +9,14 @@
     fields = hcat(f1,f2)
 
     modes = fields_to_fouriermodes(θs,fields,basis_order)
-    fields2 = fouriermodes_to_fields(θs,modes,basis_order)
+    fields2 = fouriermodes_to_fields(θs,modes)
 
     @test maximum(abs.(fields - fields2)) < 1e-12
 
     # invertability is lost if basis_order is smaller
     basis_order = Int((length(θs) - 1)/2) - 1
     modes = fields_to_fouriermodes(θs,fields,basis_order)
-    fields2 = fouriermodes_to_fields(θs,modes,basis_order)
+    fields2 = fouriermodes_to_fields(θs,modes)
 
     @test maximum(abs.(fields - fields2)) < 0.25
     @test norm(fields - fields2) / norm(fields) < 0.2
@@ -30,7 +30,7 @@
     fields = hcat(f1,f2)
 
     modes = fields_to_fouriermodes(θs,fields,basis_order)
-    fields2 = fouriermodes_to_fields(θs,modes,basis_order)
+    fields2 = fouriermodes_to_fields(θs,modes)
 
     @test maximum(abs.(fields - fields2)) < 1e-12
 
@@ -38,7 +38,7 @@
     basis_order = 16
 
     modes = fields_to_fouriermodes(θs,fields,basis_order)
-    fields2 = fouriermodes_to_fields(θs,modes,basis_order)
+    fields2 = fouriermodes_to_fields(θs,modes)
 
     @test maximum(abs.(fields - fields2)) / maximum(abs.(fields)) < 1.0
     @test norm(fields - fields2) / norm(fields) < 1.0
