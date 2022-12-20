@@ -3,11 +3,11 @@
     ω = 4e4
 
     steel = Elasticity(2; ρ = 7800.0, cp = 5000.0 -0.5im, cs = 3500.0 -0.5im)
-    bearing = RollerBearing(medium=steel, r1=1.0, r2=2.0)
+    bearing = RollerBearing(medium=steel, inner_radius=1.0, outer_radius=2.0)
 
     # this non-dimensional number determines what basis_order is neeeded
-    kpa = bearing.r2 * ω / steel.cp
-    ksa = bearing.r1 * ω / steel.cs
+    kpa = bearing.outer_radius * ω / steel.cp
+    ksa = bearing.inner_radius * ω / steel.cs
 
     basis_order = Int(round(2.0 * max(abs(kpa),abs(ksa)))) + 1
     basis_length = basisorder_to_basislength(Acoustic{Float64,2}, basis_order)
@@ -17,8 +17,8 @@
 
     ## Test the boundary conditions are formulated correctly
     forcing_modes = rand(basis_length,4) + rand(basis_length,4) .* im
-    bd1 = BoundaryData(TractionBoundary(inner = true); modes = forcing_modes[:,1:2])
-    bd2 = BoundaryData(TractionBoundary(outer = true); modes = forcing_modes[:,3:4])
+    bd1 = BoundaryData(TractionBoundary(inner = true); fourier_modes = forcing_modes[:,1:2])
+    bd2 = BoundaryData(TractionBoundary(outer = true); fourier_modes = forcing_modes[:,3:4])
 
     sim = BearingSimulation(ω, bearing, bd1, bd2)
     wave = ElasticWave(sim);
@@ -34,11 +34,11 @@
     forcing_outer = forcing[:,3:4];
 
     # the predicted forcing
-    xs = [bearing.r1 .* [cos(θ),sin(θ)] for θ in θs];
+    xs = [bearing.inner_radius .* [cos(θ),sin(θ)] for θ in θs];
     forcing_inner2 = [traction(x,wave) for x in xs];
     forcing_inner2 = hcat(forcing_inner2...) |> transpose;
 
-    xs = [bearing.r2 .* [cos(θ),sin(θ)] for θ in θs];
+    xs = [bearing.outer_radius .* [cos(θ),sin(θ)] for θ in θs];
     forcing_outer2 = [traction(x,wave) for x in xs];
     forcing_outer2 = hcat(forcing_outer2...) |> transpose;
 
@@ -50,15 +50,14 @@
 
     bd1 = BoundaryData(
         DisplacementBoundary(inner = true);
-        modes = forcing_modes[:,1:2]
+        fourier_modes = forcing_modes[:,1:2]
     )
     bd2 = BoundaryData(
         DisplacementBoundary(outer = true);
-        modes = forcing_modes[:,3:4]
+        fourier_modes = forcing_modes[:,3:4]
     )
 
     sim = BearingSimulation(ω, bearing, bd1, bd2)
-
     wave = ElasticWave(sim);
 
     θs = -pi:0.1:pi; θs |> length;
@@ -68,11 +67,11 @@
     forcing_inner = forcing[:,1:2];
     forcing_outer = forcing[:,3:4];
 
-    xs = [bearing.r1 .* [cos(θ),sin(θ)] for θ in θs];
+    xs = [bearing.inner_radius .* [cos(θ),sin(θ)] for θ in θs];
     forcing_inner2 = [displacement(x,wave) for x in xs];
     forcing_inner2 = hcat(forcing_inner2...) |> transpose;
 
-    xs = [bearing.r2 .* [cos(θ),sin(θ)] for θ in θs];
+    xs = [bearing.outer_radius .* [cos(θ),sin(θ)] for θ in θs];
     forcing_outer2 = [displacement(x,wave) for x in xs];
     forcing_outer2 = hcat(forcing_outer2...) |> transpose;
 
@@ -86,19 +85,19 @@
     forcing_modes = rand(basis_length,4) + rand(basis_length,4) .* im
     bd1 = BoundaryData(
         TractionBoundary(inner = true);
-        modes = forcing_modes[:,1:2]
+        fourier_modes = forcing_modes[:,1:2]
     )
     bd2 = BoundaryData(
         TractionBoundary(outer = true);
-        modes = forcing_modes[:,3:4]
+        fourier_modes = forcing_modes[:,3:4]
     )
 
     sim = BearingSimulation(ω, bearing, bd1, bd2)
     wave = ElasticWave(sim);
 
     traction_forcing_modes = hcat(
-        traction_modes(bearing.r1, wave),
-        traction_modes(bearing.r2, wave)
+        traction_modes(bearing.inner_radius, wave),
+        traction_modes(bearing.outer_radius, wave)
     )
 
     # check traction modes are correct
@@ -107,11 +106,11 @@
     # setup a problem with displacement boundary conditions
     bd1 = BoundaryData(
         DisplacementBoundary(inner = true);
-        modes = displacement_modes(bearing.r1, wave)
+        fourier_modes = displacement_modes(bearing.inner_radius, wave)
     )
     bd2 = BoundaryData(
         DisplacementBoundary(outer = true);
-        modes = displacement_modes(bearing.r2, wave)
+        fourier_modes = displacement_modes(bearing.outer_radius, wave)
     )
 
     sim = BearingSimulation(ω, bearing, bd1, bd2)
@@ -124,8 +123,8 @@
 
     # check that wave2 will predict the same traction on the boundary as wave
     traction_forcing_modes = hcat(
-        traction_modes(bearing.r1, wave2),
-        traction_modes(bearing.r2, wave2)
+        traction_modes(bearing.inner_radius, wave2),
+        traction_modes(bearing.outer_radius, wave2)
     )
 
     @test maximum(abs.(traction_forcing_modes - forcing_modes)) / mean(abs.(forcing_modes)) < 1e-12

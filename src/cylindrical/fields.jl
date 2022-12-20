@@ -74,7 +74,7 @@ function traction(x::Vector{T}, wave::ElasticWave{2}) where T <: AbstractFloat
 end
 
 # function pressure_mode(ω::AbstractFloat, bc::TractionBoundary, bearing::RollerBearing, basis_order::Int)
-#     r = (bc.inner == true) ? bearing.r1 : bearing.r2
+#     r = (bc.inner == true) ? bearing.inner_radius : bearing.outer_radius
 #     pressure_displacement_mode(ω, r, bearing.medium, basis_order)
 # end
 

@@ -7,14 +7,14 @@
     bearing = RollerBearing(medium=steel, r1=1.0, r2=2.0)
 
     # this non-dimensional number determines what basis_order is neeeded
-    kpa = bearing.r2 * ω / steel.cp
-    bearing.r1 * ω / steel.cp
-    ksa = bearing.r2 * ω / steel.cs
+    kpa = bearing.outer_radius * ω / steel.cp
+    bearing.inner_radius * ω / steel.cp
+    ksa = bearing.outer_radius * ω / steel.cs
 
     basis_order = Int(round(2.0 * max(abs(kpa),abs(ksa)))) + 1
     basis_length = basisorder_to_basislength(Acoustic{Float64,2}, basis_order)
 
-    rs = LinRange(bearing.r1,bearing.r2,400);
+    rs = LinRange(bearing.inner_radius,bearing.outer_radius,400);
     ms = 0:2:basis_order
 
     sqrts = 1 ./ sqrt.(rs .* ω / steel.cp)

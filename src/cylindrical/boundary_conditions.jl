@@ -1,5 +1,5 @@
 function boundarycondition_mode(ω::AbstractFloat, bc::TractionBoundary, bearing::RollerBearing, basis_order::Int)
-    r = (bc.inner == true) ? bearing.r1 : bearing.r2
+    r = (bc.inner == true) ? bearing.inner_radius : bearing.outer_radius
     return hcat(
         pressure_traction_mode(ω, r, bearing.medium, basis_order),
         shear_traction_mode(ω, r, bearing.medium, basis_order)
@@ -7,7 +7,7 @@ function boundarycondition_mode(ω::AbstractFloat, bc::TractionBoundary, bearing
 end
 
 function boundarycondition_mode(ω::AbstractFloat, bc::DisplacementBoundary, bearing::RollerBearing, basis_order::Int)
-    r = (bc.inner == true) ? bearing.r1 : bearing.r2
+    r = (bc.inner == true) ? bearing.inner_radius : bearing.outer_radius
     return hcat(
         pressure_displacement_mode(ω, r, bearing.medium, basis_order),
         shear_displacement_mode(ω, r, bearing.medium, basis_order)
@@ -36,8 +36,8 @@ function ElasticWave(sim::BearingSimulation)
     coefficients = map(-basis_order:basis_order) do m
         A = boundarycondition_system(ω, bearing, sim.boundarydata1.boundarytype, sim.boundarydata2.boundarytype, m)
         b = [
-             sim.boundarydata1.modes[m+basis_order+1,:];
-             sim.boundarydata2.modes[m+basis_order+1,:]
+             sim.boundarydata1.fourier_modes[m+basis_order+1,:];
+             sim.boundarydata2.fourier_modes[m+basis_order+1,:]
         ]
 
         x = A \ b
