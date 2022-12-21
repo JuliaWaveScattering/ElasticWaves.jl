@@ -98,7 +98,7 @@ gif(anim,"docs/images/bearing-point-pressure-2.gif", fps = 7)
 
 maxω = 4ω
 
-ωs = LinRange(0.01,maxω,100)
+ωs = LinRange(0.01,maxω,200)
 
 basis_order = estimate_basisorder(maxω, bearing; tol =1e-5)
 basis_length = basisorder_to_basislength(Acoustic{Float64,2}, basis_order)
@@ -122,12 +122,21 @@ bd2 = BoundaryData(
     θs = θs,
 )
 
+i = 40
+sim = BearingSimulation(ωs[i], bearing, bd1, bd2; tol = 1e-9)
+sim.basis_order
+sim = BearingSimulation(ωs[i], bearing, bd1, bd2; basis_order = 40, tol = 1e-9)
+
+wave = ElasticWave(sim)
+res = field(wave.pressure, bearing; res = 120)
+plot(res,ωs[i]; seriestype=:contour)
 
 results = map(eachindex(ωs)) do i
-    sim = BearingSimulation(ωs[i], bearing, bd1, bd2)
+    sim = BearingSimulation(ωs[i], bearing, bd1, bd2; basis_order = 20)
     wave = ElasticWave(sim)
 
-    field(wave.pressure, bearing; res = 120)
+    res = field(wave.pressure, bearing; res = 120)
+    # plot(res, ωs[i]; seriestype=:contour)
 end
 
 pyplot()
@@ -138,7 +147,7 @@ all_results = FrequencySimulationResult(hcat(fields...), results[1].x, ωs);
 
 ## NOTE the amplitude of the field for ωs[1] is too high. It is dominating the Fourier transform. Need to investigate
 
-i = 1;
+i = 60;
 plot(all_results, ωs[i]; seriestype=:contour)
 
 maxc = 1.5mean(real.(field(all_results)))
@@ -170,13 +179,13 @@ maxc = maximum(abs.(field(time_result)))
 minc = - maxc
 
 t = ts[40]
-t = ts[140]
 t = ts[10]
+t = ts[240]
 anim = @animate for t in ts
     plot(time_result, t,
       seriestype=:contour,
       # seriestype=:heatmap,
-      clim = (minc, maxc),
+      # clim = (minc, maxc),
       # leg = false,
     )
     plot!(frame = :none, title="", xguide ="",yguide ="")
