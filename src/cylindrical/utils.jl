@@ -5,7 +5,7 @@ function estimate_basisorder(ω::T, bearing::RollerBearing{T}; tol::T = 1e-5) wh
     ka = max(abs(kpa), abs(kpa))
 
     # estimate a maximum needed for most wave scattering
-    max_basis_order = Int(round(2.0 * ka)) + 1
+    max_basis_order = Int(round(5.0 * ka)) + 1
 
     # the inverse methods become ill posed when the bessel functions have changed significantly from one boundary to the other
     basis_orders = 0:max_basis_order

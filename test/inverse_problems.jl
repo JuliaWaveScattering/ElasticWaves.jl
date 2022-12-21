@@ -51,9 +51,8 @@
 end
 
 @testset "Inverse problems for the fields" begin
-    ω = 2e4
-
-    steel = Elasticity(2; ρ = 7800.0, cp = 5000.0, cs = 3500.0)
+    ω = 2.0
+    steel = Elasticity(2; ρ = 7.0, cp = 5.0 - 0.1im, cs = 3.5 - 0.06im)
     bearing = RollerBearing(medium=steel, inner_radius=1.0, outer_radius=2.0)
 
     # this non-dimensional number determines what basis_order is neeeded
@@ -70,9 +69,14 @@ end
     θs = LinRange(0.0,2pi, basis_length + 1)[1:end-1]
 
     # let's create a focused pressure on the inner boundary
-    fs = θs .* 0 |> collect;
-    fp = θs .* 0 |> collect;
-    fp[10] = 1.0
+    fs = θs .* 0 + θs .* 0im |> collect;
+    fp = θs .* 0 + θs .* 0im |> collect;
+
+    # fp[1:3] = 1e5 .* ones(3) - 1e5im .* ones(3)
+    fp[1] = 1e5
+
+    θ0 = θs[1]
+    x0 = radial_to_cartesian_coordinates([bearing.inner_radius, θ0])
 
     bd1 = BoundaryData(TractionBoundary(inner = true); θs = θs, fields = hcat(fp,fs))
     bd2 = BoundaryData(TractionBoundary(outer = true); θs = θs, fields = hcat(fs,fs))
@@ -80,36 +84,11 @@ end
     sim = BearingSimulation(ω, bearing, bd1, bd2)
 
     # let's have a look at the modes that were calculated during the Bearing. This is the field we will actual approximate
-    θs2 = LinRange(0.0,2pi,100)
-    inner_field = fouriermodes_to_fields(θs2,sim.boundarydata1.fourier_modes)
+    inner_field = fouriermodes_to_fields(θs,sim.boundarydata1.fourier_modes)
 
-    # using Plots
-    # plot(θs2,real.(inner_field))
-    # plot!(θs, real.(fp))
+    @test norm(inner_field[:,1] - fp) < 1e-10
 
     wave = ElasticWave(sim);
-
-    inner_circle = Circle(bearing.inner_radius)
-    outer_circle = Circle(bearing.outer_radius)
-
-    x_vec, inds = points_in_shape(outer_circle; res = 40,
-        exclude_region = inner_circle
-    )
-    # x_vec is a square grid of points and x_vec[inds] are the points in the region.
-
-    xs = x_vec[inds]
-    field_mat = zeros(Complex{Float64},length(x_vec), 1) # change 1 to number of different frequencies
-
-    fs = [field(wave.pressure,x) for x in xs];
-
-    field_mat[inds,:] = fs
-
-    result = FrequencySimulationResult(field_mat, x_vec, [ω])
-
-    # using Plots
-    # plot(result,ω)
-
-
 end
 
 

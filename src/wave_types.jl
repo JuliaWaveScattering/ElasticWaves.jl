@@ -29,8 +29,11 @@ name(a::Elasticity{Dim}) where Dim = "$(Dim)D Elasticity"
 
 ## wave types
 
-import MultipleScattering: field
+"""
+    HelmholtzPotential{Dim,T}
 
+See [`field(::HelmholtzPotential, ::AbstractVector)`](@ref) for details on how to evaluate the Helmholtz potential.
+"""
 struct HelmholtzPotential{Dim,T}
     wavenumber::Complex{T}
     basis_order::Int
@@ -51,31 +54,6 @@ struct HelmholtzPotential{Dim,T}
         new{Dim,T}(wavenumber, basis_order, coefficients)
     end
 end
-
-function field(potential::HelmholtzPotential{Dim}, x::AbstractVector{T}) where {Dim, T<:AbstractFloat}
-
-    k = potential.wavenumber
-    r, θ = cartesian_to_radial_coordinates(x)
-
-    coefs = permutedims(potential.coefficients, (2,1))
-
-    ms = -potential.basis_order:potential.basis_order
-    exps = exp.(im * θ .* ms)
-
-    j = sum(coefs[:,1] .* besselj.(ms,k*r) .* exps)
-    h = sum(coefs[:,2] .* hankelh1.(ms,k*r) .* exps)
-
-   return j + h
-end
-
-# function field(potential::HelmholtzPotential{Dim}, xs::Vector{V} where V <: AbstractVector) where Dim
-#    k = potential.wavenumber
-#
-#    hs = [
-#        hankelh1(m,k*r)
-#    ]
-#
-# end
 
 struct ElasticWave{Dim,T}
     ω::T

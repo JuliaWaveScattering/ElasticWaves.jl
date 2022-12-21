@@ -12,7 +12,8 @@ using Statistics
 using LinearAlgebra
 
 include("wave_types.jl")
-include("bearing_types.jl")
+include("bearing.jl")
+include("fields.jl")
 include("signal_processing.jl")
 
 include("cylindrical/utils.jl")
