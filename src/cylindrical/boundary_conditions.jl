@@ -20,12 +20,20 @@ function ElasticWave(sim::BearingSimulation)
     ω = sim.ω
     bearing = sim.bearing
 
+    T = typeof(ω)
+
     kP = ω / bearing.medium.cp;
     kS = ω / bearing.medium.cs
 
     basis_order = sim.basis_order
 
-    coefficients = map(-basis_order:basis_order) do m
+    coefficients = [
+        zeros(Complex{T}, 4)
+    for m = -basis_order:basis_order]
+
+    mode_errors = zeros(T, 2basis_order + 1)
+
+     for m in -basis_order:basis_order
         A = boundarycondition_system(ω, bearing, sim.boundarydata1.boundarytype, sim.boundarydata2.boundarytype, m)
         b = [
              sim.boundarydata1.fourier_modes[m+basis_order+1,:];
@@ -39,7 +47,8 @@ function ElasticWave(sim::BearingSimulation)
             @warn "The relative error for the boundary conditions was $(relative_error) for (ω,basis_order) = $((ω,m))"
         end
 
-        x
+        coefficients[m + basis_order + 1] = x
+        mode_errors[m + basis_order + 1] = relative_error
     end
 
     coefficients = transpose(hcat(coefficients...)) |> collect
@@ -50,5 +59,5 @@ function ElasticWave(sim::BearingSimulation)
     φ = HelmholtzPotential{2}(kP,pressure_coefficients)
     ψ = HelmholtzPotential{2}(kS,shear_coefficients)
 
-    return ElasticWave{2}(ω, bearing.medium, φ, ψ)
+    return ElasticWave{2}(ω, bearing.medium, φ, ψ; mode_errors = mode_errors)
 end

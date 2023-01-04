@@ -72,11 +72,20 @@ struct ElasticWave{Dim,T}
     medium::Elasticity{Dim,T}
     pressure::HelmholtzPotential{Dim,T}
     shear::HelmholtzPotential{Dim,T}
+    mode_errors::Vector{T}
 
-    function ElasticWave{Dim}(ω::T, medium::Elasticity{Dim,T}, pressure::HelmholtzPotential{Dim,T}, shear::HelmholtzPotential{Dim,T}) where {Dim,T}
+    function ElasticWave{Dim}(ω::T, medium::Elasticity{Dim,T}, pressure::HelmholtzPotential{Dim,T}, shear::HelmholtzPotential{Dim,T};
+            mode_errors = zeros(pressure.basis_order |> basislength_to_basisorder(Acoustic{Dim}, Acoustic{T,Dim}))
+        ) where {Dim,T}
+
         if pressure.basis_order != shear.basis_order
             @error "The basis_order for both potentials is expected to be the same."
         end
-        new{Dim,T}(ω, medium,pressure,shear)
+
+        if length(mode_errors) != basisorder_to_basislength(Acoustic{T,Dim}, pressure.basis_order)
+            @error "The length of mode_errors should be the same as the number of modes."
+        end
+
+        new{Dim,T}(ω, medium, pressure, shear, mode_errors)
     end
 end

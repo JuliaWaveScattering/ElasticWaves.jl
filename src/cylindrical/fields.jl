@@ -47,23 +47,25 @@ function field(wave::ElasticWave{2}, sh::Shape, fieldtype::FieldType; kws...)
     return  FrequencySimulationResult(reshape(field_mat, :, 1), x_vec, [ω])
 end
 
-function field(wave::ElasticWave{2}, x::AbstractVector{T}, FT::FieldType) where T <: AbstractFloat
+function field(wave::ElasticWave{2}, x::AbstractVector{T}, field_type::FieldType) where T <: AbstractFloat
 
     r, θ = cartesian_to_radial_coordinates(x)
     # exps = exp.(im * θ .* (-basis_order:basis_order))
 
     basis_order = wave.pressure.basis_order
-    modes = hcat([
-        pressure_field_mode(wave.ω, r, wave.medium, m, FT) .*  exp(im * θ * m)
-    for m = -basis_order:basis_order]...)
+    modes_vec = [
+        pressure_field_mode(wave.ω, r, wave.medium, m, field_type) .*  exp(im * θ * m)
+    for m = -basis_order:basis_order]
 
-    field_p = modes * wave.pressure.coefficients[:]
+    modes_matrix = hcat(modes_vec...)
+
+    field_p = modes_matrix * wave.pressure.coefficients[:]
 
     # displace_p = exp(im * m * θ) .* mode * wave.pressure.coefficients[m + basis_order + 1,:]
 
     basis_order = wave.shear.basis_order
     modes = hcat([
-        shear_field_mode(wave.ω, r, wave.medium, m, FT) .*  exp(im * θ * m)
+        shear_field_mode(wave.ω, r, wave.medium, m, field_type) .*  exp(im * θ * m)
     for m = -basis_order:basis_order]...)
 
     field_s = modes * wave.shear.coefficients[:]
