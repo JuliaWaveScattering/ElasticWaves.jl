@@ -2,8 +2,8 @@ function estimate_basisorder(ω::T, bearing::RollerBearing{T}; tol::T = 1e-5) wh
 
     @warn "this function is definitely wrong. I wrote it thinking about the inverse problem, but in general this needs to be re-thought and done more carefully. the basis_order should be increased until the solution has converged."
 
-    kpa = bearing.outer_radius * ω / steel.cp
-    ksa = bearing.outer_radius * ω / steel.cs
+    kpa = bearing.outer_radius * ω / bearing.medium.cp
+    ksa = bearing.outer_radius * ω / bearing.medium.cs
     ka = max(abs(kpa), abs(kpa))
 
     # estimate a maximum needed for most wave scattering

@@ -32,6 +32,7 @@ function field(potential::HelmholtzPotential, bearing::RollerBearing; kws...)
         kws...
     )
 end
+
 function field(potential::HelmholtzPotential, sh::Shape; kws...)
 
     x_vec, inds = points_in_shape(sh; kws...)

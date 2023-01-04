@@ -1,19 +1,21 @@
 ## We define the inverse problem as taking only information from one boundary, such as the outer boundary, and then predicting fields on the other boundary.
 
 @testset "Inverse problems for the modes" begin
-    ω = 2e4
 
+    ωs = [20.0,4e4,7e4]
+
+    # The inverse problem is ill-posed if the wavespeed is complex
     steel = Elasticity(2; ρ = 7800.0, cp = 5000.0, cs = 3500.0)
-    bearing = RollerBearing(medium=steel, inner_radius=1.0, outer_radius=2.0)
+    bearing = RollerBearing(medium=steel, inner_radius=1.0, outer_radius = 2.0)
 
-    # this non-dimensional number determines what basis_order is neeeded
-    kpa = bearing.outer_radius * ω / steel.cp
-    bearing.inner_radius * ω / steel.cp
-    ksa = bearing.outer_radius * ω / steel.cs
+    # this non-dimensional number determines what basis_order is neeeded. Also note that kpa[1] and ksa[1] are small, indicating a very low frequency
+    kpa = bearing.outer_radius .* ωs ./ steel.cp
+    ksa = bearing.outer_radius .* ωs ./ steel.cs
 
     # estimate the largest basis_order that a wave scattered from the inner boundary can be measured at the outer boundary
 
-    basis_order = estimate_basisorder(ω,bearing; tol =1e-5)
+    # basis_order = estimate_basisorder(ω,bearing; tol =1e-5)
+    basis_order = 12
     basis_length = basisorder_to_basislength(Acoustic{Float64,2}, basis_order)
 
     # first the forward problem
@@ -22,38 +24,73 @@
     bd1 = BoundaryData(TractionBoundary(inner = true); fourier_modes = forcing_modes[:,1:2])
     bd2 = BoundaryData(TractionBoundary(outer = true); fourier_modes = forcing_modes[:,3:4])
 
-    sim = BearingSimulation(ω, bearing, bd1, bd2)
-    wave = ElasticWave(sim);
+    sims = [BearingSimulation(ω, bearing, bd1, bd2) for ω in ωs];
+    waves = ElasticWave.(sims);
 
     # setup a problem with only boundary information on the outer boundary
-    bd1 = BoundaryData(TractionBoundary(outer = true); fourier_modes = traction_modes(bearing.outer_radius, wave))
-    bd2 = BoundaryData(DisplacementBoundary(outer = true); fourier_modes = displacement_modes(bearing.outer_radius, wave))
+    bd1s = [
+        BoundaryData(TractionBoundary(outer = true);
+            fourier_modes = field_modes(w, bearing.outer_radius, TractionType())
+        )
+    for w in waves]
+
+    bd2s = [
+        BoundaryData(DisplacementBoundary(outer = true); fourier_modes = field_modes(w, bearing.outer_radius, DisplacementType()))
+    for w in waves]
 
     # calculate the wave from the mixed boundary conditions
-    sim = BearingSimulation(ω, bearing, bd1, bd2)
-    wave2 = ElasticWave(sim);
+    inverse_sims = [
+        BearingSimulation(ωs[i], bearing, bd1s[i], bd2s[i])
+    for i in eachindex(ωs)];
+    inverse_waves = ElasticWave.(inverse_sims);
 
     # we should recover the first wave
-    @test maximum(abs.(wave.shear.coefficients - wave2.shear.coefficients)) / mean(abs.(wave.shear.coefficients)) < 1e-12
+    errors = [
+        maximum(abs.(waves[i].shear.coefficients - inverse_waves[i].shear.coefficients)) / mean(abs.(waves[i].shear.coefficients))
+    for i in eachindex(ωs)]
 
-    @test maximum(abs.(wave.pressure.coefficients - wave2.pressure.coefficients)) / mean(abs.(wave.pressure.coefficients)) < 1e-12
+    # the low frequencies are a bit unstable I think due to the hankelh1 singularity
+    @test errors[1] < 1e-7
+    @test maximum(errors[2:end]) < 1e-13
 
-    # Check if wave2 predicts the same traction on the inner boundary
-    inner_traction_forcing_modes = traction_modes(bearing.inner_radius, wave2)
+    errors = [
+        maximum(abs.(waves[i].pressure.coefficients - inverse_waves[i].pressure.coefficients)) / mean(abs.(waves[i].pressure.coefficients))
+    for i in eachindex(ωs)]
+
+    @test errors[1] < 1e-7
+    @test maximum(errors[2:end]) < 1e-13
+
+    # Check if inverse_waves predicts the same traction on the inner boundary
+    inner_traction_forcing_modes = [
+        field_modes(w, bearing.inner_radius, TractionType())
+    for w in inverse_waves]
 
     # Note how the error in the boundary away from the data is larger
-    @test maximum(abs.(forcing_modes[:,1:2] - inner_traction_forcing_modes)) / mean(abs.(forcing_modes[:,1:2])) < 2e-6
+    errors = [
+        maximum(abs.(forcing_modes[:,1:2] - inner_traction_forcing_modes[i])) / mean(abs.(forcing_modes[:,1:2]))
+    for i in eachindex(ωs)]
 
-    outer_traction_forcing_modes = traction_modes(bearing.outer_radius, wave2)
+    @test errors[1] < 1e-4
+    @test maximum(errors[2:end]) < 1e-10
 
-    @test maximum(abs.(forcing_modes[:,3:4] - outer_traction_forcing_modes)) / mean(abs.(forcing_modes[:,3:4])) < 1e-12
+    outer_traction_forcing_modes = [
+        field_modes(w, bearing.outer_radius, TractionType())
+    for w in inverse_waves]
+
+    errors = [
+        maximum(abs.(forcing_modes[:,3:4] - outer_traction_forcing_modes[i])) / mean(abs.(forcing_modes[:,3:4]))
+    for i in eachindex(ωs)]
+
+    @test errors[1] < 1e-8
+    @test maximum(errors[2:end]) < 1e-14
 
 end
 
 @testset "Inverse problems for the fields" begin
+
     ω = 2.0
     steel = Elasticity(2; ρ = 7.0, cp = 5.0 - 0.1im, cs = 3.5 - 0.06im)
-    bearing = RollerBearing(medium=steel, inner_radius=1.0, outer_radius=2.0)
+    bearing = RollerBearing(medium = steel, inner_radius = 1.0, outer_radius = 2.0)
 
     # this non-dimensional number determines what basis_order is neeeded
     kpa = bearing.outer_radius * ω / steel.cp
@@ -62,7 +99,8 @@ end
 
     # estimate the largest basis_order that a wave scattered from the inner boundary can be measured at the outer boundary
 
-    basis_order = estimate_basisorder(ω,bearing; tol =1e-5)
+    # basis_order = estimate_basisorder(ω, bearing; tol =1e-5)
+    basis_order = 5
     basis_length = basisorder_to_basislength(Acoustic{Float64,2}, basis_order)
 
     # 0.0 and 2pi are the same point

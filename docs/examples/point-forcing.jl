@@ -1,6 +1,6 @@
 ω = 4.0
 steel = Elasticity(2; ρ = 7.0, cp = 5.0 - 1.1im, cs = 3.5 - 0.6im)
-bearing = RollerBearing(medium=steel, inner_radius=1.0, outer_radius=2.0)
+bearing = RollerBearing(medium = steel, inner_radius = 1.0, outer_radius = 2.0)
 
 # this non-dimensional number determines what basis_order is neeeded
 kpa = bearing.outer_radius * ω / steel.cp
@@ -17,13 +17,14 @@ basis_length = basisorder_to_basislength(Acoustic{Float64,2}, basis_order)
 
 # let's create a focused pressure on the inner boundary
 fs = θs .* 0 + θs .* 0im |> collect;
-fp = θs .* 0 + θs .* 0im |> collect;
+fp = exp.(-6.0 .* (θs .- pi).^2) + θs .* 0im |> collect;
 
 # fp[1:3] = 1e5 .* ones(3) - 1e5im .* ones(3)
-fp[1] = 1e5
+# fp[1] = 1e5
 
-θ0 = θs[1]
-x0 = radial_to_cartesian_coordinates([bearing.inner_radius, θ0])
+# θ0 = θs[1]
+# x0 = radial_to_cartesian_coordinates([bearing.inner_radius, θ0])
+x0 = bearing.inner_radius .* [-1.0,0.0];
 
 bd1 = BoundaryData(TractionBoundary(inner = true); θs = θs, fields = hcat(fp,fs))
 bd2 = BoundaryData(TractionBoundary(outer = true); θs = θs, fields = hcat(fs,fs))
@@ -41,7 +42,7 @@ plot!(θs, real.(fp))
 wave = ElasticWave(sim);
 result = field(wave.pressure, bearing; res = 120)
 
-## The long way to calculate result = field(wave.pressure, bearing; res = 100)
+## The long way to calculate result = field(bearing, wave.pressure; res = 100)
     inner_circle = Circle(bearing.inner_radius)
     outer_circle = Circle(bearing.outer_radius)
 
@@ -57,18 +58,21 @@ result = field(wave.pressure, bearing; res = 120)
     xs = x_vec[inds]
     field_mat = zeros(Complex{Float64},length(x_vec), 1) # change 1 to number of different frequencies
 
-    fs = [field(wave.pressure,x) for x in xs];
+    fs = [field(wave.pressure, x) for x in xs];
     field_mat[inds,:] = fs
 
     result2 = FrequencySimulationResult(field_mat, x_vec, [ω])
 
 ## plot the field in the bearing
 
+ts = (0.0:0.1:2pi) ./ ω
+
 using Plots
 plot(result,ω;
     seriestype = :contour,
     # seriestype = :heatmap,
     # legend = :false,
+    phase_time = ts[30],
     field_apply = real
 )
 scatter!([x0[1]],[x0[2]])
@@ -77,7 +81,7 @@ scatter!([x0[1]],[x0[2]])
 maxc = maximum(real.(field(result)))
 minc = minimum(real.(field(result)))
 
-maxc = min(abs(minc),abs(maxc))
+maxc = mean([abs(minc),abs(maxc)])
 minc = - maxc
 
 anim = @animate for t in ts
@@ -96,11 +100,28 @@ gif(anim,"docs/images/bearing-point-pressure-2.gif", fps = 7)
 
 ## Simulation in time
 
-maxω = 4ω
+steel = Elasticity(2; ρ = 7.0, cp = 5.0 - 1.1im, cs = 3.5 - 0.6im)
+bearing = RollerBearing(medium = steel, inner_radius = 1.0, outer_radius = 2.0)
 
-ωs = LinRange(0.01,maxω,200)
+# time for wave to go from inner boundary to outer boundary
+Δt = (bearing.outer_radius - bearing.inner_radius) / steel.cp |> real
 
-basis_order = estimate_basisorder(maxω, bearing; tol =1e-5)
+# need at as many samples as possible within this time frame
+dt = Δt / 4
+
+# from dt we can calculate what's the maximum frequency we need
+maxω = 2pi / dt
+ωs = LinRange(0.4,maxω,500)
+
+ω_to_t(ωs)
+
+kpa = bearing.outer_radius * maxω / steel.cp
+ksa = bearing.outer_radius * maxω / steel.cs
+
+kpa = bearing.inner_radius * ωs[1] / steel.cp
+ksa = bearing.inner_radius * ωs[1] / steel.cs
+
+basis_order = 12
 basis_length = basisorder_to_basislength(Acoustic{Float64,2}, basis_order)
 
 # 0.0 and 2pi are the same point
@@ -108,8 +129,10 @@ basis_length = basisorder_to_basislength(Acoustic{Float64,2}, basis_order)
 
 # let's create a focused pressure on the inner boundary
 fs = θs .* 0 + θs .* 0im |> collect;
-fp = θs .* 0 + θs .* 0im |> collect;
-fp[1] = 1.0 + 0.0im
+fp = exp.(-6.0 .* (θs .- pi).^2) + θs .* 0im |> collect;
+
+using Plots
+plot(θs,real.(fp))
 
 bd1 = BoundaryData(
     TractionBoundary(inner = true);
@@ -122,54 +145,86 @@ bd2 = BoundaryData(
     θs = θs,
 )
 
-i = 40
-sim = BearingSimulation(ωs[i], bearing, bd1, bd2; tol = 1e-9)
-sim.basis_order
-sim = BearingSimulation(ωs[i], bearing, bd1, bd2; basis_order = 40, tol = 1e-9)
+i = 2
+i = 100
+# sim = BearingSimulation(ωs[i], bearing, bd1, bd2; tol = 1e-9)
+sim = BearingSimulation(ωs[i], bearing, bd1, bd2; basis_order = basis_order, tol = 1e-9)
 
 wave = ElasticWave(sim)
 res = field(wave.pressure, bearing; res = 120)
-plot(res,ωs[i]; seriestype=:contour)
+
+plot(res,ωs[i]; seriestype=:heatmap)
+plot!(Circle(bearing.inner_radius))
+
+fieldtype = TractionType()
+res = field(wave, bearing, fieldtype; res = 120)
+
+# plot the radial traction
+plot(res,ωs[i]; seriestype=:heatmap, field_apply = f -> real(f[1]))
+plot!(Circle(bearing.inner_radius))
+plot!(Circle(bearing.outer_radius))
+
+# plot the theta traction
+plot(res,ωs[i]; seriestype=:heatmap, field_apply = f -> real(f[2]))
+plot!(Circle(bearing.inner_radius))
+plot!(Circle(bearing.outer_radius))
+
+θ2s = LinRange(0.0,2pi, 3basis_length + 1)[1:end-1]
+
+xs = [bearing.inner_radius .* [cos(θ), sin(θ)] for θ in θ2s];
+trs = [traction(wave, x)[1] for x in xs]
+
+plot(θ2s,real.(trs))
+plot!(θs,real.(fp), linestyle = :dash)
 
 results = map(eachindex(ωs)) do i
-    sim = BearingSimulation(ωs[i], bearing, bd1, bd2; basis_order = 20)
+    sim = BearingSimulation(ωs[i], bearing, bd1, bd2;
+        basis_order = basis_order)
     wave = ElasticWave(sim)
 
-    res = field(wave.pressure, bearing; res = 120)
+    fieldtype = TractionType()
+    res = field(wave, bearing, fieldtype; res = 120)
+    # res = field(wave.pressure, bearing; res = 120)
     # plot(res, ωs[i]; seriestype=:contour)
 end
 
-pyplot()
+# pyplot()
 
-
-fields = [r.field for r in results];
-all_results = FrequencySimulationResult(hcat(fields...), results[1].x, ωs);
+i0 = 1
+fields = [r.field for r in results[i0:end]];
+all_results = FrequencySimulationResult(hcat(fields...), results[1].x, ωs[i0:end]);
 
 ## NOTE the amplitude of the field for ωs[1] is too high. It is dominating the Fourier transform. Need to investigate
 
-i = 60;
-plot(all_results, ωs[i]; seriestype=:contour)
+i = 1;
+plot(all_results, ωs[i];
+    seriestype=:heatmap,
+    field_apply = f -> real(f[1])
+)
+# plot(all_results, ωs[i]; seriestype=:contour)
 
-maxc = 1.5mean(real.(field(all_results)))
+maxc = 2mean(abs.(real.(field(all_results))))
 # maxc = maxc /5.0
 minc = - maxc
 
 anim = @animate for ω in ωs
     plot(all_results, ω,
-      seriestype=:contour,
-      # seriestype=:heatmap,
-      # clim = (minc, maxc),
+      # seriestype=:contour,
+      seriestype=:heatmap,
+      clim = (minc, maxc),
       leg = false,
     )
     plot!(frame = :none, title="", xguide ="",yguide ="")
 end
 
-gif(anim,"docs/images/all-frequencies-point-pressure.gif", fps = 3)
+gif(anim,"docs/images/all-frequencies-point-pressure-2.gif", fps = 4)
 
-ts = ω_to_t(ωs)
+ts = ω_to_t(ωs[i0:end])
 impulse = GaussianImpulse(maxω)
-impulse.in_time.(ts)
+plot(ts, impulse.in_time.(ts), xlims = (0.0,0.2))
+
 frequency_impulse = impulse.in_freq.(ωs)
+plot(ωs, real.(frequency_impulse))
 
 time_result = frequency_to_time(all_results; t_vec = ts, impulse = impulse)
 
@@ -178,15 +233,18 @@ maxc = maximum(abs.(field(time_result)))
 # maxc = maxc /5.0
 minc = - maxc
 
-t = ts[40]
-t = ts[10]
 t = ts[240]
+t = ts[140]
+t = ts[20]
+
+# pyplot()
 anim = @animate for t in ts
     plot(time_result, t,
-      seriestype=:contour,
       # seriestype=:heatmap,
-      # clim = (minc, maxc),
-      # leg = false,
+      seriestype=:contour,
+      levels = 24,
+      clim = (minc, maxc),
+      leg = false,
     )
     plot!(frame = :none, title="", xguide ="",yguide ="")
 end

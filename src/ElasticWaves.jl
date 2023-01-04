@@ -10,6 +10,7 @@ using MultipleScattering
 using SpecialFunctions
 using Statistics
 using LinearAlgebra
+using StaticArrays: SVector
 
 include("wave_types.jl")
 include("bearing.jl")
@@ -18,6 +19,6 @@ include("signal_processing.jl")
 
 include("cylindrical/utils.jl")
 include("cylindrical/boundary_conditions.jl")
-include("cylindrical/displacement.jl")
+include("cylindrical/fields.jl")
 
 # end # module
