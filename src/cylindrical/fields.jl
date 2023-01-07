@@ -44,7 +44,7 @@ function field(wave::ElasticWave{2}, sh::Shape, fieldtype::FieldType; kws...)
     fs = [field(wave,x,fieldtype) for x in xs];
     field_mat[inds] = fs
 
-    return  FrequencySimulationResult(reshape(field_mat, :, 1), x_vec, [ω])
+    return  FrequencySimulationResult(reshape(field_mat, :, 1), x_vec, [wave.ω])
 end
 
 function field(wave::ElasticWave{2}, x::AbstractVector{T}, field_type::FieldType) where T <: AbstractFloat

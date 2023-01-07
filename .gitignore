@@ -1,0 +1,21 @@
+*.jl.cov
+*.jl.*.cov
+*.jl.mem
+
+# LaTeX generated files
+*.aux
+*.bcf
+*.out
+*.log
+*.run.xml
+*.blg
+*.bbl
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+
+# Mathematica Notebooks
+*.nb
+
+docs/build
+docs/site

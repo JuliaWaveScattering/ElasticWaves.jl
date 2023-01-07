@@ -1,4 +1,5 @@
-ω = 0.1
+ω = 0.001
+ω = 1.001
 steel = Elasticity(2; ρ = 7.0, cp = 5.0 - 1.1im, cs = 3.5 - 0.6im)
 bearing = RollerBearing(medium = steel, inner_radius = 1.0, outer_radius = 2.0)
 
@@ -8,7 +9,7 @@ ksa = bearing.outer_radius * ω / steel.cs
 
 # estimate the largest basis_order that a wave scattered from the inner boundary can be measured at the outer boundary
 
-basis_orders = 4:5:40 |> collect
+basis_orders = 4:7:50 |> collect
 basis_lengths = basisorder_to_basislength.(Acoustic{Float64,2}, basis_orders)
 
 # 0.0 and 2pi are the same point
@@ -28,17 +29,26 @@ sims = [
     BearingSimulation(ω, bearing, bd1, bd2; basis_order = m)
 for m in basis_orders]
 
-waves = ElasticWave.(sims);
 
-results = [field(w.pressure, bearing; res = 100) for w in waves];
+waves = ElasticWave.(sims);
+waves[1].mode_errors |> maximum
+waves[end].mode_errors |> maximum
+
+
+results = [field(w.pressure, bearing; res = 100) for w in waves[[1,4]]];
+
+
+results = [field(w, bearing, TractionType(); res = 100) for w in waves[[1,4]]];
 
 using Plots
 gr(size = (1000,600))
 ps = [
     plot(r, ω;
         seriestype=:heatmap
+        , field_apply = f -> abs(f[1])
     )
 for r in results]
 
 plot(ps...)
+
 savefig("docs/images/basis_convergence.pdf")

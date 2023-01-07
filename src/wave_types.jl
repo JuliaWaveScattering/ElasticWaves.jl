@@ -47,12 +47,13 @@ struct TractionType <: FieldType end
 See [`field(::HelmholtzPotential, ::AbstractVector)`](@ref) for details on how to evaluate the Helmholtz potential.
 """
 struct HelmholtzPotential{Dim,T}
+    wavespeed::Complex{T}
     wavenumber::Complex{T}
     basis_order::Int
     "The first (second) row is for the besselj (hankelh1) fourier modes"
     coefficients::Matrix{Complex{T}}
 
-    function HelmholtzPotential{Dim}(wavenumber::Complex{T}, coefficients::AbstractMatrix{Complex{T}},
+    function HelmholtzPotential{Dim}(wavespeed::Complex{T}, wavenumber::Complex{T},  coefficients::AbstractMatrix{Complex{T}},
             basis_order::Int = basislength_to_basisorder(Acoustic{T,Dim},size(coefficients,2))
         ) where {Dim,T}
         if size(coefficients,1) != 2
@@ -63,7 +64,7 @@ struct HelmholtzPotential{Dim,T}
             @warn "It is usual to have a wavenumber with a negative imaginary part. Our convention of the Fourier transform implies that this wave is growing exponentially when propagating forward in time."
         end
 
-        new{Dim,T}(wavenumber, basis_order, coefficients)
+        new{Dim,T}(wavespeed, wavenumber, basis_order, coefficients)
     end
 end
 
