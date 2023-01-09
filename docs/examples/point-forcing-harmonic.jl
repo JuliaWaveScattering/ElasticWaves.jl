@@ -1,15 +1,18 @@
 ω = 4.0
-steel = Elasticity(2; ρ = 7.0, cp = 5.0 - 1.1im, cs = 3.5 - 0.6im)
+ω = 20000.0
+steel = Elasticity(2; ρ = 7.0, cp = 5.0 - 0.1im, cs = 3.5 - 0.2im)
+steel = Elasticity(2; ρ = 7800.0, cp = 5000.0 -0.5im, cs = 3500.0 -0.5im)
+
 bearing = RollerBearing(medium = steel, inner_radius = 1.0, outer_radius = 2.0)
 
-# this non-dimensional number determines what basis_order is neeeded
 kpa = bearing.outer_radius * ω / steel.cp
 bearing.inner_radius * ω / steel.cp
 ksa = bearing.outer_radius * ω / steel.cs
 
 # estimate the largest basis_order that a wave scattered from the inner boundary can be measured at the outer boundary
 
-basis_order = estimate_basisorder(ω,bearing; tol =1e-5)
+basis_order = 10
+# basis_order = estimate_basisorder(ω,bearing; tol =1e-5)
 basis_length = basisorder_to_basislength(Acoustic{Float64,2}, basis_order)
 
 # 0.0 and 2pi are the same point
@@ -17,7 +20,7 @@ basis_length = basisorder_to_basislength(Acoustic{Float64,2}, basis_order)
 
 # let's create a focused pressure on the inner boundary
 fs = θs .* 0 + θs .* 0im |> collect;
-fp = exp.(-6.0 .* (θs .- pi).^2) + θs .* 0im |> collect;
+fp = exp.(-20.0 .* (θs .- pi).^2) + θs .* 0im |> collect;
 
 # fp[1:3] = 1e5 .* ones(3) - 1e5im .* ones(3)
 # fp[1] = 1e5
@@ -68,15 +71,65 @@ result = field(wave.pressure, bearing; res = 120)
 ts = (0.0:0.1:2pi) ./ ω
 
 using Plots
+gr(size = (400,400))
+
+sim = BearingSimulation(ω, bearing, bd1, bd2)
+wave = ElasticWave(sim);
+result = field(wave.pressure, bearing; res = 420)
+# result = field(wave.shear, bearing; res = 420)
+
+field_apply = abs
+maxc = 0.8 .* maximum(field_apply.(field(result)))
+minc = min(0.0,field_apply(- maxc))
+
 plot(result,ω;
-    seriestype = :contour,
-    # seriestype = :heatmap,
+    # seriestype = :contour,
+    seriestype = :heatmap,
     # legend = :false,
     phase_time = ts[30],
-    field_apply = real
+    # c = :lajolla,
+    field_apply = field_apply,
+    clims = (minc, maxc),
+    leg = false
 )
-scatter!([x0[1]],[x0[2]])
-# savefig("docs/images/bearing-stress-patterns.png")
+plot!(frame = :none, title="Pressure wave", xguide ="",yguide ="")
+# plot!(frame = :none, title="Shear wave", xguide ="",yguide ="")
+plot!(Circle(bearing.inner_radius))
+plot!(Circle(bearing.outer_radius))
+plot!(Circle([r-bearing.inner_radius, 0.0], r))
+pp = plot!(Circle(bearing.inner_radius -2r))
+# ps = plot!(Circle(bearing.inner_radius -2r))
+# scatter!([x0[1]],[x0[2]], lab = "")
+# savefig("docs/images/bearing-shear-stress-patterns.png")
+# savefig("docs/images/bearing-shear-stress-patterns.pdf")
+savefig("docs/images/bearing-pressure-stress-patterns.png")
+savefig("docs/images/bearing-pressure-stress-patterns.pdf")
+
+sim = BearingSimulation(ω, bearing, bd1, bd2)
+wave = ElasticWave(sim);
+result = field(wave.pressure, bearing; res = 120)
+
+field_apply = abs
+maxc = 0.8 .* maximum(field_apply.(field(result)))
+minc = min(0.0,field_apply(- maxc))
+
+plot(result,ω;
+    # seriestype = :contour,
+    seriestype = :heatmap,
+    # legend = :false,
+    phase_time = ts[30],
+    # c = :lajolla,
+    field_apply = field_apply,
+    clims = (minc, maxc),
+    leg = false
+)
+plot!(frame = :none, title="Roller bearing pressure", xguide ="",yguide ="")
+plot!(Circle(bearing.inner_radius))
+plot!(Circle(bearing.outer_radius))
+plot!(Circle([r-bearing.inner_radius, 0.0], r))
+plot!(Circle(bearing.inner_radius -2r))
+# scatter!([x0[1]],[x0[2]], lab = "")
+savefig("docs/images/bearing-stress-patterns.png")
 
 maxc = maximum(real.(field(result)))
 minc = minimum(real.(field(result)))

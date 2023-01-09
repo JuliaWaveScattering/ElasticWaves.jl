@@ -50,7 +50,7 @@ i = 100
 sim = BearingSimulation(ωs[i], bearing, bd1, bd2; basis_order = basis_order, tol = 1e-9)
 
 wave = ElasticWave(sim)
-res = field(wave.pressure, bearing; res = 120)
+res = field(wave.shear, bearing; res = 120)
 
 plot(res,ωs[i]; seriestype=:heatmap)
 plot!(Circle(bearing.inner_radius))
@@ -86,7 +86,7 @@ results = map(eachindex(ωs)) do i
     # scale the potential to match the units of stress
     scale = steel.ρ * ωs[i]^2
 
-    potential = HelmholtzPotential{2}(wave.pressure.wavespeed, wave.pressure.wavenumber, scale .* wave.pressure.coefficients)
+    potential = HelmholtzPotential{2}(wave.shear.wavespeed, wave.shear.wavenumber, scale .* wave.shear.coefficients)
 
     res = field(potential, bearing; res = 120)
     # plot(res, ωs[i]; seriestype=:contour)
@@ -141,12 +141,12 @@ minc = - maxc
 t = ts[240]
 t = ts[20]
 t = ts[50]
-t = ts[4]
+t = ts[1]
 
 # pyplot()
 r = bearing.inner_radius / 4
 
-anim = @animate for t in ts[1:100]
+anim = @animate for t in ts[1:80]
     plot(time_result, t,
       seriestype=:heatmap,
       # seriestype=:contour,
@@ -162,5 +162,4 @@ anim = @animate for t in ts[1:100]
     plot!(Circle(bearing.inner_radius -2r))
 end
 
-gif(anim,"docs/images/time-point-pressure-2.gif", fps = 7)
-# gif(anim,"docs/images/time-point-traction-2.gif", fps = 7)
+gif(anim,"docs/images/time-point-shear.gif", fps = 7)
