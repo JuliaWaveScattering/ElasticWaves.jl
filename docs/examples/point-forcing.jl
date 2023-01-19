@@ -76,6 +76,14 @@ trs = [traction(wave, x)[1] for x in xs]
 plot(θ2s,real.(trs))
 plot!(θs,real.(fp), linestyle = :dash)
 
+
+i = 1
+sim = BearingSimulation(ωs[i], bearing, bd1, bd2;
+    basis_order = basis_order)
+wave = ElasticWave(sim)
+
+big_bearing = RollerBearing(medium = steel, inner_radius = 1.0, outer_radius = 3.0)
+
 results = map(eachindex(ωs)) do i
     sim = BearingSimulation(ωs[i], bearing, bd1, bd2;
         basis_order = basis_order)
@@ -86,17 +94,17 @@ results = map(eachindex(ωs)) do i
     # scale the potential to match the units of stress
     scale = steel.ρ * ωs[i]^2
 
+    wave.pressure.coefficients
+
     potential = HelmholtzPotential{2}(wave.pressure.wavespeed, wave.pressure.wavenumber, scale .* wave.pressure.coefficients)
 
-    res = field(potential, bearing; res = 120)
+    res = field(potential, big_bearing; res = 120)
     # plot(res, ωs[i]; seriestype=:contour)
 end
 
-i0 = 1
-fields = [[f[1] for f in field(r)] for r in results[i0:end]];
-all_results = FrequencySimulationResult(hcat(fields...), results[1].x, ωs[i0:end]);
+fields = [[f[1] for f in field(r)] for r in results];
+all_results = FrequencySimulationResult(hcat(fields...), results[1].x, ωs);
 
-## NOTE the amplitude of the field for ωs[1] is too high. It is dominating the Fourier transform. Need to investigate
 
 i = 1;
 plot(all_results, ωs[i];
@@ -124,7 +132,7 @@ plot(all_results, ωs[i];
 #
 # gif(anim,"docs/images/all-frequencies-point-pressure.gif", fps = 4)
 
-ts = ω_to_t(ωs[i0:end])
+ts = ω_to_t(ωs)
 impulse = GaussianImpulse(maxω)
 plot(ts, impulse.in_time.(ts), xlims = (0.0,0.2))
 
@@ -138,9 +146,6 @@ maxc = 0.33 .* maximum(norm.(field(time_result)))
 # maxc = maxc /5.0
 minc = - maxc
 
-t = ts[240]
-t = ts[20]
-t = ts[50]
 t = ts[4]
 
 # pyplot()
@@ -149,9 +154,7 @@ r = bearing.inner_radius / 4
 anim = @animate for t in ts[1:100]
     plot(time_result, t,
       seriestype=:heatmap,
-      # seriestype=:contour,
       # field_apply = f -> real(f[2]),
-      # levels = 30,
       clim = (minc, maxc),
       leg = false,
     )
@@ -162,5 +165,133 @@ anim = @animate for t in ts[1:100]
     plot!(Circle(bearing.inner_radius -2r))
 end
 
-gif(anim,"docs/images/time-point-pressure-2.gif", fps = 7)
+gif(anim,"docs/images/time-point-pressure.gif", fps = 7)
 # gif(anim,"docs/images/time-point-traction-2.gif", fps = 7)
+
+
+## Separate the besselj and hankelh1 fields
+
+# Just the hankelh1 terms
+    results = map(eachindex(ωs)) do i
+        sim = BearingSimulation(ωs[i], bearing, bd1, bd2;
+            basis_order = basis_order)
+        wave = ElasticWave(sim)
+
+        # res = field(wave, bearing, TractionType(); res = 70)
+
+        # scale the potential to match the units of stress
+        scale = steel.ρ * ωs[i]^2
+
+        coes = wave.pressure.coefficients;
+        coes[1,:] .= 0.0 + 0.0im
+
+        potential = HelmholtzPotential{2}(wave.pressure.wavespeed, wave.pressure.wavenumber, scale .* coes)
+
+        res = field(potential, bearing; res = 120)
+        # plot(res, ωs[i]; seriestype=:contour)
+    end
+
+    fields = [[f[1] for f in field(r)] for r in results];
+    all_results = FrequencySimulationResult(hcat(fields...), results[1].x, ωs);
+
+
+    i = 4;
+    plot(all_results, ωs[i];
+        seriestype=:heatmap
+        # , field_apply = f -> real(f[1])
+    )
+
+    ts = ω_to_t(ωs)
+    impulse = GaussianImpulse(maxω)
+    plot(ts, impulse.in_time.(ts), xlims = (0.0,0.2))
+
+    frequency_impulse = impulse.in_freq.(ωs)
+    plot(ωs, real.(frequency_impulse))
+
+    time_result = frequency_to_time(all_results; t_vec = ts, impulse = impulse)
+
+    maxc = 0.33 .* maximum(norm.(field(time_result)))
+    minc = - maxc
+
+    t = ts[4]
+
+    # pyplot()
+    r = bearing.inner_radius / 4
+
+    anim = @animate for t in ts[1:100]
+        plot(time_result, t,
+          seriestype=:heatmap,
+          clim = (minc, maxc),
+          leg = false,
+        )
+        plot!(frame = :none, title="", xguide ="",yguide ="")
+        plot!(Circle(bearing.inner_radius))
+        plot!(Circle(bearing.outer_radius))
+        plot!(Circle([r-bearing.inner_radius, 0.0], r))
+        plot!(Circle(bearing.inner_radius -2r))
+    end
+
+    gif(anim,"docs/images/time-point-hankelh1-pressure.gif", fps = 7)
+
+# Just the besseljs
+    big_bearing = RollerBearing(medium = steel, inner_radius = 1.0, outer_radius = 3.0)
+
+    results = map(eachindex(ωs)) do i
+        sim = BearingSimulation(ωs[i], bearing, bd1, bd2;
+            basis_order = basis_order)
+        wave = ElasticWave(sim)
+
+        # res = field(wave, bearing, TractionType(); res = 70)
+
+        # scale the potential to match the units of stress
+        scale = steel.ρ * ωs[i]^2
+
+        coes = wave.pressure.coefficients;
+        coes[2,:] .= 0.0 + 0.0im
+
+        potential = HelmholtzPotential{2}(wave.pressure.wavespeed, wave.pressure.wavenumber, scale .* coes)
+
+        res = field(potential, big_bearing; res = 120)
+        # plot(res, ωs[i]; seriestype=:contour)
+    end
+
+    fields = [[f[1] for f in field(r)] for r in results];
+    all_results = FrequencySimulationResult(hcat(fields...), results[1].x, ωs);
+
+
+    i = 4;
+    plot(all_results, ωs[i];
+        seriestype=:heatmap
+        # , field_apply = f -> real(f[1])
+    )
+
+    ts = ω_to_t(ωs)
+    impulse = GaussianImpulse(maxω)
+    plot(ts, impulse.in_time.(ts), xlims = (0.0,0.2))
+
+    frequency_impulse = impulse.in_freq.(ωs)
+    plot(ωs, real.(frequency_impulse))
+
+    time_result = frequency_to_time(all_results; t_vec = ts, impulse = impulse)
+
+    maxc = 0.33 .* maximum(norm.(field(time_result)))
+    minc = - maxc
+
+    t = ts[4]
+    # pyplot()
+    r = bearing.inner_radius / 4
+
+    anim = @animate for t in ts[1:100]
+        plot(time_result, t,
+          seriestype=:heatmap,
+          clim = (minc, maxc),
+          leg = false,
+        )
+        plot!(frame = :none, title="", xguide ="",yguide ="")
+        plot!(Circle(bearing.inner_radius))
+        plot!(Circle(bearing.outer_radius))
+        plot!(Circle([r-bearing.inner_radius, 0.0], r))
+        plot!(Circle(bearing.inner_radius -2r))
+    end
+
+    gif(anim,"docs/images/time-point-besselj-pressure.gif", fps = 7)
