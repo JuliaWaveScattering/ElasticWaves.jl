@@ -1,11 +1,22 @@
 struct RollerBearing{T}
     medium::Elasticity{2,T} # defining medium
     inner_radius::T
+    "vector of angles delimiting gaps in the inner radius"
+    inner_gaps::Vector{T}
     outer_radius::T
+    "vector of angles delimiting gaps in the outer radius"
+    outer_gaps::Vector{T}
 end
 
-function RollerBearing(; medium::Elasticity{2}, inner_radius::T = 0.0, outer_radius::T = 0.0) where T<:Number
-    RollerBearing{T}(medium, inner_radius, outer_radius)
+function RollerBearing(; medium::Elasticity{2},
+        inner_radius::T = 0.0, outer_radius::T = 0.0,
+        inner_gaps::Vector{T} = typeof(inner_radius)[],
+        outer_gaps::Vector{T} = typeof(outer_radius)[]
+    ) where T<:Number
+    if isodd(length(inner_gaps)) && isodd(length(outer_gaps))
+        @error "both inner_gaps and outer_gaps need to be an even number of angles"
+    end
+    RollerBearing{T}(medium, inner_radius, inner_gaps, outer_radius, outer_gaps)
 end
 
 

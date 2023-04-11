@@ -18,6 +18,7 @@ basis_order = 10
 basis_length = basisorder_to_basislength(Acoustic{Float64,2}, basis_order)
 
 numberofsensors = basis_length - 11;
+numberofsensors = 5;
 
 θs = LinRange(0.0, 2pi, basis_length + 1)[1:end-1]
 θ2s = LinRange(0.0, 2pi, 4basis_length + 1)[1:end-1]
