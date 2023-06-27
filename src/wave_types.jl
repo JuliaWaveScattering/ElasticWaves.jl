@@ -57,7 +57,7 @@ struct HelmholtzPotential{Dim,T}
             basis_order::Int = basislength_to_basisorder(Acoustic{T,Dim},size(coefficients,2))
         ) where {Dim,T}
         if size(coefficients,1) != 2
-            @error "the number of rows in coefficients has to match the basis_order given. There should also be two columns, one for besselj coefficients and another for hankelh1"
+            @error "the number of columns in coefficients has to match the basis_order given. There should also be two rows, one for besselj coefficients and another for hankelh1"
         end
 
         if imag(wavenumber) < 0
@@ -75,8 +75,8 @@ struct ElasticWave{Dim,T}
     shear::HelmholtzPotential{Dim,T}
     mode_errors::Vector{T}
 
-    function ElasticWave{Dim}(ω::T, medium::Elasticity{Dim,T}, pressure::HelmholtzPotential{Dim,T}, shear::HelmholtzPotential{Dim,T};
-            mode_errors = zeros(pressure.basis_order |> basislength_to_basisorder(Acoustic{Dim}, Acoustic{T,Dim}))
+    function ElasticWave(ω::T, medium::Elasticity{Dim,T}, pressure::HelmholtzPotential{Dim,T}, shear::HelmholtzPotential{Dim,T};
+            mode_errors = zeros(basisorder_to_basislength(Acoustic{T,Dim}, pressure.basis_order))
         ) where {Dim,T}
 
         if pressure.basis_order != shear.basis_order

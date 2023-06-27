@@ -4,16 +4,44 @@
 # include("/home/mep21jjk/.julia/packages/ElasticWaves/REv3o/test/runtests.jl")
 include("../src/ElasticWaves.jl")
 
-ω = 2.0
-steel = Elasticity(2; ρ = 7.0, cp = 5.0 - 0.1im, cs = 3.5 - 0.06im)
+ω = 10.0
+# steel = Elasticity(2; ρ = 7.0, cp = 5.0, cs = 3.5)
+steel = Elasticity(2; ρ = 7.0, cp = 5.0 - 0.01im, cs = 3.5 - 0.01im)
 # steel = Elasticity(2; ρ = 7.0, cp = 5.0, cs = 3.5 )
-bearing = RollerBearing(medium = steel, inner_radius = 1.0, outer_radius = 2.0)
+bearing = RollerBearing(medium = steel, inner_radius = 1.0, outer_radius = 1.1)
 
 
 kpa = bearing.outer_radius * ω / steel.cp
 bearing.inner_radius * ω / steel.cp
 ksa = bearing.outer_radius * ω / steel.cs
 
+
+## Lets define the matrix A for the forward problem 
+
+basis_order = 20
+ωs = 20.0:0.02:500; 
+data = map(ωs) do ω 
+    M = boundarycondition_system(ω, bearing, TractionBoundary(inner=true), TractionBoundary(outer=true), basis_order) 
+    N = boundarycondition_system(ω, bearing, DisplacementBoundary(outer=true), TractionBoundary(outer=true), basis_order)
+    A = N * inv(M)
+    cond(A) 
+    # svd(M).S[end] 
+end
+
+using Plots 
+plot(ωs,data)
+
+svd(M[1:2,1:end]).S
+svd(M[3:4,1:end]).S
+
+svd(N).S
+
+# A takes the boundary data from the forward problem and return the boundary data for the inverse problem
+A = N * inv(M)
+svd(A).S
+
+
+## Test the complete discrete inverse problem
 basis_order = 10
 basis_length = basisorder_to_basislength(Acoustic{Float64,2}, basis_order)
 
