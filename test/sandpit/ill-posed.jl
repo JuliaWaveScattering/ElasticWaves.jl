@@ -7,8 +7,8 @@ include("../../src/ElasticWaves.jl")
     bearing = RollerBearing(medium=steel, inner_radius=1.0, outer_radius = 2.0)
 
     # this non-dimensional number determines what basis_order is neeeded
-    kpas = bearing.outer_radius .* ωs ./ steel.cp
-    ksas = bearing.inner_radius .* ωs ./ steel.cs
+    kpas = bearing.outer_radius * ω / steel.cp
+    ksas = bearing.inner_radius * ω / steel.cs
 
     basis_order = 10
     basis_length = basisorder_to_basislength(Acoustic{Float64,2}, basis_order)
@@ -16,22 +16,28 @@ include("../../src/ElasticWaves.jl")
 ## Stability check by adding Gaussian noise
 
     forcing_modes = rand(basis_length,4) + rand(basis_length,4) .* im
+    bd1 = BoundaryData(TractionBoundary(inner=true); fourier_modes=forcing_modes[:, 1:2])
+    bd2 = BoundaryData(TractionBoundary(outer=true); fourier_modes=forcing_modes[:, 3:4])
+
+    sim = BearingSimulation(ω, bearing, bd1, bd2) 
+    wave = ElasticWave(sim)
     
     # add 1% error to boundary conditions
     ε = 0.01 * maximum(abs.(forcing_modes));
-
-    bd1 = BoundaryData(TractionBoundary(inner=true); fourier_modes=forcing_modes[:, 1:2])
-    bd2 = BoundaryData(TractionBoundary(outer=true); fourier_modes=forcing_modes[:, 3:4])
 
     bd1.fourier_modes[:,:] = bd1.fourier_modes[:,:] + ε .* rand(basis_length, 2) + ε .* rand(basis_length, 2) .* im
     bd2.fourier_modes[:,:] = bd2.fourier_modes[:,:] + ε .* rand(basis_length, 2) + ε .* rand(basis_length, 2) .* im
 
     sim = BearingSimulation(ω, bearing, bd1, bd2) 
-    wave = ElasticWave(sim)
+    waveδ = ElasticWave(sim)
+
+    # I suppose 20% error is quite large. Any error in these coefficients will translate to an error in the field
+    maximum(abs.(wave.pressure.coefficients - waveδ.pressure.coefficients)) / mean(abs.(wave.pressure.coefficients)) 
+    maximum(abs.(wave.shear.coefficients - waveδ.shear.coefficients) ./ abs.(wave.shear.coefficients))
 
     # predict the forcing modes  
     fs = map(-basis_order:basis_order) do m
-        coes = [wave.pressure.coefficients[:, m+basis_order+1]; wave.shear.coefficients[:, m+basis_order+1]]
+        coes = [waveδ.pressure.coefficients[:, m+basis_order+1]; waveδ.shear.coefficients[:, m+basis_order+1]]
         boundarycondition_system(ω, bearing, bd1.boundarytype, bd2.boundarytype, m) * coes
     end
 
