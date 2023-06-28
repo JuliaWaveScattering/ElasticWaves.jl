@@ -17,7 +17,7 @@
     @test (Vector{BoundaryCondition{TractionType}} <: Vector{BoundaryCondition}) == false
     @test Vector{BoundaryCondition{TractionType}} <: (Vector{BC} where BC <: BoundaryCondition)
 
-    ## Test the boundary conditions are formulated correctly
+# Test the traction boundary conditions are formulated correctly
     forcing_modes = rand(basis_length,4) + rand(basis_length,4) .* im
 
     bd1 = BoundaryData(TractionBoundary(inner=true); fourier_modes=forcing_modes[:, 1:2])
@@ -59,7 +59,28 @@
     @test errors[2] < 1e-12
     @test errors[3] < 1e-12
 
-    ## Test that we recover the displacement given
+    ## Stability check by adding Gaussian noise
+    
+    # # add 1% error to boundary conditions
+    # ε = 0.01 * maximum(abs.(forcing_modes));
+
+    # bd1.fourier_modes[:,:] = bd1.fourier_modes[:,:] + ε .* rand(basis_length, 2) + ε .* rand(basis_length, 2) .* im
+    # bd2.fourier_modes[:,:] = bd2.fourier_modes[:,:] + ε .* rand(basis_length, 2) + ε .* rand(basis_length, 2) .* im
+
+    # sims = [BearingSimulation(ω, bearing, bd1, bd2) for ω in ωs]
+    # waves = [ElasticWave(s) for s in sims]
+
+    # map(basis_order:basis_order) do m 
+    #     A = boundarycondition_system(ω, bearing, bd1, bd2, m)
+    #     # f = [
+    #     #     sim.boundarydata1.fourier_modes[m+basis_order+1, :]
+    #     #     sim.boundarydata2.fourier_modes[m+basis_order+1, :]
+    #     # ]
+
+    #     # f = A
+    # end    
+
+## Test displacement boundary conditions 
     forcing_modes = rand(basis_length,4) + rand(basis_length,4) .* im
 
     bd1 = BoundaryData(
@@ -158,5 +179,9 @@
     )
 
     @test maximum(abs.(traction_forcing_modes - forcing_modes)) / mean(abs.(forcing_modes)) < 1e-8
+
+
+
+
 
 end
