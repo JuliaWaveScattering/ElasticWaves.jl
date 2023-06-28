@@ -61,24 +61,32 @@
 
     ## Stability check by adding Gaussian noise
     
-    # # add 1% error to boundary conditions
-    # ε = 0.01 * maximum(abs.(forcing_modes));
+    # add 1% error to boundary conditions
+    ε = 0.01 * maximum(abs.(forcing_modes));
 
-    # bd1.fourier_modes[:,:] = bd1.fourier_modes[:,:] + ε .* rand(basis_length, 2) + ε .* rand(basis_length, 2) .* im
-    # bd2.fourier_modes[:,:] = bd2.fourier_modes[:,:] + ε .* rand(basis_length, 2) + ε .* rand(basis_length, 2) .* im
+    bd1.fourier_modes[:,:] = bd1.fourier_modes[:,:] + ε .* rand(basis_length, 2) + ε .* rand(basis_length, 2) .* im
+    bd2.fourier_modes[:,:] = bd2.fourier_modes[:,:] + ε .* rand(basis_length, 2) + ε .* rand(basis_length, 2) .* im
 
-    # sims = [BearingSimulation(ω, bearing, bd1, bd2) for ω in ωs]
-    # waves = [ElasticWave(s) for s in sims]
+    sims = [BearingSimulation(ω, bearing, bd1, bd2) for ω in ωs]
+    waves = [ElasticWave(s) for s in sims]
 
-    # map(basis_order:basis_order) do m 
-    #     A = boundarycondition_system(ω, bearing, bd1, bd2, m)
-    #     # f = [
-    #     #     sim.boundarydata1.fourier_modes[m+basis_order+1, :]
-    #     #     sim.boundarydata2.fourier_modes[m+basis_order+1, :]
-    #     # ]
+    errors = map(eachindex(ωs)) do i 
 
-    #     # f = A
-    # end    
+        fs = map(-basis_order:basis_order) do m
+            coes = vcat(
+                waves[i].pressure.coefficients[:, m+basis_order+1], 
+                waves[i].shear.coefficients[:, m+basis_order+1]
+            )
+            boundarycondition_system(ωs[i], bearing, bd1.boundarytype, bd2.boundarytype, m) * coes
+        end
+        f = hcat(fs...) |> transpose
+        # maximum(abs.(f - hcat(bd1.fourier_modes,bd2.fourier_modes)))
+        maximum(abs.(f - forcing_modes))
+    end
+    
+    @test errors[1] < 1.0
+    @test errors[2] < 0.04
+    @test errors[3] < 0.04
 
 ## Test displacement boundary conditions 
     forcing_modes = rand(basis_length,4) + rand(basis_length,4) .* im
