@@ -8,6 +8,9 @@ using Test
 
 include("signal_processing.jl")
 
+# an independent check for the formulas of displacement and traction
+include("traction_displacement.jl")
+
 # tests that the boundary conditions are formed correctly, and uniqueness
 include("boundary_conditions.jl")
 

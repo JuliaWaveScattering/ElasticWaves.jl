@@ -59,34 +59,6 @@
     @test errors[2] < 1e-12
     @test errors[3] < 1e-12
 
-    ## Stability check by adding Gaussian noise
-    
-    # add 1% error to boundary conditions
-    ε = 0.01 * maximum(abs.(forcing_modes));
-
-    bd1.fourier_modes[:,:] = bd1.fourier_modes[:,:] + ε .* rand(basis_length, 2) + ε .* rand(basis_length, 2) .* im
-    bd2.fourier_modes[:,:] = bd2.fourier_modes[:,:] + ε .* rand(basis_length, 2) + ε .* rand(basis_length, 2) .* im
-
-    sims = [BearingSimulation(ω, bearing, bd1, bd2) for ω in ωs]
-    waves = [ElasticWave(s) for s in sims]
-
-    errors = map(eachindex(ωs)) do i 
-
-        fs = map(-basis_order:basis_order) do m
-            coes = vcat(
-                waves[i].pressure.coefficients[:, m+basis_order+1], 
-                waves[i].shear.coefficients[:, m+basis_order+1]
-            )
-            boundarycondition_system(ωs[i], bearing, bd1.boundarytype, bd2.boundarytype, m) * coes
-        end
-        f = hcat(fs...) |> transpose
-        # maximum(abs.(f - hcat(bd1.fourier_modes,bd2.fourier_modes)))
-        maximum(abs.(f - forcing_modes))
-    end
-    
-    @test errors[1] < 1.0
-    @test errors[2] < 0.04
-    @test errors[3] < 0.04
 
 ## Test displacement boundary conditions 
     forcing_modes = rand(basis_length,4) + rand(basis_length,4) .* im
@@ -188,8 +160,81 @@
 
     @test maximum(abs.(traction_forcing_modes - forcing_modes)) / mean(abs.(forcing_modes)) < 1e-8
 
+## Stability check by adding Gaussian noise
 
+    # setup a problem with displacement boundary conditions
+    # add 1% error to boundary conditions
+    ε = 0.01 * maximum(abs.(field_modes(wave, bearing.inner_radius, DisplacementType())))
+    error = ε .* (rand(basis_length, 2) .- 0.5) + ε .* (rand(basis_length, 2) .- 0.5) .* im
 
+    bd1 = BoundaryData(
+        DisplacementBoundary(inner=true);
+        fourier_modes=field_modes(wave, bearing.inner_radius, DisplacementType()) + error
+    )
 
+    ε = 0.01 * maximum(abs.(field_modes(wave, bearing.outer_radius, DisplacementType())))
+    error = ε .* (rand(basis_length, 2) .- 0.5) + ε .* (rand(basis_length, 2) .- 0.5) .* im
+
+    bd2 = BoundaryData(
+        DisplacementBoundary(outer=true);
+        fourier_modes=field_modes(wave, bearing.outer_radius, DisplacementType()) + error
+    )
+
+    sim = BearingSimulation(ω, bearing, bd1, bd2)
+    wave2 = ElasticWave(sim)
+
+    # the problem is highly unstable
+    @test maximum(abs.(wave.shear.coefficients - wave2.shear.coefficients)) / mean(abs.(wave.shear.coefficients)) > 10.0
+    
+    @test maximum(abs.(wave.shear.coefficients - wave2.shear.coefficients)) / mean(abs.(wave.shear.coefficients)) > 10.0
+    
+    # the instability is because the problem is ill posed when either decreasing the frequency or increasing the basis_order. Let us decrease the basis_order to see:
+
+    basis_order = 6
+    basis_length = basisorder_to_basislength(Acoustic{Float64,2}, basis_order)
+
+    ω = 10000.0
+
+    # this is still a moderately low frequency
+    kpa = (bearing.outer_radius - bearing.inner_radius ) * ω / steel.cp
+    ksa = (bearing.outer_radius - bearing.inner_radius) * ω / steel.cs
+
+    forcing_modes = rand(basis_length, 4) + rand(basis_length, 4) .* im
+    bd1 = BoundaryData(
+        TractionBoundary(inner=true);
+        fourier_modes=forcing_modes[:, 1:2]
+    )
+    bd2 = BoundaryData(
+        TractionBoundary(outer=true);
+        fourier_modes=forcing_modes[:, 3:4]
+    )
+
+    sim = BearingSimulation(ω, bearing, bd1, bd2)
+    wave = ElasticWave(sim)
+
+    # setup a problem with displacement boundary conditions
+    # add 1% error to boundary conditions
+    ε = 0.01 * maximum(abs.(field_modes(wave, bearing.inner_radius, DisplacementType())))
+    error = ε .* (rand(basis_length, 2) .- 0.5) + ε .* (rand(basis_length, 2) .- 0.5) .* im
+
+    bd1 = BoundaryData(
+        DisplacementBoundary(inner=true);
+        fourier_modes=field_modes(wave, bearing.inner_radius, DisplacementType()) + error
+    )
+
+    ε = 0.01 * maximum(abs.(field_modes(wave, bearing.outer_radius, DisplacementType())))
+    error = ε .* (rand(basis_length, 2) .- 0.5) + ε .* (rand(basis_length, 2) .- 0.5) .* im
+
+    bd2 = BoundaryData(
+        DisplacementBoundary(outer=true);
+        fourier_modes=field_modes(wave, bearing.outer_radius, DisplacementType()) + error
+    )
+
+    sim = BearingSimulation(ω, bearing, bd1, bd2)
+    wave2 = ElasticWave(sim)
+
+    # the problem is still sensitive to errors, but a managable tolerance
+    @test maximum(abs.(wave.shear.coefficients - wave2.shear.coefficients)) / mean(abs.(wave.shear.coefficients)) < 0.06
+    @test maximum(abs.(wave.pressure.coefficients - wave2.pressure.coefficients)) / mean(abs.(wave.pressure.coefficients)) < 0.07
 
 end

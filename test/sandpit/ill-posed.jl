@@ -36,12 +36,24 @@ include("../../src/ElasticWaves.jl")
     maximum(abs.(wave.shear.coefficients - waveδ.shear.coefficients) ./ abs.(wave.shear.coefficients))
 
     # predict the forcing modes  
-    fs = map(-basis_order:basis_order) do m
-        coes = [waveδ.pressure.coefficients[:, m+basis_order+1]; waveδ.shear.coefficients[:, m+basis_order+1]]
-        boundarycondition_system(ω, bearing, bd1.boundarytype, bd2.boundarytype, m) * coes
-    end
+# errors = map(eachindex(ωs)) do i
 
-    f = hcat(fs...) |> transpose
+#     fs = map(-basis_order:basis_order) do m
+#         coes = vcat(
+#             waves[i].pressure.coefficients[:, m+basis_order+1],
+#             waves[i].shear.coefficients[:, m+basis_order+1]
+#         )
+#         boundarycondition_system(ωs[i], bearing, bd1.boundarytype, bd2.boundarytype, m) * coes
+#     end
+#     f = hcat(fs...) |> transpose
+#     # maximum(abs.(f - hcat(bd1.fourier_modes,bd2.fourier_modes)))
+#     maximum(abs.(f - forcing_modes))
+# end
+
+    f = hcat(
+        field_modes(waveδ, bearing.inner_radius, bd1.boundarytype.fieldtype),
+        field_modes(waveδ, bearing.outer_radius, bd1.boundarytype.fieldtype)
+    )
 
     # gives great results when compared with the forcing modes used
     maximum(abs.(f - hcat(bd1.fourier_modes,bd2.fourier_modes)))

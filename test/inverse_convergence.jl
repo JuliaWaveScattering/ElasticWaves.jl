@@ -19,7 +19,9 @@ ksa = bearing.outer_radius * ω / steel.cs
 ## Lets define the matrix A for the forward problem 
 
 basis_order = 20
+basis_order = 4
 ωs = 20.0:0.02:500; 
+ω = ωs[2]
 data = map(ωs) do ω 
     M = boundarycondition_system(ω, bearing, TractionBoundary(inner=true), TractionBoundary(outer=true), basis_order) 
     N = boundarycondition_system(ω, bearing, DisplacementBoundary(outer=true), TractionBoundary(outer=true), basis_order)
