@@ -6,17 +6,20 @@ struct RollerBearing{T}
     outer_radius::T
     "vector of angles delimiting gaps in the outer radius"
     outer_gaps::Vector{T}
+    "vector of angles delimiting gaps in the outer radius"
+    number_of_rollers::Int
 end
 
 function RollerBearing(; medium::Elasticity{2},
         inner_radius::T = 0.0, outer_radius::T = 0.0,
         inner_gaps::Vector{T} = typeof(inner_radius)[],
-        outer_gaps::Vector{T} = typeof(outer_radius)[]
+        outer_gaps::Vector{T} = typeof(outer_radius)[],
+        number_of_rollers = -1
     ) where T<:Number
     if isodd(length(inner_gaps)) && isodd(length(outer_gaps))
         @error "both inner_gaps and outer_gaps need to be an even number of angles"
     end
-    RollerBearing{T}(medium, inner_radius, inner_gaps, outer_radius, outer_gaps)
+    RollerBearing{T}(medium, inner_radius, inner_gaps, outer_radius, outer_gaps, number_of_rollers)
 end
 
 
