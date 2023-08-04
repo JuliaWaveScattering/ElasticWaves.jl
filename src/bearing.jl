@@ -76,13 +76,6 @@ struct BoundaryData{BC <: BoundaryCondition, T}
     fourier_modes::Matrix{Complex{T}}
 end
 
-struct BoundaryBasis{BC <: BoundaryCondition, T}
-    boundarytype::BC
-    θs::Vector{T}
-    fields::Matrix{Complex{T}}
-    fourier_modes::Matrix{Complex{T}}
-end
-
 
 function BoundaryData(boundarytype::BC;
         θs::AbstractVector{T} = Float64[],
@@ -101,6 +94,29 @@ function BoundaryData(boundarytype::BC;
     return BoundaryData{BC,T}(boundarytype,θs,fields,fourier_modes)
 end
 
+struct BoundaryBasis{BC <: BoundaryCondition, T}
+    boundarytype::BC
+    θs::Vector{T}
+    basis::Matrix{Complex{T}}
+    fourier_modes::Matrix{Complex{T}}
+end
+
+function BoundaryBasis(boundarytype::BC;
+    θs::AbstractVector{T} = Float64[],
+    basis::Matrix = reshape(Complex{Float64}[],0,1),
+    fourier_modes::Matrix = reshape(Complex{Float64}[],0,1)
+) where {BC <: BoundaryCondition, T}
+
+if !isempty(fourier_modes) && size(fourier_modes,2) != 2
+    @error "the fourier_modes should have only two columns"
+end
+
+if !isempty(basis) && size(basis,1) != length(θs)
+    @error "the basis should be evaluated at each θ"
+end
+
+return BoundaryBasis{BC,T}(boundarytype,θs,basis,fourier_modes)
+end
 
 struct BearingSimulation{BC1 <: BoundaryCondition, BC2 <: BoundaryCondition, T}
     ω::T
