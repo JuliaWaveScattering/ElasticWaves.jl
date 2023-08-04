@@ -107,13 +107,13 @@ function BoundaryBasis(boundarytype::BC;
     fourier_modes::Matrix = reshape(Complex{Float64}[],0,1)
 ) where {BC <: BoundaryCondition, T}
 
-if !isempty(fourier_modes) && size(fourier_modes,2) != 2
-    @error "the fourier_modes should have only two columns"
-end
+    if !isempty(fourier_modes) && size(fourier_modes,2) != 2
+        @error "the fourier_modes should have only two columns"
+    end
 
-if !isempty(basis) && size(basis,1) != length(θs)
-    @error "the basis should be evaluated at each θ"
-end
+    if !isempty(basis) && size(basis,1) != length(θs)
+        @error "the basis should be evaluated at each θ"
+    end
 
 return BoundaryBasis{BC,T}(boundarytype,θs,basis,fourier_modes)
 end
