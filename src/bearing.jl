@@ -76,6 +76,14 @@ struct BoundaryData{BC <: BoundaryCondition, T}
     fourier_modes::Matrix{Complex{T}}
 end
 
+struct BoundaryBasis{BC <: BoundaryCondition, T}
+    boundarytype::BC
+    θs::Vector{T}
+    fields::Matrix{Complex{T}}
+    fourier_modes::Matrix{Complex{T}}
+end
+
+
 function BoundaryData(boundarytype::BC;
         θs::AbstractVector{T} = Float64[],
         fields::Matrix = reshape(Complex{Float64}[],0,1),
