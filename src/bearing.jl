@@ -101,6 +101,7 @@ struct BoundaryBasis{BC <: BoundaryCondition, T}
     fourier_modes::Matrix{Complex{T}}
 end
 
+
 function BoundaryBasis(boundarytype::BC;
     θs::AbstractVector{T} = Float64[],
     basis::Matrix = reshape(Complex{Float64}[],0,1),
