@@ -125,9 +125,10 @@ struct BearingSimulation{BC1 <: BoundaryCondition, BC2 <: BoundaryCondition, T}
     bearing::RollerBearing{T}
     boundarydata1::BoundaryData{BC1,T}
     boundarydata2::BoundaryData{BC2,T}
+    boundarybasis::BoundaryBasis{BC1,T}
     tol::T
 
-    function BearingSimulation(ω::T, bearing::RollerBearing{T}, boundarydata1::BoundaryData{BC1,T}, boundarydata2::BoundaryData{BC2,T}; tol::T = eps(T)^(1/2), basis_order::Int = -1) where {T, BC1 <: BoundaryCondition, BC2 <: BoundaryCondition}
+    function BearingSimulation(ω::T, bearing::RollerBearing{T}, boundarydata1::BoundaryData{BC1,T}, boundarydata2::BoundaryData{BC2,T},boundarybasis::BoundaryBasis{BC1,T}=BoundaryBasis{typeof(boundarydata1.boundarytype),typeof(bearing.medium.cp)}[]; tol::T = eps(T)^(1/2), basis_order::Int = -1) where {T, BC1 <: BoundaryCondition, BC2 <: BoundaryCondition}
 
         if size(boundarydata1.fourier_modes,1) != size(boundarydata2.fourier_modes,1)
             @error "number of fourier_modes in boundarydata1 and boundarydata2 needs to be the same"
@@ -175,6 +176,6 @@ struct BearingSimulation{BC1 <: BoundaryCondition, BC2 <: BoundaryCondition, T}
             )
         end
 
-        new{BC1,BC2,T}(ω, basis_order, bearing, boundarydata1, boundarydata2, tol)
+        new{BC1,BC2,T}(ω, basis_order, bearing, boundarydata1, boundarydata2, boundarybasis, tol)
     end
 end
