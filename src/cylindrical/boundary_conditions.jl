@@ -20,6 +20,7 @@ function ElasticWave(sim::BearingSimulation)
     ω = sim.ω
     bearing = sim.bearing
 
+    basis = sim.boundarybasis
     T = typeof(ω)
 
     kP = ω / bearing.medium.cp;
