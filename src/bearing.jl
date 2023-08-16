@@ -100,23 +100,22 @@ struct BoundaryBasis{BC <: BoundaryCondition,BD<:BoundaryData}
 end
 
 function BoundaryBasis(boundarytype::BC;
-    basis::Vector{BD} = BoundaryData[]
+    basis::Vector{BD} = BoundaryData{BC,ComplexF64}[]
 ) where {BC <: BoundaryCondition,BD<:BoundaryData}
+
     return BoundaryBasis{BC,BD}(boundarytype, basis)
 end
 
-# something is going wrong in BearingSimulation, feel like it might be down to declaring BD <: BoundaryData... I think it maybe doesn't expect boundarydata1(/2) to be dependant on the type Float64... how to remedy ? 
-
-struct BearingSimulation{BC1 <: BoundaryCondition, BC2 <: BoundaryCondition, BC <: BoundaryCondition, T}
+struct BearingSimulation{BC1 <: BoundaryCondition, BC2 <: BoundaryCondition, BB <: BoundaryBasis, T}
     ω::T
-    basis_order::Int
     bearing::RollerBearing{T}
     boundarydata1::BoundaryData{BC1,T}
     boundarydata2::BoundaryData{BC2,T}
-    boundarybasis::BoundaryBasis{BC,BoundaryData}
     tol::T
+    basis_order::Int
+    boundarybasis::BB
 
-    function BearingSimulation(ω::T, bearing::RollerBearing{T}, boundarydata1::BoundaryData{BC1,T}, boundarydata2::BoundaryData{BC2,T}; tol::T = eps(T)^(1/2), basis_order::Int = -1, boundarybasis::BoundaryBasis{BC,BoundaryData} = BoundaryBasis(boundarydata1.boundarytype)) where {BC1 <: BoundaryCondition, BC2 <: BoundaryCondition, BC <: BoundaryCondition, T}
+    function BearingSimulation(ω::T, bearing::RollerBearing{T}, boundarydata1::BoundaryData{BC1,T}, boundarydata2::BoundaryData{BC2,T}; tol::T = eps(T)^(1/2), basis_order::Int = -1, boundarybasis::BB = BoundaryBasis(boundarydata1.boundarytype)) where {BC1 <: BoundaryCondition, BC2 <: BoundaryCondition, BB <:BoundaryBasis, T}
 
         if size(boundarydata1.fourier_modes,1) != size(boundarydata2.fourier_modes,1)
             @error "number of fourier_modes in boundarydata1 and boundarydata2 needs to be the same"
@@ -164,6 +163,6 @@ struct BearingSimulation{BC1 <: BoundaryCondition, BC2 <: BoundaryCondition, BC 
             )
         end
 
-        new{BC1,BC2,T,BC}(ω, basis_order, bearing, boundarydata1, boundarydata2, tol, boundarybasis)
+        new{BC1,BC2,BB,T}(ω, bearing, boundarydata1, boundarydata2, tol, basis_order, boundarybasis)
     end
 end
