@@ -102,7 +102,6 @@ end
 function BoundaryBasis(boundarytype::BC;
     basis::Vector{BD} = BoundaryData{BC,ComplexF64}[]
 ) where {BC <: BoundaryCondition,BD<:BoundaryData}
-
     return BoundaryBasis{BC,BD}(boundarytype, basis)
 end
 
@@ -163,6 +162,19 @@ struct BearingSimulation{BC1 <: BoundaryCondition, BC2 <: BoundaryCondition, BB 
             )
         end
 
+        #need fourier_modes from boundarybasis
+        for i in 1:length(boundarybasis.basis)
+            if isempty(boundarybasis.basis[i].fourier_modes)
+                println("The Fourier Modes in boundarybasis.basis[", i,"] are empty and will be calculated from the fields provided" )
+                modes = fields_to_fouriermodes(boundarybasis.basis[i].θs, boundarybasis.basis[i].fields, basis_order)
+                    boundarybasis.basis[i] = BoundaryData(boundarybasis.basis[i].boundarytype;
+                        fourier_modes = modes,
+                        fields = boundarybasis.basis[i].fields,
+                        θs = boundarybasis.basis[i].θs
+                    )
+            end
+        end
+        
         new{BC1,BC2,BB,T}(ω, bearing, boundarydata1, boundarydata2, tol, basis_order, boundarybasis)
     end
 end
