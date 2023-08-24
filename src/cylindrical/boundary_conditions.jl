@@ -20,7 +20,13 @@ function ElasticWave(sim::BearingSimulation)
     ω = sim.ω
     bearing = sim.bearing
 
-    basis = sim.boundarybasis
+    boundarybasis = sim.boundarybasis
+    
+    basisfouriermodes = [b.fourier_modes for b in boundarybasis.basis]
+    basisfouriermodes = hcat(basisfouriermodes...) |> collect
+
+    number_of_parameters = convert(Int,size(basisfouriermodes,2)/2)
+
     T = typeof(ω)
 
     kP = ω / bearing.medium.cp;
@@ -34,24 +40,49 @@ function ElasticWave(sim::BearingSimulation)
 
     mode_errors = zeros(T, 2basis_order + 1)
 
-     for m in -basis_order:basis_order
+    if isempty(boundarybasis.basis)
+        for m in -basis_order:basis_order
+            A = boundarycondition_system(ω, bearing, sim.boundarydata1.boundarytype, sim.boundarydata2.boundarytype, m)
+            b = [
+                sim.boundarydata1.fourier_modes[m+basis_order+1,:];
+                sim.boundarydata2.fourier_modes[m+basis_order+1,:]
+            ]
+
+            x = A \ b
+
+            relative_error = norm(A*x - b) / norm(b)
+            if relative_error > sim.tol
+                @warn "The relative error for the boundary conditions was $(relative_error) for (ω,basis_order) = $((ω,m))"
+            end
+
+            coefficients[m + basis_order + 1] = x
+            mode_errors[m + basis_order + 1] = relative_error
+        end
+    
+    else
         A = boundarycondition_system(ω, bearing, sim.boundarydata1.boundarytype, sim.boundarydata2.boundarytype, m)
         b = [
-             sim.boundarydata1.fourier_modes[m+basis_order+1,:];
-             sim.boundarydata2.fourier_modes[m+basis_order+1,:]
+            sim.boundarydata1.fourier_modes[m+basis_order+1,:];
+            sim.boundarydata2.fourier_modes[m+basis_order+1,:]
         ]
 
-        x = A \ b
+        B = reshape(basisfouriermodes[m+basis_order+1,:], 2, number_of_parameters)
+        B = vcat(B, zeros(ComplexF64, 2, number_of_parameters))
+        M = boundarycondition_system(ω, bearing, TractionBoundary(inner = true), TractionBoundary(outer = true), m)
+        prior = M \ B
 
-        relative_error = norm(A*x - b) / norm(b)
+        x = (A*prior) \ B
+
+        a = prior * x
+
+        relative_error = norm(A*a - b) / norm(b)
         if relative_error > sim.tol
             @warn "The relative error for the boundary conditions was $(relative_error) for (ω,basis_order) = $((ω,m))"
         end
 
-        coefficients[m + basis_order + 1] = x
+        coefficients[m + basis_order + 1] = a
         mode_errors[m + basis_order + 1] = relative_error
     end
-
     coefficients = transpose(hcat(coefficients...)) |> collect
 
     pressure_coefficients = coefficients[:,1:2] |> transpose
