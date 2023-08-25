@@ -68,7 +68,11 @@ function ElasticWave(sim::BearingSimulation)
 
             B = reshape(basisfouriermodes[m+basis_order+1,:], 2, number_of_parameters)
             B = vcat(B, zeros(ComplexF64, 2, number_of_parameters))
-            M = boundarycondition_system(ω, bearing, TractionBoundary(inner = true), TractionBoundary(outer = true), m)
+            if boundarybasis.boundarytype.inner    
+                M = boundarycondition_system(ω, bearing, boundarybasis.boundarytype, TractionBoundary(outer = true), m)
+            else
+                M = boundarycondition_system(ω, bearing, TractionBoundary(inner = true), boundarybasis.boundarytype, m)
+            end
             prior = M \ B
 
             x = (A*prior) \ b
