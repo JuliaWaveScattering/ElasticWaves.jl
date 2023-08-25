@@ -102,6 +102,11 @@ end
 function BoundaryBasis(boundarytype::BC;
     basis::Vector{BD} = BoundaryData{BC,ComplexF64}[]
 ) where {BC <: BoundaryCondition,BD<:BoundaryData}
+    for b in basis
+        if b.boundarytype != boundarytype
+            @error "Elements of basis must have the same boundary type as boundarybasis."
+        end
+    end
     return BoundaryBasis{BC,BD}(boundarytype, basis)
 end
 
