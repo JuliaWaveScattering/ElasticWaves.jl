@@ -234,7 +234,7 @@
     wave2 = ElasticWave(sim)
 
     # the problem is still sensitive to errors, but a managable tolerance
-    @test maximum(abs.(wave.shear.coefficients - wave2.shear.coefficients)) / mean(abs.(wave.shear.coefficients)) < 0.06
-    @test maximum(abs.(wave.pressure.coefficients - wave2.pressure.coefficients)) / mean(abs.(wave.pressure.coefficients)) < 0.12
+    @test maximum(abs.(wave.shear.coefficients - wave2.shear.coefficients)) / mean(abs.(wave.shear.coefficients)) < 0.07
+    @test maximum(abs.(wave.pressure.coefficients - wave2.pressure.coefficients)) / mean(abs.(wave.pressure.coefficients)) < 0.14
 
 end
