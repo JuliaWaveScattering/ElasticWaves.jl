@@ -51,7 +51,6 @@ function TractionBoundary(; inner::Bool = false, outer::Bool = false) where T
     return BoundaryCondition{TractionType}(TractionType(),inner,outer)
 end
 
-
 """
     BoundaryData{BC <: BoundaryCondition, T}
 
