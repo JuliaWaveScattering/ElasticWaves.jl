@@ -1,4 +1,7 @@
 # ElasticWaves.jl
+
+[![Build Status](https://github.com/JuliaWaveScattering/ElasticWaves.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/JuliaWaveScattering/ElasticWaves.jl/actions/workflows/CI.yml?query=branch%3Amain)
+
 A package to calculate propagation and scattering of elastic waves.
 
 To install the package in Juia, first run Julia from the terminal, then type:
