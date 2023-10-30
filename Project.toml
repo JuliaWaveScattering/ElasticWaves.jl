@@ -1,4 +1,25 @@
 name = "ElasticWaves"
 uuid = "2059c4e4-f3cf-49e7-a5b5-bbbf8606edbe"
-authors = ["arturgower <arturgower@gmail.com>"]
+authors = ["Art Gower <arturgower@gmail.com>", "Jess Kent <rkent2@sheffield.ac.uk>"]
 version = "0.1.0"
+
+[deps]
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+MultipleScattering = "80a8ab25-5750-5d93-a6d7-4adc97cdd5fb"
+SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
+
+[compat]
+MultipleScattering = "^0.1.17"
+SpecialFunctions = "^0.7, ^0.8, ^0.9, 0.10, 1, 2"
+StaticArrays = "^0.8, ^0.9, ^0.10, ^0.11, 0.12, ^1"
+julia = "1"
+
+[extras]
+MultipleScattering = "80a8ab25-5750-5d93-a6d7-4adc97cdd5fb"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test", "Statistics", "LinearAlgebra", "MultipleScattering"]

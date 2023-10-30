@@ -1,3 +1,12 @@
+## methods to solve for waves in bearings 
+
+abstract type BearingMethod end
+
+struct ModalMethod <: BearingMethod end
+struct GapMethod <: BearingMethod end
+struct PriorMethod <: BearingMethod end
+
+
 struct RollerBearing{T}
     medium::Elasticity{2,T} # defining medium
     inner_radius::T
@@ -91,7 +100,7 @@ function BoundaryData(boundarytype::BC;
 end
 
 
-struct BearingSimulation{BC1 <: BoundaryCondition, BC2 <: BoundaryCondition, T}
+struct BearingSimulation{M <: BearingMethod, BC1 <: BoundaryCondition, BC2 <: BoundaryCondition, T}
     ω::T
     basis_order::Int
     bearing::RollerBearing{T}
@@ -147,6 +156,14 @@ struct BearingSimulation{BC1 <: BoundaryCondition, BC2 <: BoundaryCondition, T}
             )
         end
 
-        new{BC1,BC2,T}(ω, basis_order, bearing, boundarydata1, boundarydata2, tol)
+        # if there is no prior information given then m = ModalMethod()
+        # if there is a gap then m = GapMethod()
+        # else m = ModalMethod()
+        M = ModalMethod
+        
+        # replace the below with
+        # new{BC1,BC2,T}(ω, basis_order, bearing, boundarydata1, boundarydata2, m, tol)
+
+        new{M,BC1,BC2,T}(ω, basis_order, bearing, boundarydata1, boundarydata2, tol)
     end
 end
