@@ -15,6 +15,12 @@ function boundarycondition_system(ω::AbstractFloat, bearing::RollerBearing, bc1
     return vcat(first_boundary, second_boundary)
 end
 
+# replace the below with
+# function ElasticWave(sim::BearingSimulation{ModalMethod})
+
+# write another function for the priors
+# function ElasticWave(sim::BearingSimulation{PriorMethod})
+
 function ElasticWave(sim::BearingSimulation)
 
     ω = sim.ω

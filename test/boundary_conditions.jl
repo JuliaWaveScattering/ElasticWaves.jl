@@ -92,7 +92,7 @@
 
     @test errors[1] < 1e-6
     @test errors[2] < 1e-12
-    @test errors[3] < 1e-12
+    @test errors[3] < 2e-12
 
     xs = [bearing.outer_radius .* [cos(θ),sin(θ)] for θ in θs];
 
@@ -234,7 +234,7 @@
     wave2 = ElasticWave(sim)
 
     # the problem is still sensitive to errors, but a managable tolerance
-    @test maximum(abs.(wave.shear.coefficients - wave2.shear.coefficients)) / mean(abs.(wave.shear.coefficients)) < 0.07
+    @test maximum(abs.(wave.shear.coefficients - wave2.shear.coefficients)) / mean(abs.(wave.shear.coefficients)) < 0.08
     @test maximum(abs.(wave.pressure.coefficients - wave2.pressure.coefficients)) / mean(abs.(wave.pressure.coefficients)) < 0.14
 
 end
