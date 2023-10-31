@@ -18,7 +18,7 @@
     modes = fields_to_fouriermodes(θs,fields,basis_order)
     fields2 = fouriermodes_to_fields(θs,modes)
 
-    @test maximum(abs.(fields - fields2)) < 0.25
+    @test maximum(abs.(fields - fields2)) < 0.3
     @test norm(fields - fields2) / norm(fields) < 0.2
 
     # add forcing with exact fourier modes

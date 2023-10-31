@@ -1,14 +1,30 @@
-# module ElasticWaves
+module ElasticWaves
 
-# # wave_types.jl
-# export field, fields_to_fouriermodes
+# wave_types.jl
+export Elasticity, HelmholtzPotential, DisplacementType, TractionType
+export ElasticWave
 
-# # utils.jl and signal_processing.jl
-# export estimate_basisorder, fields_to_fouriermodes
+# bearing.jl
+export RollerBearing, BoundaryCondition, DisplacementBoundary, TractionBoundary, BoundaryData, BearingSimulation
+
+# fields.jl
+export field
+
+# cylindrical/fields.jl
+export field_modes, displacement, traction, pressure_field_mode, shear_field_mode
+
+# signal_processing.jl
+export fouriermodes_to_fields, fields_to_fouriermodes
+
+# cylindrical/utils.jl
+export estimate_basisorder # soon to be removed
+
+# cylindrical/boundary_conditions.jl
+export boundarycondition_mode, boundarycondition_system # soon to be removed
+
 
 using MultipleScattering
 using SpecialFunctions
-using Statistics
 using LinearAlgebra
 using StaticArrays: SVector
 
@@ -21,4 +37,4 @@ include("cylindrical/utils.jl")
 include("cylindrical/boundary_conditions.jl")
 include("cylindrical/fields.jl")
 
-# end # module
+end # module

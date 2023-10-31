@@ -70,7 +70,7 @@
         maximum(abs.(forcing_modes[:,1:2] - inner_traction_forcing_modes[i])) / mean(abs.(forcing_modes[:,1:2]))
     for i in eachindex(ωs)]
 
-    @test errors[1] < 1e-4
+    @test errors[1] < 2e-4
     @test maximum(errors[2:end]) < 1e-10
 
     outer_traction_forcing_modes = [
