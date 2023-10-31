@@ -15,17 +15,20 @@ struct RollerBearing{T}
     outer_radius::T
     "vector of angles delimiting gaps in the outer radius"
     outer_gaps::Vector{T}
+    "vector of angles delimiting gaps in the outer radius"
+    number_of_rollers::Int
 end
 
 function RollerBearing(; medium::Elasticity{2},
         inner_radius::T = 0.0, outer_radius::T = 0.0,
         inner_gaps::Vector{T} = typeof(inner_radius)[],
-        outer_gaps::Vector{T} = typeof(outer_radius)[]
+        outer_gaps::Vector{T} = typeof(outer_radius)[],
+        number_of_rollers = -1
     ) where T<:Number
     if isodd(length(inner_gaps)) && isodd(length(outer_gaps))
         @error "both inner_gaps and outer_gaps need to be an even number of angles"
     end
-    RollerBearing{T}(medium, inner_radius, inner_gaps, outer_radius, outer_gaps)
+    RollerBearing{T}(medium, inner_radius, inner_gaps, outer_radius, outer_gaps, number_of_rollers)
 end
 
 
@@ -57,7 +60,6 @@ function TractionBoundary(; inner::Bool = false, outer::Bool = false) where T
     return BoundaryCondition{TractionType}(TractionType(),inner,outer)
 end
 
-
 """
     BoundaryData{BC <: BoundaryCondition, T}
 
@@ -82,6 +84,7 @@ struct BoundaryData{BC <: BoundaryCondition, T}
     fourier_modes::Matrix{Complex{T}}
 end
 
+
 function BoundaryData(boundarytype::BC;
         θs::AbstractVector{T} = Float64[],
         fields::Matrix = reshape(Complex{Float64}[],0,1),
@@ -99,16 +102,33 @@ function BoundaryData(boundarytype::BC;
     return BoundaryData{BC,T}(boundarytype,θs,fields,fourier_modes)
 end
 
+struct BoundaryBasis{BC <: BoundaryCondition,BD<:BoundaryData}
+    boundarytype::BC
+    basis::Vector{BD}
+end
 
-struct BearingSimulation{M <: BearingMethod, BC1 <: BoundaryCondition, BC2 <: BoundaryCondition, T}
+function BoundaryBasis(boundarytype::BC;
+    basis::Vector{BD} = BoundaryData{BC,ComplexF64}[]
+) where {BC <: BoundaryCondition,BD<:BoundaryData}
+    for b in basis
+        if b.boundarytype != boundarytype
+            @error "Elements of basis must have the same boundary type as boundarybasis."
+        end
+    end
+    return BoundaryBasis{BC,BD}(boundarytype, basis)
+end
+
+struct BearingSimulation{M <: BearingMethod, BC1 <: BoundaryCondition, BC2 <: BoundaryCondition, BB <: BoundaryBasis, T}
+
     ω::T
-    basis_order::Int
     bearing::RollerBearing{T}
     boundarydata1::BoundaryData{BC1,T}
     boundarydata2::BoundaryData{BC2,T}
     tol::T
+    basis_order::Int
+    boundarybasis::BB
 
-    function BearingSimulation(ω::T, bearing::RollerBearing{T}, boundarydata1::BoundaryData{BC1,T}, boundarydata2::BoundaryData{BC2,T}; tol::T = eps(T)^(1/2), basis_order::Int = -1) where {T, BC1 <: BoundaryCondition, BC2 <: BoundaryCondition}
+    function BearingSimulation(ω::T, bearing::RollerBearing{T}, boundarydata1::BoundaryData{BC1,T}, boundarydata2::BoundaryData{BC2,T}; tol::T = eps(T)^(1/2), basis_order::Int = -1, boundarybasis::BB = BoundaryBasis(boundarydata1.boundarytype)) where {BC1 <: BoundaryCondition, BC2 <: BoundaryCondition, BB <:BoundaryBasis, T}
 
         if size(boundarydata1.fourier_modes,1) != size(boundarydata2.fourier_modes,1)
             @error "number of fourier_modes in boundarydata1 and boundarydata2 needs to be the same"
@@ -164,6 +184,20 @@ struct BearingSimulation{M <: BearingMethod, BC1 <: BoundaryCondition, BC2 <: Bo
         # replace the below with
         # new{BC1,BC2,T}(ω, basis_order, bearing, boundarydata1, boundarydata2, m, tol)
 
-        new{M,BC1,BC2,T}(ω, basis_order, bearing, boundarydata1, boundarydata2, tol)
+        #need fourier_modes from boundarybasis
+        for i in 1:length(boundarybasis.basis)
+            if isempty(boundarybasis.basis[i].fourier_modes)
+                println("The Fourier Modes in boundarybasis.basis[", i,"] are empty and will be calculated from the fields provided" )
+                modes = fields_to_fouriermodes(boundarybasis.basis[i].θs, boundarybasis.basis[i].fields, basis_order)
+                    boundarybasis.basis[i] = BoundaryData(boundarybasis.basis[i].boundarytype;
+                        fourier_modes = modes,
+                        fields = boundarybasis.basis[i].fields,
+                        θs = boundarybasis.basis[i].θs
+                    )
+            end
+        end
+        
+        new{M,BC1,BC2,BB,T}(ω, bearing, boundarydata1, boundarydata2, tol, basis_order, boundarybasis)
+
     end
 end
