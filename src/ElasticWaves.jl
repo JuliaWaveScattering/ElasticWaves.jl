@@ -5,7 +5,8 @@ export Elasticity, HelmholtzPotential, DisplacementType, TractionType
 export ElasticWave
 
 # bearing.jl
-export RollerBearing, BoundaryCondition, DisplacementBoundary, TractionBoundary, BoundaryData, BearingSimulation
+export RollerBearing, BoundaryCondition, DisplacementBoundary, TractionBoundary
+export BoundaryData, BoundaryBasis, BearingSimulation
 
 # fields.jl
 export field
@@ -19,8 +20,9 @@ export fouriermodes_to_fields, fields_to_fouriermodes
 # cylindrical/utils.jl
 export estimate_basisorder # soon to be removed
 
-# cylindrical/boundary_conditions.jl
+# cylindrical/elastic_wave.jl
 export boundarycondition_mode, boundarycondition_system # soon to be removed
+export ModalMethod, PriorMethod, GapMethod
 
 
 using MultipleScattering
@@ -34,7 +36,7 @@ include("fields.jl")
 include("signal_processing.jl")
 
 include("cylindrical/utils.jl")
-include("cylindrical/boundary_conditions.jl")
+include("cylindrical/elastic_wave.jl")
 include("cylindrical/fields.jl")
 
 end # module

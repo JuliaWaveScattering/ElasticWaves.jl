@@ -1,3 +1,13 @@
+function fields_to_fouriermodes(boundarydata::BoundaryData, basis_order::Int = round(floor(length(boundarydata.θs)/2 - 1/2)) |> Int)
+    modes = fields_to_fouriermodes(boundarydata.θs, boundarydata.fields, basis_order)
+    
+    return BoundaryData(boundarydata.boundarytype;
+        fourier_modes = modes,
+        fields = boundarydata.fields,
+        θs = boundarydata.θs
+    )
+end
+
 function fields_to_fouriermodes(θs::AbstractVector, fields::AbstractArray, basis_order::Int)
 
     exps = [
