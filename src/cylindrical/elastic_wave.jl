@@ -113,9 +113,19 @@ function ElasticWave(sim::BearingSimulation{PriorMethod})
                 @error "The basis boundarybasis1 was empty and there was no boundary data provided that matched the type of boundary condition given in boundarybasis1.basis[1].boundarytype. This means it is impossible to solve the forward problem."
             end
 
-            b = hcat(boundarydatas[i].fourier_modes[:,1], boundarydatas[i].fourier_modes[:,2], 0.0 .* boundarydatas[i].fourier_modes[:,1], 0.0 .* boundarydatas[i].fourier_modes[:,1]) |>transpose
+            b = hcat(
+                boundarydatas[i].fourier_modes[:,1], 
+                boundarydatas[i].fourier_modes[:,2], 
+                0.0 .* boundarydatas[i].fourier_modes[:,1], 0.0 .* 
+                boundarydatas[i].fourier_modes[:,1]
+            ) |> transpose
         else
-            b = hcat(0.0 .* boundarydatas[i].fourier_modes[:,1], 0.0 .* boundarydatas[i].fourier_modes[:,2], 0.0 .* boundarydatas[i].fourier_modes[:,1], 0.0 .* boundarydatas[i].fourier_modes[:,1]) |>transpose     
+            b = hcat(
+                0.0 .* boundarydatas[1].fourier_modes[:,1], 
+                0.0 .* boundarydatas[1].fourier_modes[:,1], 
+                0.0 .* boundarydatas[1].fourier_modes[:,1], 
+                0.0 .* boundarydatas[1].fourier_modes[:,1]
+            ) |> transpose     
         end    
 
         if isempty(P2)

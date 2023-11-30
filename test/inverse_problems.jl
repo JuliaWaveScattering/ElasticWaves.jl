@@ -5,7 +5,7 @@
     ωs = [20.0,4e4,7e4]
 
     # The inverse problem is ill-posed if the wavespeed is complex
-    steel = Elasticity(2; ρ = 7800.0, cp = 5000.0, cs = 3500.0)
+    steel = Elastic(2; ρ = 7800.0, cp = 5000.0, cs = 3500.0)
     bearing = RollerBearing(medium=steel, inner_radius=1.0, outer_radius = 2.0)
 
     # this non-dimensional number determines what basis_order is neeeded. Also note that kpa[1] and ksa[1] are small, indicating a very low frequency
@@ -89,7 +89,7 @@ end
 @testset "Inverse problems for the fields" begin
 
     ω = 2.0
-    steel = Elasticity(2; ρ = 7.0, cp = 5.0 - 0.1im, cs = 3.5 - 0.06im)
+    steel = Elastic(2; ρ = 7.0, cp = 5.0 - 0.1im, cs = 3.5 - 0.06im)
     bearing = RollerBearing(medium = steel, inner_radius = 1.0, outer_radius = 2.0)
 
     # this non-dimensional number determines what basis_order is neeeded

@@ -1,12 +1,12 @@
 """
-    Elasticity{Dim,T<:AbstractFloat}(ρ::T, c::Complex{T})
-    Elasticity(ρ::T, c::Union{T,Complex{AbstractFloat}}, Dim::Integer)
+    Elastic{Dim,T<:AbstractFloat}(ρ::T, c::Complex{T})
+    Elastic(ρ::T, c::Union{T,Complex{AbstractFloat}}, Dim::Integer)
 
 Physical properties for a homogenous isotropic elastic medium with wavespeed (c) and density (ρ)
 
-Simulations in this medium produce scalar (Dim) fields in Dim dimensions.
+Simulations in this medium produce scalar (Dim) fields in Dim dimensions. In general we use the Debye potentials to describe the field.
 """
-struct Elasticity{Dim,T} <: PhysicalMedium{Dim,Dim}
+struct Elastic{Dim,T} <: PhysicalMedium{Dim,Dim}
     ρ::T # Density (use \greekletter+tab to get the greek letter!)
     cp::Complex{T} # Phase velocity of pressure wave
     cs::Complex{T} # Phase velocity of shear wave
@@ -14,18 +14,24 @@ end
 
 
 # Constructor which supplies the dimension without explicitly mentioning type
-function Elasticity(Dim::Integer; ρ::T = 0.0, cp::Union{T,Complex{T}} = 0.0, cs::Union{T,Complex{T}} = 0.0) where {T<:Number}
-     Elasticity{Dim,T}(ρ,Complex{T}(cp),Complex{T}(cs))
+function Elastic(Dim::Integer; ρ::T = 0.0, cp::Union{T,Complex{T}} = 0.0, cs::Union{T,Complex{T}} = 0.0) where {T<:Number}
+     Elastic{Dim,T}(ρ,Complex{T}(cp),Complex{T}(cs))
 end
 
+basisorder_to_basislength(::Type{Elastic{T,3}}, order::Int) where T = 3 * (order+1)^2
+basisorder_to_basislength(::Type{Elastic{T,2}}, order::Int) where T = 2 * (2*order + 1)
+
+basislength_to_basisorder(::Type{Elastic{T,3}},len::Int) where T = Int(sqrt(len / 3) - 1)
+basislength_to_basisorder(::Type{Elastic{T,2}},len::Int) where T = Int(T(len / 2 - 1) / T(2.0))
+
 import Base.show
-function show(io::IO, p::Elasticity)
+function show(io::IO, p::Elastic)
     # Print is the style of the first constructor
-    write(io, "Elasticity($(p.ρ), $(p.cp),  $(p.cs)) with Dim = $(spatial_dimension(p))")
+    write(io, "Elastic($(p.ρ), $(p.cp),  $(p.cs)) with Dim = $(spatial_dimension(p))")
     return
 end
 
-name(a::Elasticity{Dim}) where Dim = "$(Dim)D Elasticity"
+name(a::Elastic{Dim}) where Dim = "$(Dim)D Elastic"
 
 
 ## field types
@@ -70,12 +76,12 @@ end
 
 struct ElasticWave{Dim,T}
     ω::T
-    medium::Elasticity{Dim,T}
+    medium::Elastic{Dim,T}
     pressure::HelmholtzPotential{Dim,T}
     shear::HelmholtzPotential{Dim,T}
     mode_errors::Vector{T}
 
-    function ElasticWave(ω::T, medium::Elasticity{Dim,T}, pressure::HelmholtzPotential{Dim,T}, shear::HelmholtzPotential{Dim,T};
+    function ElasticWave(ω::T, medium::Elastic{Dim,T}, pressure::HelmholtzPotential{Dim,T}, shear::HelmholtzPotential{Dim,T};
             mode_errors = zeros(basisorder_to_basislength(Acoustic{T,Dim}, pressure.basis_order))
         ) where {Dim,T}
 

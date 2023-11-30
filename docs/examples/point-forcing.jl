@@ -1,7 +1,7 @@
 ## Simulation in time
 
-steel = Elasticity(2; ρ = 7.0, cp = 5.0 - 1.1im, cs = 3.5 - 0.6im)
-steel = Elasticity(2; ρ = 7.0, cp = 5.0 - 0.05im, cs = 3.5 - 0.1im)
+steel = Elastic(2; ρ = 7.0, cp = 5.0 - 1.1im, cs = 3.5 - 0.6im)
+steel = Elastic(2; ρ = 7.0, cp = 5.0 - 0.05im, cs = 3.5 - 0.1im)
 bearing = RollerBearing(medium = steel, inner_radius = 1.0, outer_radius = 2.0)
 
 # time for wave to go from inner boundary to outer boundary

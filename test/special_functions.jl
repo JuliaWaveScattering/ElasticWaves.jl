@@ -3,7 +3,7 @@
     ω = 5e4
     ω = 5e3
 
-    steel = Elasticity(2; ρ = 7800.0, cp = 5000.0 - 0.1im, cs = 3500.0 - 0.1im)
+    steel = Elastic(2; ρ = 7800.0, cp = 5000.0 - 0.1im, cs = 3500.0 - 0.1im)
     bearing = RollerBearing(medium=steel, r1=1.0, r2=2.0)
 
     # this non-dimensional number determines what basis_order is neeeded

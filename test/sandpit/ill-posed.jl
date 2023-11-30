@@ -3,7 +3,7 @@ include("../../src/ElasticWaves.jl")
 # choose a low frequency so it is ill-posed
     ω = 10.0
 
-    steel = Elasticity(2; ρ = 7800.0, cp = 5000.0, cs = 3500.0)
+    steel = Elastic(2; ρ = 7800.0, cp = 5000.0, cs = 3500.0)
     bearing = RollerBearing(medium=steel, inner_radius=1.0, outer_radius = 2.0)
 
     # this non-dimensional number determines what basis_order is neeeded

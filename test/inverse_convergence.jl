@@ -5,9 +5,9 @@
 include("../src/ElasticWaves.jl")
 
 ω = 10.0
-# steel = Elasticity(2; ρ = 7.0, cp = 5.0, cs = 3.5)
-steel = Elasticity(2; ρ = 7.0, cp = 5.0 - 0.01im, cs = 3.5 - 0.01im)
-# steel = Elasticity(2; ρ = 7.0, cp = 5.0, cs = 3.5 )
+# steel = Elastic(2; ρ = 7.0, cp = 5.0, cs = 3.5)
+steel = Elastic(2; ρ = 7.0, cp = 5.0 - 0.01im, cs = 3.5 - 0.01im)
+# steel = Elastic(2; ρ = 7.0, cp = 5.0, cs = 3.5 )
 bearing = RollerBearing(medium = steel, inner_radius = 1.0, outer_radius = 1.1)
 
 

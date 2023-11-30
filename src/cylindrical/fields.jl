@@ -74,7 +74,7 @@ function field(wave::ElasticWave{2}, x::AbstractVector{T}, field_type::FieldType
 end
 
 
-function pressure_field_mode(ω::AbstractFloat, r::AbstractFloat, medium::Elasticity{2}, basis_order::Int, ::DisplacementType)
+function pressure_field_mode(ω::AbstractFloat, r::AbstractFloat, medium::Elastic{2}, basis_order::Int, ::DisplacementType)
 
     kP = ω / medium.cp;
     n = basis_order;
@@ -84,7 +84,7 @@ function pressure_field_mode(ω::AbstractFloat, r::AbstractFloat, medium::Elasti
     return hcat(bessel_modes(besselj), bessel_modes(hankelh1))
 end
 
-function shear_field_mode(ω::AbstractFloat, r::AbstractFloat, medium::Elasticity{2}, basis_order::Int, ::DisplacementType)
+function shear_field_mode(ω::AbstractFloat, r::AbstractFloat, medium::Elastic{2}, basis_order::Int, ::DisplacementType)
 
     n = basis_order;
     cs = medium.cs
@@ -95,7 +95,7 @@ function shear_field_mode(ω::AbstractFloat, r::AbstractFloat, medium::Elasticit
     return hcat(bessel_modes(besselj), bessel_modes(hankelh1))
 end
 
-function pressure_field_mode(ω::AbstractFloat, r::AbstractFloat, medium::Elasticity{2}, basis_order::Int, ::TractionType)
+function pressure_field_mode(ω::AbstractFloat, r::AbstractFloat, medium::Elastic{2}, basis_order::Int, ::TractionType)
 
     ρ = medium.ρ
     n = basis_order;
@@ -111,7 +111,7 @@ function pressure_field_mode(ω::AbstractFloat, r::AbstractFloat, medium::Elasti
     return hcat(bessel_modes(besselj), bessel_modes(hankelh1))
 end
 
-function shear_field_mode(ω::AbstractFloat, r::AbstractFloat, medium::Elasticity{2}, basis_order::Int, ::TractionType)
+function shear_field_mode(ω::AbstractFloat, r::AbstractFloat, medium::Elastic{2}, basis_order::Int, ::TractionType)
 
     ρ = medium.ρ
     n = basis_order;

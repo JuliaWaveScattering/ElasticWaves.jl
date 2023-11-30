@@ -1,7 +1,7 @@
 ω = 4.0
 ω = 20000.0
-steel = Elasticity(2; ρ = 7.0, cp = 5.0 - 0.1im, cs = 3.5 - 0.2im)
-steel = Elasticity(2; ρ = 7800.0, cp = 5000.0 -0.5im, cs = 3500.0 -0.5im)
+steel = Elastic(2; ρ = 7.0, cp = 5.0 - 0.1im, cs = 3.5 - 0.2im)
+steel = Elastic(2; ρ = 7800.0, cp = 5000.0 -0.5im, cs = 3500.0 -0.5im)
 
 bearing = RollerBearing(medium = steel, inner_radius = 1.0, outer_radius = 2.0)
 

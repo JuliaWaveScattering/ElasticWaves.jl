@@ -1,6 +1,6 @@
 @testset "traction and displacement formulas" begin
 
-    medium = Elasticity(2; ρ=7800.0, cp=5000.0, cs=3500.0)
+    medium = Elastic(2; ρ=7800.0, cp=5000.0, cs=3500.0)
     ω = 1.1
     basis_order = 4;
 

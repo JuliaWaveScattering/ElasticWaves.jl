@@ -1,6 +1,6 @@
 ω = 0.001
 ω = 1.001
-steel = Elasticity(2; ρ = 7.0, cp = 5.0 - 1.1im, cs = 3.5 - 0.6im)
+steel = Elastic(2; ρ = 7.0, cp = 5.0 - 1.1im, cs = 3.5 - 0.6im)
 bearing = RollerBearing(medium = steel, inner_radius = 1.0, outer_radius = 2.0)
 
 # this non-dimensional number determines what basis_order is neeeded

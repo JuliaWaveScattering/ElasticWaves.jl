@@ -1,7 +1,7 @@
 module ElasticWaves
 
-# wave_types.jl
-export Elasticity, HelmholtzPotential, DisplacementType, TractionType
+# elasticity.jl
+export Elastic, HelmholtzPotential, DisplacementType, TractionType
 export ElasticWave
 
 # bearing.jl
@@ -30,7 +30,7 @@ using SpecialFunctions
 using LinearAlgebra
 using StaticArrays: SVector
 
-include("wave_types.jl")
+include("elasticity.jl")
 include("bearing.jl")
 include("fields.jl")
 include("signal_processing.jl")

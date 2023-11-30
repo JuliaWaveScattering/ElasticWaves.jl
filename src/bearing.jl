@@ -8,7 +8,7 @@ struct PriorMethod <: BearingMethod end
 
 
 struct RollerBearing{T}
-    medium::Elasticity{2,T} # defining medium
+    medium::Elastic{2,T} # defining medium
     inner_radius::T
     "vector of angles delimiting gaps in the inner radius"
     inner_gaps::Vector{T}
@@ -17,7 +17,7 @@ struct RollerBearing{T}
     outer_gaps::Vector{T}
 end
 
-function RollerBearing(; medium::Elasticity{2},
+function RollerBearing(; medium::Elastic{2},
         inner_radius::T = 0.0, outer_radius::T = 0.0,
         inner_gaps::Vector{T} = typeof(inner_radius)[],
         outer_gaps::Vector{T} = typeof(outer_radius)[]
