@@ -18,11 +18,13 @@ function Elastic(Dim::Integer; ρ::T = 0.0, cp::Union{T,Complex{T}} = 0.0, cs::U
      Elastic{Dim,T}(ρ,Complex{T}(cp),Complex{T}(cs))
 end
 
-basisorder_to_basislength(::Type{Elastic{T,3}}, order::Int) where T = 3 * (order+1)^2
-basisorder_to_basislength(::Type{Elastic{T,2}}, order::Int) where T = 2 * (2*order + 1)
+import MultipleScattering: basisorder_to_basislength, basislength_to_basisorder
 
-basislength_to_basisorder(::Type{Elastic{T,3}},len::Int) where T = Int(sqrt(len / 3) - 1)
-basislength_to_basisorder(::Type{Elastic{T,2}},len::Int) where T = Int(T(len / 2 - 1) / T(2.0))
+basisorder_to_basislength(::Type{P}, order::Int) where {T, P<:Elastic{T,3}} = 3 * (order+1)^2
+basisorder_to_basislength(::Type{P}, order::Int) where {T, P<:Elastic{T,2}} = 2 * (2*order + 1)
+
+basislength_to_basisorder(::Type{P},len::Int) where {T, P<:Elastic{T,3}} = Int(sqrt(len / 3) - 1)
+basislength_to_basisorder(::Type{P},len::Int) where {T, P<:Elastic{T,2}} = Int(T(len / 2 - 1) / T(2.0))
 
 import Base.show
 function show(io::IO, p::Elastic)

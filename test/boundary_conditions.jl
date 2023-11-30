@@ -23,8 +23,6 @@
     bd1 = BoundaryData(TractionBoundary(inner=true); fourier_modes=forcing_modes[:, 1:2])
     bd2 = BoundaryData(TractionBoundary(outer=true); fourier_modes=forcing_modes[:, 3:4])
 
-    BearingSimulation(ω, bearing, bd1, bd2)
-
     sims = [BearingSimulation(ω, bearing, bd1, bd2) for ω in ωs];
     waves = [ElasticWave(s) for s in sims];
 

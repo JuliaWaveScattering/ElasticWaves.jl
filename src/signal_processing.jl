@@ -19,7 +19,7 @@ end
 
 function fouriermodes_to_fields(θs::AbstractVector, fouriermodes::AbstractArray)
 
-    basis_order = basislength_to_basisorder(Acoustic{Float64,2}, size(fouriermodes,1))
+    basis_order = basislength_to_basisorder(ScalarMedium{Float64,2}, size(fouriermodes,1))
 
     exps = [
         exp(im * θ * m)
