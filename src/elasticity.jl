@@ -18,7 +18,10 @@ function Elastic(Dim::Integer; ρ::T = 0.0, cp::Union{T,Complex{T}} = 0.0, cs::U
      Elastic{Dim,T}(ρ,Complex{T}(cp),Complex{T}(cs))
 end
 
-import MultipleScattering: basisorder_to_basislength, basislength_to_basisorder
+
+import MultipleScattering: name, basisorder_to_basislength, basislength_to_basisorder, regular_basis_function, regular_radial_basis
+
+name(a::Elastic{Dim}) where Dim = "$(Dim)D Elastic"
 
 basisorder_to_basislength(::Type{P}, order::Int) where {T, P<:Elastic{T,3}} = 3 * (order+1)^2
 basisorder_to_basislength(::Type{P}, order::Int) where {T, P<:Elastic{T,2}} = 2 * (2*order + 1)
@@ -26,14 +29,28 @@ basisorder_to_basislength(::Type{P}, order::Int) where {T, P<:Elastic{T,2}} = 2 
 basislength_to_basisorder(::Type{P},len::Int) where {T, P<:Elastic{T,3}} = Int(sqrt(len / 3) - 1)
 basislength_to_basisorder(::Type{P},len::Int) where {T, P<:Elastic{T,2}} = Int(T(len / 2 - 1) / T(2.0))
 
+# function regular_basis_function(medium::Elastic{3,T}, ω::T) where T
+    
+#     pressure_potential = ScalarMedium{T,3}(medium.cp)
+#     shearΦ_potential = ScalarMedium{T,3}(medium.cs)
+#     shearχ_potential = ScalarMedium{T,3}(medium.cs)
+
+#     pbasis = regular_basis_function(pressure_potential, ω)
+#     Φbasis = regular_basis_function(shearΦ_potential, ω)
+#     χbasis = regular_basis_function(shearχ_potential, ω)
+    
+#     return function (order::Integer, x::AbstractVector{T})
+
+#         return [pbasis(order, x) Φbasis(order, x) χbasis(order, x)]
+#     end
+# end
+
 import Base.show
 function show(io::IO, p::Elastic)
     # Print is the style of the first constructor
     write(io, "Elastic($(p.ρ), $(p.cp),  $(p.cs)) with Dim = $(spatial_dimension(p))")
     return
 end
-
-name(a::Elastic{Dim}) where Dim = "$(Dim)D Elastic"
 
 
 ## field types
