@@ -29,21 +29,21 @@ basisorder_to_basislength(::Type{P}, order::Int) where {T, P<:Elastic{T,2}} = 2 
 basislength_to_basisorder(::Type{P},len::Int) where {T, P<:Elastic{T,3}} = Int(sqrt(len / 3) - 1)
 basislength_to_basisorder(::Type{P},len::Int) where {T, P<:Elastic{T,2}} = Int(T(len / 2 - 1) / T(2.0))
 
-# function regular_basis_function(medium::Elastic{3,T}, ω::T) where T
+function regular_basis_function(medium::Elastic{3,T}, ω::T) where T
     
-#     pressure_potential = ScalarMedium{T,3}(medium.cp)
-#     shearΦ_potential = ScalarMedium{T,3}(medium.cs)
-#     shearχ_potential = ScalarMedium{T,3}(medium.cs)
+    pressure_potential = ScalarMedium{T,3}(medium.cp)
+    shearΦ_potential = ScalarMedium{T,3}(medium.cs)
+    shearχ_potential = ScalarMedium{T,3}(medium.cs)
 
-#     pbasis = regular_basis_function(pressure_potential, ω)
-#     Φbasis = regular_basis_function(shearΦ_potential, ω)
-#     χbasis = regular_basis_function(shearχ_potential, ω)
+    pbasis = regular_basis_function(pressure_potential, ω)
+    Φbasis = regular_basis_function(shearΦ_potential, ω)
+    χbasis = regular_basis_function(shearχ_potential, ω)
     
-#     return function (order::Integer, x::AbstractVector{T})
+    return function (order::Integer, x::AbstractVector{T})
 
-#         return [pbasis(order, x) Φbasis(order, x) χbasis(order, x)]
-#     end
-# end
+        return [pbasis(order, x) Φbasis(order, x) χbasis(order, x)]
+    end
+end
 
 import Base.show
 function show(io::IO, p::Elastic)

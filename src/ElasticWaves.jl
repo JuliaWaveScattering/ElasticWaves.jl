@@ -1,8 +1,12 @@
 module ElasticWaves
 
 # elasticity.jl
-export Elastic, HelmholtzPotential, DisplacementType, TractionType
-export ElasticWave
+export Elastic, ElasticWave
+export regular_basis_function, HelmholtzPotential 
+export DisplacementType, TractionType
+
+# source.jl
+export plane_z_shear_source
 
 # bearing.jl
 export RollerBearing, BoundaryCondition, DisplacementBoundary, TractionBoundary
@@ -31,6 +35,8 @@ using LinearAlgebra
 using StaticArrays: SVector
 
 include("elasticity.jl")
+include("source.jl")
+
 include("bearing.jl")
 include("fields.jl")
 include("signal_processing.jl")

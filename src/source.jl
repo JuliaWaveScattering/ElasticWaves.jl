@@ -5,37 +5,43 @@
 
 Creates an incident plane wave for the displacement in the form ``A e^{i k z} (0,1,0)``. The coefficients of the Debye potentials which correspond to this plane wave are given in "Resonance theory of elastic waves ultrasonically scattered from an elastic sphere - 1987".
 """
-function plane_z_source(medium::Elastic{3,T}, position::AbstractArray{T},
+function plane_z_shear_source(medium::Elastic{3,T}, position::AbstractArray{T},
             amplitude::Union{T,Complex{T}} = one(T)
         ) where {T}
 
     # code assumes wave propagates in z-direction and polarised in y-direction     
     direction = [zero(T),zero(T),one(T)]
-    polarisation = [zero(T),one(T),zero(T)]
+    direction = direction / norm(direction)
 
+    polarisation = [zero(T),one(T),zero(T)]
+    polarisation = polarisation / norm(polarisation)
 
     # Convert to SVector for efficiency and consistency
     # position = SVector(position...)
 
     function source_field(x,ω)
         x_width = norm((x - position) - dot(x - position, direction)*direction)
-        if (causal && dot(x - position,direction) < 0) || x_width > beam_width/2
-            zero(Complex{T})
-        else
-            amplitude .* exp(im*ω/medium.c*dot(x - position, direction)) .* polarisation
-        end
+        
+        return amplitude .* exp(im * ω / medium.cs *dot(x - position, direction)) .* polarisation
     end
 
     function source_coef(order,centre,ω)
-        # plane-wave expansion for complex vectors
-        r, θ, φ  = cartesian_to_radial_coordinates(direction)
-        Ys = spherical_harmonics(order, θ, φ)
-        lm_to_n = lm_to_spherical_harmonic_index
+        
+        ks2 = (ω / medium.cs)^2
 
-        return T(4pi) * source_field(centre,ω) .*
+        pcoefs = [Complex{T}(0.0) for l = 0:order for m = -l:l]
+        
+        Φcoefs = - T(sqrt(pi)) * sum(source_field(centre,ω) .* polarisation) .*
         [
-            Complex{T}(im)^l * (-one(T))^m * Ys[lm_to_n(l,-m)]
+            (m == 1 | m == -1) ?  Complex{T}(m * (-1.0im)^l * sqrt(T(2l + 1) / T((1+l)*l))) : Complex{T}(0)
         for l = 0:order for m = -l:l]
+        
+        χcoefs = - Complex{T}(sqrt(pi) / ks2) * sum(source_field(centre,ω) .* polarisation) .*
+        [
+            (m == 1 | m == -1) ?  Complex{T}((-1.0im)^l * sqrt(T(2l + 1) / T((1+l)*l))) : Complex{T}(0)
+        for l = 0:order for m = -l:l]
+
+        return [pcoefs Φcoefs χcoefs]
     end
 
     return RegularSource{Acoustic{T,3},S}(medium, source_field, source_coef)
