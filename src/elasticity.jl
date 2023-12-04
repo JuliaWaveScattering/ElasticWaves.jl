@@ -30,14 +30,18 @@ basislength_to_basisorder(::Type{P},len::Int) where {T, P<:Elastic{T,3}} = Int(s
 basislength_to_basisorder(::Type{P},len::Int) where {T, P<:Elastic{T,2}} = Int(T(len / 2 - 1) / T(2.0))
 
 function regular_basis_function(medium::Elastic{3,T}, ω::T) where T
-    
-    pressure_potential = ScalarMedium{T,3}(medium.cp)
-    shearΦ_potential = ScalarMedium{T,3}(medium.cs)
-    shearχ_potential = ScalarMedium{T,3}(medium.cs)
 
-    pbasis = regular_basis_function(pressure_potential, ω)
-    Φbasis = regular_basis_function(shearΦ_potential, ω)
-    χbasis = regular_basis_function(shearχ_potential, ω)
+    pressure_field_basis(ω, x, medium, basis_order, DisplacementType())
+    shearΦ_field_basis(ω, x, medium, basis_order, DisplacementType())
+    shearχ_field_basis(ω, x, medium, basis_order, DisplacementType())
+    
+    # pressure_potential = ScalarMedium{T,3}(medium.cp)
+    # shearΦ_potential = ScalarMedium{T,3}(medium.cs)
+    # shearχ_potential = ScalarMedium{T,3}(medium.cs)
+
+    # pbasis = regular_basis_function(pressure_potential, ω)
+    # Φbasis = regular_basis_function(shearΦ_potential, ω)
+    # χbasis = regular_basis_function(shearχ_potential, ω)
     
     return function (order::Integer, x::AbstractVector{T})
 

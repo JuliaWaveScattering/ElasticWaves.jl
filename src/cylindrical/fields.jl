@@ -49,7 +49,7 @@ end
 
 function field(wave::ElasticWave{3}, x::AbstractVector{T}, field_type::FieldType) where T <: AbstractFloat
 
-    pressure_field_basis, shearΦ_field_basis, shearχ_field_basis
+    # pressure_field_basis, shearΦ_field_basis, shearχ_field_basis
 
     ω = 1.1
     basis_order = 8

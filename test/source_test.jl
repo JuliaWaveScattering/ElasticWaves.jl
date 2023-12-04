@@ -10,6 +10,11 @@
     centre = [3.0, -3.0, 5.0]
 
     source.coefficients(basis_order,centre,ω)
+
+    pressure_field_basis(ω, x, medium, basis_order, DisplacementType())
+    shearΦ_field_basis(ω, x, medium, basis_order, DisplacementType())
+    shearχ_field_basis(ω, x, medium, basis_order, DisplacementType())
+    
     
     vs = regular_basis_function(source.medium, ω)
 
