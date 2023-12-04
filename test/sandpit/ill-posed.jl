@@ -32,16 +32,16 @@ include("../../src/ElasticWaves.jl")
     waveδ = ElasticWave(sim)
 
     # I suppose 20% error is quite large. Any error in these coefficients will translate to an error in the field
-    maximum(abs.(wave.pressure.coefficients - waveδ.pressure.coefficients)) / mean(abs.(wave.pressure.coefficients)) 
-    maximum(abs.(wave.shear.coefficients - waveδ.shear.coefficients) ./ abs.(wave.shear.coefficients))
+    maximum(abs.(wave.potentials[1].coefficients - waveδ.potentials[1].coefficients)) / mean(abs.(wave.potentials[1].coefficients)) 
+    maximum(abs.(wave.potentials[2].coefficients - waveδ.potentials[2].coefficients) ./ abs.(wave.potentials[2].coefficients))
 
     # predict the forcing modes  
 # errors = map(eachindex(ωs)) do i
 
 #     fs = map(-basis_order:basis_order) do m
 #         coes = vcat(
-#             waves[i].pressure.coefficients[:, m+basis_order+1],
-#             waves[i].shear.coefficients[:, m+basis_order+1]
+#             waves[i].potentials[1].coefficients[:, m+basis_order+1],
+#             waves[i].potentials[2].coefficients[:, m+basis_order+1]
 #         )
 #         boundarycondition_system(ωs[i], bearing, bd1.boundarytype, bd2.boundarytype, m) * coes
 #     end
@@ -92,7 +92,7 @@ include("../../src/ElasticWaves.jl")
     # So why did the method seem to work better than this? Let's us the same forcing from the bearing problem 
 
     b = hcat(bd1.fourier_modes, bd2.fourier_modes)[m + 1 + basis_order,:]
-    x = [wave.pressure.coefficients[:, m+basis_order+1]; wave.shear.coefficients[:, m+basis_order+1]]
+    x = [wave.potentials[1].coefficients[:, m+basis_order+1]; wave.potentials[2].coefficients[:, m+basis_order+1]]
     
     # How is this so small? The forcing was generated randomly?? 
     norm(A * x - b)

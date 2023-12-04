@@ -7,15 +7,17 @@ using Test, Statistics, LinearAlgebra, MultipleScattering
 # \int_{\mathcal B} \rho_0 \ddot u d V = \int_{\partial \mathcal B} \tau d A
 # where \tau is the traction on the surface \mathcal B. So this only works when we specify the traction on the whole surface of \mathcal B.
 
-include("signal_processing.jl")
+include("signal_processing_test.jl")
 
 # an independent check for the formulas of displacement and traction
-include("traction_displacement.jl")
+include("traction_displacement_test.jl")
+
+# include("source_test.jl")
 
 # tests that the boundary conditions are formed correctly, and uniqueness
-include("boundary_conditions.jl")
+include("boundary_conditions_test.jl")
 
 # tests that the boundary conditions are formed correctly, and uniqueness
-include("inverse_problems.jl")
+include("inverse_problems_test.jl")
 
 # include("boundary_basis.jl")

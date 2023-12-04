@@ -93,25 +93,34 @@ struct HelmholtzPotential{Dim,T}
     end
 end
 
+
+"""
+    ElasticWave{Dim,T}
+
+A type to store an elastic wave expanded in some modal basis. The only basis used in this package is a regular radial expansion, which is needed for scattering and waves within a sphere or cylinder.
+
+For Dim = 4 the field `potentials` are, in order, the φ pressure, Φ shear,  and χ shear, where Φ and χ are the Debye potentials such that the displacement is given by: `u = ∇φ + ∇x∇x(Φ .* r) + ∇x∇x∇x(χ .* r) ./ kS`, where `kS` is the shear wavenumber and `r` is a vector pointing in the radial direction, that is `r = (x,y,z)` in Cartesian coordinates.
+"""
 struct ElasticWave{Dim,T}
     ω::T
     medium::Elastic{Dim,T}
-    pressure::HelmholtzPotential{Dim,T}
-    shear::HelmholtzPotential{Dim,T}
+    potentials::Vector{H} where H <:HelmholtzPotential{Dim,T}
     mode_errors::Vector{T}
 
-    function ElasticWave(ω::T, medium::Elastic{Dim,T}, pressure::HelmholtzPotential{Dim,T}, shear::HelmholtzPotential{Dim,T};
-            mode_errors = zeros(basisorder_to_basislength(Acoustic{T,Dim}, pressure.basis_order))
-        ) where {Dim,T}
+    function ElasticWave(ω::T, medium::Elastic{Dim,T}, potentials::Vector{H};
+            mode_errors = zeros(basisorder_to_basislength(Acoustic{T,Dim}, potentials[1].basis_order))
+        ) where {Dim,T,H <: HelmholtzPotential{Dim,T}}
 
-        if pressure.basis_order != shear.basis_order
-            @error "The basis_order for both potentials is expected to be the same."
+        orders = [p.basis_order for p in potentials]
+
+        if !(findall(orders[1] .!= orders) |> isempty)
+            @error "The basis_order for all the potentials is expected to be the same."
         end
 
-        if length(mode_errors) != basisorder_to_basislength(Acoustic{T,Dim}, pressure.basis_order)
+        if length(mode_errors) != basisorder_to_basislength(Acoustic{T,Dim}, potentials[1].basis_order)
             @error "The length of mode_errors should be the same as the number of modes."
         end
 
-        new{Dim,T}(ω, medium, pressure, shear, mode_errors)
+        new{Dim,T}(ω, medium, potentials, mode_errors)
     end
 end

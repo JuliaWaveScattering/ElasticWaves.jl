@@ -46,7 +46,7 @@
 
     # we should recover the first wave
     errors = [
-        maximum(abs.(waves[i].shear.coefficients - inverse_waves[i].shear.coefficients)) / mean(abs.(waves[i].shear.coefficients))
+        maximum(abs.(waves[i].potentials[2].coefficients - inverse_waves[i].potentials[2].coefficients)) / mean(abs.(waves[i].potentials[2].coefficients))
     for i in eachindex(ωs)]
 
     # the low frequencies are a bit unstable I think due to the hankelh1 singularity
@@ -54,7 +54,7 @@
     @test maximum(errors[2:end]) < 1e-13
 
     errors = [
-        maximum(abs.(waves[i].pressure.coefficients - inverse_waves[i].pressure.coefficients)) / mean(abs.(waves[i].pressure.coefficients))
+        maximum(abs.(waves[i].potentials[1].coefficients - inverse_waves[i].potentials[1].coefficients)) / mean(abs.(waves[i].potentials[1].coefficients))
     for i in eachindex(ωs)]
 
     @test errors[1] < 1e-7

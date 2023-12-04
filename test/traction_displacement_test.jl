@@ -15,7 +15,7 @@
    
     shear = HelmholtzPotential{2}(medium.cs, ω / medium.cs, scoes)
 
-    wave = ElasticWave(ω, medium, pressure, shear)
+    wave = ElasticWave(ω, medium, [pressure, shear])
 
     # Let us implement an approximation for the displacement u = ∇φ + ∇x[0,0,ψ]
     # field(potential::HelmholtzPotential{Dim}, x::AbstractVector{T})
@@ -55,7 +55,7 @@
     end
 
     function displacement_numerical(wave::ElasticWave, rθs; kws...)
-        grad_pressure(wave.pressure, rθs; kws...) + curl_shear(wave.shear, rθs; kws...)
+        grad_pressure(wave.potentials[1], rθs; kws...) + curl_shear(wave.potentials[2], rθs; kws...)
     end    
     
     function strain_numerical(wave::ElasticWave, rθs; dr=1e-8, dθ=1e-8)
@@ -83,8 +83,8 @@
     end    
     
     function stress_numerical(wave::ElasticWave, rθs; kws...)
-        μ = wave.medium.ρ * wave.shear.wavespeed^2;
-        λ = wave.medium.ρ * wave.pressure.wavespeed^2 - 2μ;
+        μ = wave.medium.ρ * wave.potentials[2].wavespeed^2;
+        λ = wave.medium.ρ * wave.potentials[1].wavespeed^2 - 2μ;
 
         strains = strain_numerical(wave, rθs; kws...)
  

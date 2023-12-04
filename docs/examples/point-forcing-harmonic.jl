@@ -43,9 +43,9 @@ plot(θs2,real.(inner_field))
 plot!(θs, real.(fp))
 
 wave = ElasticWave(sim);
-result = field(wave.pressure, bearing; res = 120)
+result = field(wave.potentials[1], bearing; res = 120)
 
-## The long way to calculate result = field(bearing, wave.pressure; res = 100)
+## The long way to calculate result = field(bearing, wave.potentials[1]; res = 100)
     inner_circle = Circle(bearing.inner_radius)
     outer_circle = Circle(bearing.outer_radius)
 
@@ -61,7 +61,7 @@ result = field(wave.pressure, bearing; res = 120)
     xs = x_vec[inds]
     field_mat = zeros(Complex{Float64},length(x_vec), 1) # change 1 to number of different frequencies
 
-    fs = [field(wave.pressure, x) for x in xs];
+    fs = [field(wave.potentials[1], x) for x in xs];
     field_mat[inds,:] = fs
 
     result2 = FrequencySimulationResult(field_mat, x_vec, [ω])
@@ -75,8 +75,8 @@ gr(size = (400,400))
 
 sim = BearingSimulation(ω, bearing, bd1, bd2)
 wave = ElasticWave(sim);
-result = field(wave.pressure, bearing; res = 420)
-# result = field(wave.shear, bearing; res = 420)
+result = field(wave.potentials[1], bearing; res = 420)
+# result = field(wave.potentials[2], bearing; res = 420)
 
 field_apply = abs
 maxc = 0.8 .* maximum(field_apply.(field(result)))
@@ -107,7 +107,7 @@ savefig("docs/images/bearing-pressure-stress-patterns.pdf")
 
 sim = BearingSimulation(ω, bearing, bd1, bd2)
 wave = ElasticWave(sim);
-result = field(wave.pressure, bearing; res = 120)
+result = field(wave.potentials[1], bearing; res = 120)
 
 field_apply = abs
 maxc = 0.8 .* maximum(field_apply.(field(result)))

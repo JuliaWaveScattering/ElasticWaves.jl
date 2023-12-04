@@ -121,8 +121,8 @@ plot!(θ2s,real.(inner_field[:,1]), linestyle = :dash)
 
 inverse_wave = ElasticWave(inverse_sim);
 
-# norm(inverse_wave.pressure.coefficients - wave.pressure.coefficients) / norm(wave.pressure.coefficients)
-# norm(inverse_wave.shear.coefficients - wave.shear.coefficients) / norm(wave.shear.coefficients)
+# norm(inverse_wave.potentials[1].coefficients - wave.potentials[1].coefficients) / norm(wave.potentials[1].coefficients)
+# norm(inverse_wave.potentials[2].coefficients - wave.potentials[2].coefficients) / norm(wave.potentials[2].coefficients)
 
 x2_inner = [
     radial_to_cartesian_coordinates([bearing.inner_radius, θ])

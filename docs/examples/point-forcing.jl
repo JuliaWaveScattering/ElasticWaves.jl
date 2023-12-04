@@ -50,7 +50,7 @@ i = 100
 sim = BearingSimulation(ωs[i], bearing, bd1, bd2; basis_order = basis_order, tol = 1e-9)
 
 wave = ElasticWave(sim)
-res = field(wave.pressure, bearing; res = 120)
+res = field(wave.potentials[1], bearing; res = 120)
 
 plot(res,ωs[i]; seriestype=:heatmap)
 plot!(Circle(bearing.inner_radius))
@@ -94,9 +94,9 @@ results = map(eachindex(ωs)) do i
     # scale the potential to match the units of stress
     scale = steel.ρ * ωs[i]^2
 
-    wave.pressure.coefficients
+    wave.potentials[1].coefficients
 
-    potential = HelmholtzPotential{2}(wave.pressure.wavespeed, wave.pressure.wavenumber, scale .* wave.pressure.coefficients)
+    potential = HelmholtzPotential{2}(wave.potentials[1].wavespeed, wave.potentials[1].wavenumber, scale .* wave.potentials[1].coefficients)
 
     res = field(potential, big_bearing; res = 120)
     # plot(res, ωs[i]; seriestype=:contour)
@@ -182,10 +182,10 @@ gif(anim,"docs/images/time-point-pressure.gif", fps = 7)
         # scale the potential to match the units of stress
         scale = steel.ρ * ωs[i]^2
 
-        coes = wave.pressure.coefficients;
+        coes = wave.potentials[1].coefficients;
         coes[1,:] .= 0.0 + 0.0im
 
-        potential = HelmholtzPotential{2}(wave.pressure.wavespeed, wave.pressure.wavenumber, scale .* coes)
+        potential = HelmholtzPotential{2}(wave.potentials[1].wavespeed, wave.potentials[1].wavenumber, scale .* coes)
 
         res = field(potential, bearing; res = 120)
         # plot(res, ωs[i]; seriestype=:contour)
@@ -246,10 +246,10 @@ gif(anim,"docs/images/time-point-pressure.gif", fps = 7)
         # scale the potential to match the units of stress
         scale = steel.ρ * ωs[i]^2
 
-        coes = wave.pressure.coefficients;
+        coes = wave.potentials[1].coefficients;
         coes[2,:] .= 0.0 + 0.0im
 
-        potential = HelmholtzPotential{2}(wave.pressure.wavespeed, wave.pressure.wavenumber, scale .* coes)
+        potential = HelmholtzPotential{2}(wave.potentials[1].wavespeed, wave.potentials[1].wavenumber, scale .* coes)
 
         res = field(potential, big_bearing; res = 120)
         # plot(res, ωs[i]; seriestype=:contour)

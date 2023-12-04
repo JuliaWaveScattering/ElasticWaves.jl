@@ -34,8 +34,7 @@ waves = ElasticWave.(sims);
 waves[1].mode_errors |> maximum
 waves[end].mode_errors |> maximum
 
-
-results = [field(w.pressure, bearing; res = 100) for w in waves[[1,4]]];
+results = [field(w.potentials[1], bearing; res = 100) for w in waves[[1,4]]];
 
 
 results = [field(w, bearing, TractionType(); res = 100) for w in waves[[1,4]]];

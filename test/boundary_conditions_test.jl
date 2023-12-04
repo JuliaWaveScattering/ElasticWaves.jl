@@ -148,9 +148,9 @@
     wave2 = ElasticWave(sim);
 
     # we should exactly recover the first wave
-    @test maximum(abs.(wave.shear.coefficients - wave2.shear.coefficients)) /  mean(abs.(wave.shear.coefficients)) < 1e-8
+    @test maximum(abs.(wave.potentials[2].coefficients - wave2.potentials[2].coefficients)) /  mean(abs.(wave.potentials[2].coefficients)) < 1e-8
 
-    @test maximum(abs.(wave.pressure.coefficients - wave2.pressure.coefficients)) / mean(abs.(wave.pressure.coefficients)) < 1e-8
+    @test maximum(abs.(wave.potentials[1].coefficients - wave2.potentials[1].coefficients)) / mean(abs.(wave.potentials[1].coefficients)) < 1e-8
 
     # check that wave2 will predict the same traction on the boundary as wave
     traction_forcing_modes = hcat(
@@ -184,9 +184,9 @@
     wave2 = ElasticWave(sim)
 
     # the problem is highly unstable
-    @test maximum(abs.(wave.shear.coefficients - wave2.shear.coefficients)) / mean(abs.(wave.shear.coefficients)) > 10.0
+    @test maximum(abs.(wave.potentials[2].coefficients - wave2.potentials[2].coefficients)) / mean(abs.(wave.potentials[2].coefficients)) > 10.0
     
-    @test maximum(abs.(wave.shear.coefficients - wave2.shear.coefficients)) / mean(abs.(wave.shear.coefficients)) > 10.0
+    @test maximum(abs.(wave.potentials[2].coefficients - wave2.potentials[2].coefficients)) / mean(abs.(wave.potentials[2].coefficients)) > 10.0
     
     # the instability is because the problem is ill posed when either decreasing the frequency or increasing the basis_order. Let us decrease the basis_order to see:
 
@@ -234,7 +234,7 @@
     wave2 = ElasticWave(sim)
 
     # the problem is still sensitive to errors, but a managable tolerance
-    @test maximum(abs.(wave.shear.coefficients - wave2.shear.coefficients)) / mean(abs.(wave.shear.coefficients)) < 0.085
-    @test maximum(abs.(wave.pressure.coefficients - wave2.pressure.coefficients)) / mean(abs.(wave.pressure.coefficients)) < 0.14
+    @test maximum(abs.(wave.potentials[2].coefficients - wave2.potentials[2].coefficients)) / mean(abs.(wave.potentials[2].coefficients)) < 0.085
+    @test maximum(abs.(wave.potentials[1].coefficients - wave2.potentials[1].coefficients)) / mean(abs.(wave.potentials[1].coefficients)) < 0.14
 
 end
