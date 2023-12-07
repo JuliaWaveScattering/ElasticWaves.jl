@@ -1,3 +1,4 @@
+using BlockDiagonals
 function boundarycondition_mode(ω::AbstractFloat, bc::BoundaryCondition, bearing::RollerBearing, basis_order::Int)
     r = (bc.inner == true) ? bearing.inner_radius : bearing.outer_radius
     return hcat(
@@ -8,6 +9,10 @@ end
 
 
 function boundarycondition_system(ω::AbstractFloat, bearing::RollerBearing, bc1::BoundaryCondition, bc2::BoundaryCondition, basis_order::Int)
+
+    if bc1 == bc2
+        error("Both boundary conditions are the same. It is not possible to solve the system with just one type of boundary data/condition.")
+    end     
 
     first_boundary = boundarycondition_mode(ω, bc1, bearing, basis_order)
     second_boundary = boundarycondition_mode(ω, bc2, bearing, basis_order)
@@ -65,7 +70,7 @@ function ElasticWave(sim::BearingSimulation{ModalMethod})
     φ = HelmholtzPotential{2}(bearing.medium.cp, kP, pressure_coefficients)
     ψ = HelmholtzPotential{2}(bearing.medium.cs, kS, shear_coefficients)
 
-    return ElasticWave(ω, bearing.medium, [φ, ψ]; mode_errors = mode_errors)
+    return ElasticWave(ω, bearing.medium, φ, ψ; mode_errors = mode_errors)
 end
 
 
@@ -73,6 +78,7 @@ function ElasticWave(sim::BearingSimulation{PriorMethod})
 
     ω = sim.ω
     bearing = sim.bearing
+    
 
     boundarydata1 = sim.boundarydata1
     boundarydata2 = sim.boundarydata2
@@ -101,7 +107,7 @@ function ElasticWave(sim::BearingSimulation{PriorMethod})
     
         P = hcat(P1,P2)
         
-    # Create the Bias vector B
+    # Create the Bias vector b
         # If one of the boundary basis is empty we need more boundarydata to resolve the problem. We check to see if the user has passed this boundarydata
         # bool_basis = isempty.([P1,P2])
         boundarydatas = [boundarydata1, boundarydata2]
@@ -121,12 +127,7 @@ function ElasticWave(sim::BearingSimulation{PriorMethod})
                 0.0 .* boundarydatas[i].fourier_modes[:,1]
             ) |> transpose
         else
-            hcat(
-                0.0 .* boundarydatas[1].fourier_modes[:,1], 
-                0.0 .* boundarydatas[1].fourier_modes[:,1], 
-                0.0 .* boundarydatas[1].fourier_modes[:,1], 
-                0.0 .* boundarydatas[1].fourier_modes[:,1]
-            ) |> transpose     
+            b = hcat(0.0 .* boundarydatas[1].fourier_modes[:,1], 0.0 .* boundarydatas[1].fourier_modes[:,2], 0.0 .* boundarydatas[1].fourier_modes[:,1], 0.0 .* boundarydatas[1].fourier_modes[:,1]) |>transpose     
         end    
 
         if isempty(P2)
@@ -135,7 +136,7 @@ function ElasticWave(sim::BearingSimulation{PriorMethod})
                 @error "The basis boundarybasis2 was empty and there was no boundary data provided that matched the type of boundary condition given in boundarybasis2.basis[1].boundarytype. This means it is impossible to solve the forward problem."
             end
 
-            b = b + hcat(0.0 .* boundarydatas[i].fourier_modes[:,1], 0.0 .* boundarydatas[i].fourier_modes[:,2], boundarydatas[i].fourier_modes[:,1], boundarydatas[i].fourier_modes[:,1]) |> transpose
+            b =transpose(b) + hcat(0.0 .* boundarydatas[i].fourier_modes[:,1], 0.0 .* boundarydatas[i].fourier_modes[:,2], boundarydatas[i].fourier_modes[:,1], boundarydatas[i].fourier_modes[:,2]) |> transpose
         end
         
         # flatten to solve the matrix system
@@ -154,11 +155,33 @@ function ElasticWave(sim::BearingSimulation{PriorMethod})
 
     mode_errors = zeros(T, 2basis_order + 1)
 
+
     Ms = [
-        boundarycondition_system(ω, bearing, boundarybasis1.boundarytype, boundarybasis2.boundarytype, m)  
+        boundarycondition_system(ω, bearing, boundarybasis1.basis[1].boundarytype, boundarybasis2.basis[1].boundarytype, m)  
     for m in -basis_order:basis_order]
+
+
+    # println(boundarybasis1.basis[1].boundarytype.inner, boundarybasis2.basis[2].boundarytype.inner)
+    # if boundarybasis1.basis[1].boundarytype.inner
+    #     Ms = [
+    #         boundarycondition_system(ω, bearing, boundarybasis1.basis[1].boundarytype, TractionBoundary(outer = true), m)  
+    #         for m in -basis_order:basis_order]    
+    # else    
+    #     Ms = [
+    #         boundarycondition_system(ω, bearing, TractionBoundary(inner = true), boundarybasis1.basis[1].boundarytype, m)  
+    #         for m in -basis_order:basis_order]  
+    # end
+
+ 
      
     M_forward = BlockDiagonal(Ms)
+    #println(rank(M_forward))
+    #display(M_forward)
+    #println(boundarybasis1.basis[1].boundarytype.inner, boundarybasis2.basis[1].boundarytype.inner)
+    #println(boundarybasis1.basis[1].boundarytype.inner, boundarybasis2.basis[1])
+    #display(P)
+
+    P=Matrix{ComplexF64}(P)
     
     B = M_forward \ P
           
@@ -168,22 +191,24 @@ function ElasticWave(sim::BearingSimulation{PriorMethod})
        
     M_inverse = BlockDiagonal(Ms_inverse)
 
-    b = hcat(
+    f_inv = hcat(
         sim.boundarydata1.fourier_modes[:,1], 
         sim.boundarydata1.fourier_modes[:,2], 
         sim.boundarydata2.fourier_modes[:,1], 
         sim.boundarydata2.fourier_modes[:,2]
     ) |> transpose
-    b = b[:]
+    f_inv = f_inv[:]
  
     # need to add bias vector
-    x = (M_inverse * B) \ b
+    x = (M_inverse * B) \ (f_inv - M_inverse * (M_forward \ bias_vector))
 
-    a = B*x
+    #println(x)
 
-    relative_error = norm(M*a - b) / norm(b)
+    a = B*x + M_forward \ bias_vector
+
+    relative_error = norm(M_inverse*a - f_inv) / norm(f_inv)
     if relative_error > sim.tol
-         @warn "The relative error for the boundary conditions was $(relative_error) for (ω,basis_order) = $((ω,m))"
+#         @warn "The relative error for the boundary conditions was $(relative_error) for (ω,basis_order) = $((ω,basis_order))"
     end
 
     coefficients = a
@@ -194,11 +219,11 @@ function ElasticWave(sim::BearingSimulation{PriorMethod})
     pressure_coefficients = coefficients[:,1:2] |> transpose
     shear_coefficients = coefficients[:,3:4] |> transpose
 
-    φ = Main.ElasticWaves.HelmholtzPotential{2}(bearing.medium.cp, kP, pressure_coefficients)
+    φ = HelmholtzPotential{2}(bearing.medium.cp, kP, pressure_coefficients)
     ψ = Main.ElasticWaves.HelmholtzPotential{2}(bearing.medium.cs, kS, shear_coefficients)
 
-    return ElasticWave(ω, bearing.medium, [φ, ψ])
+    return Main.ElasticWaves.ElasticWave(ω, bearing.medium, φ, ψ)
 
 
-    #return ElasticWave(ω, bearing.medium, [φ, ψ]; mode_errors = mode_errors)
+    #return ElasticWave(ω, bearing.medium, φ, ψ; mode_errors = mode_errors)
 end
