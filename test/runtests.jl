@@ -1,4 +1,3 @@
-# include("../src/ElasticWaves.jl")
 using ElasticWaves
 
 using Test, Statistics, LinearAlgebra, MultipleScattering

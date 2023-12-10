@@ -17,6 +17,7 @@ export field
 
 # cylindrical/fields.jl
 export field_modes, displacement, traction, pressure_field_mode, shear_field_mode
+export pressure_field_basis, shearΦ_field_basis, shearχ_field_basis
 
 # signal_processing.jl
 export fouriermodes_to_fields, fields_to_fouriermodes

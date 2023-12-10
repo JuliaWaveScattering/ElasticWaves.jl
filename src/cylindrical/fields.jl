@@ -47,25 +47,27 @@ function field(wave::ElasticWave{2}, sh::Shape, fieldtype::FieldType; kws...)
     return  FrequencySimulationResult(reshape(field_mat, :, 1), x_vec, [wave.ω])
 end
 
-function field(wave::ElasticWave{3}, x::AbstractVector{T}, field_type::FieldType) where T <: AbstractFloat
+# function field(wave::ElasticWave{3}, x::AbstractVector{T}, field_type::FieldType) where T <: AbstractFloat
 
-    # pressure_field_basis, shearΦ_field_basis, shearχ_field_basis
+#     # pressure_field_basis, shearΦ_field_basis, shearχ_field_basis
 
-    ω = 1.1
-    basis_order = 8
+#     ω = 1.1
+#     basis_order = 8
 
-    medium = Elastic(3; ρ = 0.5, cp = 1.1, cs = 0.9)
+#     # medium = Elastic(3; ρ = 0.5, cp = 1.1, cs = 0.9)
 
 
-end
+# end
 
 
 
 function pressure_field_basis(ω::AbstractFloat, x::AbstractVector{T}, medium::Elastic{3}, basis_order::Int, ::DisplacementType) where T
     
-    r, θ, φ  = cartesian_to_radial_coordinates(x)
+    rθφ = cartesian_to_radial_coordinates(x)
+    r, θ, φ = rθφ
+
     kp = ω / medium.cp;
-    kpr = kP * r
+    kpr = kp * r
     cscθ = csc(θ)
 
     Ys = spherical_harmonics(basis_order, θ, φ)
@@ -76,9 +78,17 @@ function pressure_field_basis(ω::AbstractFloat, x::AbstractVector{T}, medium::E
 
     lm_to_n = lm_to_spherical_harmonic_index
     
-    # the components of the vectors below are in a spherical coordinate basis
+    # need to transform the 3D vectors from a spherical to a Cartesian coordinate basis
+    M = spherical_to_cartesian_transform(rθφ)
+
     ps = [
-        [kp * Ys[lm_to_n(l,m)] * djs[l+1], js[l+1] * dYs[lm_to_n(l,m)], im * m * cscθ * js[l+1] * Ys[lm_to_n(l,m)]] |> transpose
+        transpose(
+            M * [
+                kp * Ys[lm_to_n(l,m)] * djs[l+1], 
+                js[l+1] * dYs[lm_to_n(l,m)], 
+                im * m * cscθ * js[l+1] * Ys[lm_to_n(l,m)]
+            ]
+        )        
     for l = 0:basis_order for m = -l:l]
 
     return vcat(ps...)
@@ -105,7 +115,7 @@ function shearΦ_field_basis(ω::AbstractFloat, x::AbstractVector{T}, medium::El
     # the components of the vectors below are in a spherical coordinate basis
     ps = [
         [
-            ks * Ys[lm_to_n(l,m)] * (ksr * js[l+1] + 2djs[l+1] + ksr * ddjs), 
+            ks * Ys[lm_to_n(l,m)] * (ksr * js[l+1] + 2djs[l+1] + ksr * ddjs[l+1]), 
             (js[l+1] + ksr * djs[l+1]) * dYs[lm_to_n(l,m)] / r,
             im*m * cscθ * (js[l+1] + ksr * djs[l+1]) * Ys[lm_to_n(l,m)] / r
         ] |> transpose
@@ -125,10 +135,6 @@ function shearχ_field_basis(ω::AbstractFloat, x::AbstractVector{T}, medium::El
     dYs = spherical_harmonics_dθ(basis_order, θ, φ)
     
     js = [sbesselj(l, ksr) for l = 0:(basis_order+1)]
-    djs = [diffsbesselj(l, ksr) for l = 0:basis_order]
-    ddjs = [
-        2js[l+2] / ksr + (l^2 - l - ksr^2) * js[l+1] / ksr^2
-    for l = 0:basis_order]
 
     lm_to_n = lm_to_spherical_harmonic_index
 
@@ -136,8 +142,8 @@ function shearχ_field_basis(ω::AbstractFloat, x::AbstractVector{T}, medium::El
     ps = [
         [
             zero(Complex{T}), 
-            im*m * ksr * cscθ * js[l+1] * Ys[lm_to_n(l,m)],
-            - ksr * js[l+1] * dYs[lm_to_n(l,m)]
+            im*m * ks * cscθ * js[l+1] * Ys[lm_to_n(l,m)],
+            - ks * js[l+1] * dYs[lm_to_n(l,m)]
         ] |> transpose
     for l = 0:basis_order for m = -l:l]
 
