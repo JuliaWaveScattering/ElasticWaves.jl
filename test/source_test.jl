@@ -1,44 +1,24 @@
 @testset "Source and scattering" begin
 
-    ω = 1.1
-    basis_order = 8
+    ω = 1.2
+    basis_order = 16
+    field_type = DisplacementType()
+    order = basis_order
 
-    medium = Elastic(3; ρ = 0.5, cp = 1.1, cs = 0.9)
+    medium = Elastic(3; ρ = 1.0, cp = 1.0, cs = 1.0 ./ 1.2)
+    ks = ω / medium.cs
 
     source = plane_z_shear_source(medium)
 
     centre = [3.0, -3.0, 5.0]
-
-    source.coefficients(basis_order,centre,ω)
-
-    pressure_field_basis(ω, x, medium, basis_order, DisplacementType())
-    shearΦ_field_basis(ω, x, medium, basis_order, DisplacementType())
-    shearχ_field_basis(ω, x, medium, basis_order, DisplacementType())
-    
-    
-    vs = regular_basis_function(source.medium, ω)
-
-    centre = zeros(3)
-    
-    x = rand(3) .* 0.1 + centre
-    
-    x = centre
-
-    vs(basis_order, x - centre)
+    x = rand(3) .* 0.5 + centre
     
     regular_coefficients = regular_spherical_coefficients(source)
-
-    sum(regular_coefficients(basis_order,centre,ω) .* vs(basis_order, x - centre), dims = 1)[:]
-
-    field(source,x,ω) 
+    coes = regular_coefficients(basis_order,centre,ω)
     
+    basis = regular_basis_function(medium, ω)
+    field_reg = basis(basis_order, x - centre) * regular_coefficients(basis_order,centre,ω)[:] 
 
-
-    source2 = source_expand(source, centre; basis_order = 7)
-
-    xs = [centre + 0.1 .* [cos(τ),sin(τ),rand()] for τ = 0.0:0.3:1.5]
-    @test norm([field(source,x,ω) - source2(x,ω) for x in xs]) < 1e-7*norm([field(source,x,ω) for x in xs])
-
-
+    @test field_reg - field(source,x,ω) |> norm < 2e-14
 end
 

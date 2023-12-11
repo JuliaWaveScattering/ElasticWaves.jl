@@ -15,7 +15,7 @@ function plane_z_shear_source(medium::Elastic{3,T}, pos::AbstractArray{T} = zero
     direction = [zero(T),zero(T),one(T)]
     direction = direction / norm(direction)
 
-    polarisation = [zero(T),one(T),zero(T)]
+    polarisation = [one(T), zero(T),zero(T)]
     polarisation = polarisation / norm(polarisation)
 
     # Convert to SVector for efficiency and consistency
@@ -29,25 +29,26 @@ function plane_z_shear_source(medium::Elastic{3,T}, pos::AbstractArray{T} = zero
 
     function spherical_expansion(order,centre,ω)
         
-        ks2 = (ω / medium.cs)^2
+        ks = ω / medium.cs
+        ks2 = ks^2
 
-        pcoefs = [Complex{T}(0.0) for l = 0:order for m = -l:l] |> transpose
+        pcoefs = [Complex{T}(0.0) for l = 0:order for m = -l:l] 
         # p_potential = HelmholtzPotential{3}(medium.cp, ω / medium.cp, [pcoefs; 0 .* pcoefs])
         
-        Φcoefs = - T(sqrt(pi)) * sum(source_field(centre,ω) .* polarisation) .*
+        Φcoefs = T(sqrt(pi)) * sum(source_field(centre,ω) .* polarisation) .*
         [
-            (m == 1 | m == -1) ?  Complex{T}(m * (-1.0im)^l * sqrt(T(2l + 1) / T((1+l)*l))) : Complex{T}(0)
-        for l = 0:order for m = -l:l] |> transpose
+            (abs(m) == 1) ?  Complex{T}(m * (1.0im)^l * sqrt(T(2l + 1) / T((1+l)*l))) : Complex{T}(0)
+        for l = 0:order for m = -l:l] 
         # Φ_potential = HelmholtzPotential{3}(medium.cs, ω / medium.cs, [Φcoefs; 0 .* Φcoefs])
         
-        χcoefs = - Complex{T}(sqrt(pi) / ks2) * sum(source_field(centre,ω) .* polarisation) .*
+        χcoefs = T(sqrt(pi)) * sum(source_field(centre,ω) .* polarisation) .*
         [
-            (m == 1 | m == -1) ?  Complex{T}((-1.0im)^l * sqrt(T(2l + 1) / T((1+l)*l))) : Complex{T}(0)
-        for l = 0:order for m = -l:l] |> transpose
+            (abs(m) == 1) ?  Complex{T}((1.0im)^l * sqrt(T(2l + 1) / T((1+l)*l))) : Complex{T}(0)
+        for l = 0:order for m = -l:l] 
         # χ_potential = HelmholtzPotential{3}(medium.cs, ω / medium.cs, [χcoefs; 0 .* χcoefs])
 
         # return ElasticWave(ω, medium, [pcoefs,Φcoefs,χcoefs])
-        return [pcoefs,Φcoefs,χcoefs]
+        return [pcoefs Φcoefs χcoefs] ./ (-im * ks) 
     end
 
     return RegularSource{Elastic{3,T},S}(medium, source_field, spherical_expansion)
