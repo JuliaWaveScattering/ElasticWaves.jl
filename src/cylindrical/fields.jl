@@ -96,7 +96,9 @@ end
 
 function shearΦ_field_basis(ω::AbstractFloat, x::AbstractVector{T}, medium::Elastic{3}, basis_order::Int, ::DisplacementType) where T
     
-    r, θ, φ  = cartesian_to_radial_coordinates(x)
+    rθφ  = cartesian_to_radial_coordinates(x)
+    r, θ, φ  = rθφ
+
     ks = ω / medium.cs;
     ksr = ks * r
     cscθ = csc(θ)
@@ -112,9 +114,11 @@ function shearΦ_field_basis(ω::AbstractFloat, x::AbstractVector{T}, medium::El
 
     lm_to_n = lm_to_spherical_harmonic_index
 
-    # the components of the vectors below are in a spherical coordinate basis
+    # need to transform the 3D vectors from a spherical to a Cartesian coordinate basis
+    M = spherical_to_cartesian_transform(rθφ)
+
     ps = [
-        [
+        M * [
             ks * Ys[lm_to_n(l,m)] * (ksr * js[l+1] + 2djs[l+1] + ksr * ddjs[l+1]), 
             (js[l+1] + ksr * djs[l+1]) * dYs[lm_to_n(l,m)] / r,
             im*m * cscθ * (js[l+1] + ksr * djs[l+1]) * Ys[lm_to_n(l,m)] / r
@@ -126,7 +130,9 @@ end
 
 function shearχ_field_basis(ω::AbstractFloat, x::AbstractVector{T}, medium::Elastic{3}, basis_order::Int, ::DisplacementType) where T
     
-    r, θ, φ  = cartesian_to_radial_coordinates(x)
+    rθφ  = cartesian_to_radial_coordinates(x)
+    r, θ, φ  = rθφ
+    
     ks = ω / medium.cs;
     ksr = ks * r
     cscθ = csc(θ)
@@ -139,8 +145,11 @@ function shearχ_field_basis(ω::AbstractFloat, x::AbstractVector{T}, medium::El
     lm_to_n = lm_to_spherical_harmonic_index
 
     # the components of the vectors below are in a spherical coordinate basis. That is the vectors below have no radial component
+    # need to transform the 3D vectors from a spherical to a Cartesian coordinate basis
+    M = spherical_to_cartesian_transform(rθφ)
+
     ps = [
-        [
+        M * [
             zero(Complex{T}), 
             im*m * ks * cscθ * js[l+1] * Ys[lm_to_n(l,m)],
             - ks * js[l+1] * dYs[lm_to_n(l,m)]
