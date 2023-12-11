@@ -1,11 +1,11 @@
 @testset "Source and scattering" begin
 
-    ω = 1.1
+    ω = 1.0
     basis_order = 12
     field_type = DisplacementType()
     order = basis_order
 
-    medium = Elastic(3; ρ = 0.5, cp = 1.1, cs = 0.9)
+    medium = Elastic(3; ρ = 1.0, cp = 1.0, cs = 1.0 ./ 1.2)
 
     source = plane_z_shear_source(medium)
 
@@ -18,9 +18,26 @@
     
     x = rand(3) .* 0.1 + centre
     x = rand(3) .* 0.000001 + centre
+
+    r = 1.1
+    θ = 2.0327680826053767
+    φ = 2.9392179999186663
+
+    ks = ω / medium.cs
+
+    xyz = spherical_to_cartesian_coordinates([r,θ,φ])
+    cartesian_to_spherical_coordinates(xyz)
     
     # basis(basis_order, x - centre)
     regular_coefficients = regular_spherical_coefficients(source)
+
+    coes = regular_coefficients(basis_order,centre,ω)
+
+    Φcoes = deepcopy(coes);
+    Φcoes[:,1] .= 0.0
+    Φcoes[:,3] .= 0.0
+
+    basis(basis_order, x - centre) * regular_coefficients(basis_order,centre,ω)[:] 
 
     field_reg = basis(basis_order, x - centre) * regular_coefficients(basis_order,centre,ω)[:] 
 

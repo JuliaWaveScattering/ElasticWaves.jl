@@ -37,13 +37,13 @@ function plane_z_shear_source(medium::Elastic{3,T}, pos::AbstractArray{T} = zero
         
         Φcoefs = T(sqrt(pi)) * sum(source_field(centre,ω) .* polarisation) .*
         [
-            (m == 1 | m == -1) ?  Complex{T}(m * (1.0im)^l * sqrt(T(2l + 1) / T((1+l)*l))) : Complex{T}(0)
+            (abs(m) == 1) ?  Complex{T}(m * (1.0im)^l * sqrt(T(2l + 1) / T((1+l)*l))) : Complex{T}(0)
         for l = 0:order for m = -l:l] 
         # Φ_potential = HelmholtzPotential{3}(medium.cs, ω / medium.cs, [Φcoefs; 0 .* Φcoefs])
         
         χcoefs = T(sqrt(pi)) * sum(source_field(centre,ω) .* polarisation) .*
         [
-            (m == 1 | m == -1) ?  Complex{T}((1.0im)^l * sqrt(T(2l + 1) / T((1+l)*l))) : Complex{T}(0)
+            (abs(m) == 1) ?  Complex{T}((1.0im)^l * sqrt(T(2l + 1) / T((1+l)*l))) : Complex{T}(0)
         for l = 0:order for m = -l:l] 
         # χ_potential = HelmholtzPotential{3}(medium.cs, ω / medium.cs, [χcoefs; 0 .* χcoefs])
 
