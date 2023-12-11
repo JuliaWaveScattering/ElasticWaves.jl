@@ -2,14 +2,15 @@
    
 
     # Create a basis for the forcing on the inner surface
-    ω=4e6
-    basis_order = 7;
+    ω=1e6
+    basis_order = 3;
     numberofsensors = 2
     basis_length = 2*basis_order + 1
 
     θs = LinRange(0.0, 2pi, basis_length + 1)[1:end-1]
     θ2s = LinRange(0.0, 2pi, 4*basis_length + 1)[1:end-1]
-    θs_inv = LinRange(0.0, 2pi, numberofsensors + 1)[1:end-1]
+    θs_inv = LinRange(0, 2pi, numberofsensors + 1)[1:end-1]
+    
     
     # the pressure and shear fields 
     fp1 = 1*exp.(-20.0 .* (θs .- pi).^2) + θs .* 0im
@@ -130,6 +131,10 @@
 
     bd2_inverse= bd2_forward
 
+    #ϵ = 0.01*max(bd1_inverse)
+
+    #bd1_inverse= bd1_inverse .+ ϵ.*randn(length(bd1_inverse))
+
  
 
     inverse_sim = BearingSimulation(ω, bearing, bd1_inverse, bd2_inverse; boundarybasis1=boundarybasis1)
@@ -142,20 +147,30 @@
    
 
 
-    errors = maximum(abs.(wave.shear.coefficients - inv_wave.shear.coefficients)) / mean(abs.(wave.shear.coefficients))
+    errors = maximum(abs.(wave.potentials[2].coefficients - inv_wave.potentials[2].coefficients)) / mean(abs.(wave.potentials[2].coefficients))
     
-    errorp=maximum(abs.(wave.pressure.coefficients - inv_wave.pressure.coefficients)) / mean(abs.(wave.pressure.coefficients))
+    errorp = maximum(abs.(wave.potentials[1].coefficients - inv_wave.potentials[1].coefficients)) / mean(abs.(wave.potentials[1].coefficients))
 
-    errors2 = maximum(abs.(wave.shear.coefficients - inv_wave2.shear.coefficients)) / mean(abs.(wave.shear.coefficients))
+    errors2 = maximum(abs.(wave.potentials[2].coefficients - inv_wave2.potentials[2].coefficients)) / mean(abs.(wave.potentials[2].coefficients))
+    errorp2 = maximum(abs.(wave.potentials[1].coefficients - inv_wave2.potentials[1].coefficients)) / mean(abs.(wave.potentials[1].coefficients))
+
     
-    errorp2=maximum(abs.(wave.pressure.coefficients - inv_wave2.pressure.coefficients)) / mean(abs.(wave.pressure.coefficients))
-
-
     
     @test errors < 0.37
     @test errorp < 0.37
     @test errors2 < 0.37
     @test errorp2 < 0.37
+
+
+ 
+
+
+    # the low frequencies are a bit unstable I think due to the hankelh1 singularity
+   
+
+    
+
+
 
     #calculating traction in the inner boundary
 

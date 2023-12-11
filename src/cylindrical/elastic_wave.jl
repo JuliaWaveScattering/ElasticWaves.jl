@@ -70,7 +70,7 @@ function ElasticWave(sim::BearingSimulation{ModalMethod})
     φ = HelmholtzPotential{2}(bearing.medium.cp, kP, pressure_coefficients)
     ψ = HelmholtzPotential{2}(bearing.medium.cs, kS, shear_coefficients)
 
-    return ElasticWave(ω, bearing.medium, φ, ψ; mode_errors = mode_errors)
+    return ElasticWave(ω, bearing.medium, [φ, ψ]; mode_errors = mode_errors)
 end
 
 
@@ -222,8 +222,8 @@ function ElasticWave(sim::BearingSimulation{PriorMethod})
     φ = HelmholtzPotential{2}(bearing.medium.cp, kP, pressure_coefficients)
     ψ = Main.ElasticWaves.HelmholtzPotential{2}(bearing.medium.cs, kS, shear_coefficients)
 
-    return Main.ElasticWaves.ElasticWave(ω, bearing.medium, φ, ψ)
+    return ElasticWave(ω, bearing.medium, [φ, ψ])
 
 
-    #return ElasticWave(ω, bearing.medium, φ, ψ; mode_errors = mode_errors)
+    #return ElasticWave(ω, bearing.medium, [φ, ψ]; mode_errors = mode_errors)
 end
