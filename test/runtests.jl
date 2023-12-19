@@ -8,15 +8,18 @@ using Test, Statistics, LinearAlgebra, MultipleScattering
 
 include("signal_processing_test.jl")
 
-# an independent check for the formulas of displacement and traction
-include("traction_displacement_test.jl")
+## Tests for waves in free space
 
-# include("source_test.jl")
+include("source_test.jl")
 
-# tests that the boundary conditions are formed correctly, and uniqueness
-include("boundary_conditions_test.jl")
+## Tests for Cylindrical waves
+    # an independent check for the formulas of displacement and traction
+    include("traction_displacement_test.jl")
 
-# tests that the boundary conditions are formed correctly, and uniqueness
-include("inverse_problems_test.jl")
+    # tests that the boundary conditions are formed correctly, and uniqueness
+    include("boundary_conditions_test.jl")
+
+    # tests that the boundary conditions are formed correctly, and uniqueness
+    include("inverse_problems_test.jl")
 
 # include("boundary_basis.jl")
