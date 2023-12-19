@@ -1,6 +1,6 @@
 name = "ElasticWaves"
 uuid = "2059c4e4-f3cf-49e7-a5b5-bbbf8606edbe"
-authors = ["Art Gower <arturgower@gmail.com>", "Jess Kent <rkent2@sheffield.ac.uk>"]
+authors = ["Art Gower <arturgower@gmail.com>", "Jess Kent <rkent2@sheffield.ac.uk>", "Matheus Loures <mdecaravalholoures1@sheffield.ac.uk>"]
 version = "0.1.0"
 
 [deps]
@@ -11,6 +11,7 @@ SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [compat]
+BlockDiagonals = "^0.1.42"
 MultipleScattering = "^0.1.17"
 SpecialFunctions = "^0.7, ^0.8, ^0.9, 0.10, 1, 2"
 StaticArrays = "^0.8, ^0.9, ^0.10, ^0.11, 0.12, ^1"
