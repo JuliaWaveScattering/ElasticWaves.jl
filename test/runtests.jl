@@ -10,7 +10,7 @@ include("signal_processing_test.jl")
 
 ## Tests for waves in free space
 
-include("source_test.jl")
+include("source_scattering_test.jl")
 
 ## Tests for Cylindrical waves
     # an independent check for the formulas of displacement and traction

@@ -29,11 +29,15 @@ export estimate_basisorder # soon to be removed
 export boundarycondition_mode, boundarycondition_system # soon to be removed
 export ModalMethod, PriorMethod, GapMethod
 
+# scattering
+export t_matrix
 
 using MultipleScattering
 using SpecialFunctions
 using LinearAlgebra
 using StaticArrays: SVector
+using BlockDiagonals
+
 
 include("elasticity.jl")
 include("source.jl")
@@ -41,6 +45,8 @@ include("source.jl")
 include("bearing.jl")
 include("fields.jl")
 include("signal_processing.jl")
+
+include("scattering/sphere.jl")
 
 include("cylindrical/utils.jl")
 include("cylindrical/elastic_wave.jl")

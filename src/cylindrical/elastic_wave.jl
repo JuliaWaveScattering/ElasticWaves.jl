@@ -1,4 +1,3 @@
-using BlockDiagonals
 function boundarycondition_mode(ω::AbstractFloat, bc::BoundaryCondition, bearing::RollerBearing, basis_order::Int)
     r = (bc.inner == true) ? bearing.inner_radius : bearing.outer_radius
     return hcat(
