@@ -1,36 +1,12 @@
 import MultipleScattering: field
 import MultipleScattering: Shape
 
-"""
-    field(potential::HelmholtzPotential, x::AbstractVector)
-
-Returns the value of the potentical at the point `x`
-"""
-function field(potential::HelmholtzPotential{Dim}, x::AbstractVector{T}) where {Dim, T<:AbstractFloat}
-
-    k = potential.wavenumber
-    r, θ = cartesian_to_radial_coordinates(x)
-
-    coefs = permutedims(potential.coefficients, (2,1))
-
-    ms = -potential.basis_order:potential.basis_order
-    exps = exp.(im * θ .* ms)
-
-    j = sum(coefs[:,1] .* besselj.(ms,k*r) .* exps)
-    h = sum(coefs[:,2] .* hankelh1.(ms,k*r) .* exps)
-
-   return j + h
+function displacement(wave::ElasticWave, x::Vector{T}) where T <: AbstractFloat
+    field(wave, x, DisplacementType())
 end
 
-function field(potential::HelmholtzPotential, bearing::RollerBearing; kws...)
-
-    inner_circle = Circle(bearing.inner_radius)
-    outer_circle = Circle(bearing.outer_radius)
-
-    return field(potential, outer_circle;
-        exclude_region = inner_circle,
-        kws...
-    )
+function traction(wave::ElasticWave, x::Vector{T}) where T <: AbstractFloat
+    field(wave, x, TractionType())
 end
 
 function field(potential::HelmholtzPotential, sh::Shape; kws...)

@@ -91,24 +91,37 @@ struct ElasticWave{Dim,T}
 end
 
 
-import MultipleScattering: name, basisorder_to_basislength, basislength_to_basisorder, regular_basis_function, regular_radial_basis
+import MultipleScattering: name, basisorder_to_basislength, basislength_to_basisorder, regular_basis_function, regular_radial_basis, outgoing_basis_function, outgoing_radial_basis
 
 name(a::Elastic{Dim}) where Dim = "$(Dim)D Elastic"
 
-basisorder_to_basislength(::Type{P}, order::Int) where {T, P<:Elastic{T,3}} = 3 * (order+1)^2
-basisorder_to_basislength(::Type{P}, order::Int) where {T, P<:Elastic{T,2}} = 2 * (2*order + 1)
+basisorder_to_basislength(::Type{P}, order::Int) where {T, P<:Elastic{3,T}} = 3 * (order+1)^2
+basisorder_to_basislength(::Type{P}, order::Int) where {T, P<:Elastic{2,T}} = 2 * (2*order + 1)
 
-basislength_to_basisorder(::Type{P},len::Int) where {T, P<:Elastic{T,3}} = Int(sqrt(len / 3) - 1)
-basislength_to_basisorder(::Type{P},len::Int) where {T, P<:Elastic{T,2}} = Int(T(len / 2 - 1) / T(2.0))
+basislength_to_basisorder(::Type{P},len::Int) where {T, P<:Elastic{3,T}} = Int(sqrt(len / 3) - 1)
+basislength_to_basisorder(::Type{P},len::Int) where {T, P<:Elastic{2,T}} = Int(T(len / 2 - 1) / T(2.0))
 
 function regular_basis_function(medium::Elastic{3,T}, ω::T, field_type::FieldType = DisplacementType()) where T
 
     return function (order::Integer, x::AbstractVector{T})
-        pbasis = pressure_field_basis(ω, x, medium, order, field_type) |> transpose
-        Φbasis = shearΦ_field_basis(ω, x, medium, order, field_type) |> transpose
-        χbasis = shearχ_field_basis(ω, x, medium, order, field_type) |> transpose
+        pbasis = pressure_regular_basis(ω, x, medium, order, field_type) 
+        Φbasis = shearΦ_regular_basis(ω, x, medium, order, field_type) 
+        χbasis = shearχ_regular_basis(ω, x, medium, order, field_type) 
 
-        return [pbasis Φbasis χbasis]
+        # the order in each row is first iteration over p, Φ, χ, then increase basis order
+        return reshape([pbasis Φbasis χbasis] |> transpose,3,:)
+        
+    end
+end
+
+function outgoing_basis_function(medium::Elastic{3,T}, ω::T, field_type::FieldType = DisplacementType()) where T
+
+    return function (order::Integer, x::AbstractVector{T})
+        pbasis = pressure_outgoing_basis(ω, x, medium, order, field_type)
+        Φbasis = shearΦ_outgoing_basis(ω, x, medium, order, field_type)
+        χbasis = shearχ_outgoing_basis(ω, x, medium, order, field_type)
+
+        return reshape([pbasis Φbasis χbasis] |> transpose,3,:)
     end
 end
 

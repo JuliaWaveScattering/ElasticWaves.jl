@@ -48,7 +48,7 @@ function plane_z_shear_source(medium::Elastic{3,T}, pos::AbstractArray{T} = zero
         # χ_potential = HelmholtzPotential{3}(medium.cs, ω / medium.cs, [χcoefs; 0 .* χcoefs])
 
         # return ElasticWave(ω, medium, [pcoefs,Φcoefs,χcoefs])
-        return [pcoefs Φcoefs χcoefs] ./ (-im * ks) 
+        return [pcoefs Φcoefs χcoefs] ./ (-im * ks) |> transpose
     end
 
     return RegularSource{Elastic{3,T},S}(medium, source_field, spherical_expansion)

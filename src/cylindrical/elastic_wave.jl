@@ -6,7 +6,6 @@ function boundarycondition_mode(ω::AbstractFloat, bc::BoundaryCondition, bearin
     )
 end
 
-
 function boundarycondition_system(ω::AbstractFloat, bearing::RollerBearing, bc1::BoundaryCondition, bc2::BoundaryCondition, basis_order::Int)
 
     if bc1 == bc2

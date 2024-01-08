@@ -1,3 +1,35 @@
+"""
+    field(potential::HelmholtzPotential, x::AbstractVector)
+
+Returns the value of the potentical at the point `x`
+"""
+function field(potential::HelmholtzPotential{2}, x::AbstractVector{T}) where T<:AbstractFloat
+
+    k = potential.wavenumber
+    r, θ = cartesian_to_radial_coordinates(x)
+
+    coefs = permutedims(potential.coefficients, (2,1))
+
+    ms = -potential.basis_order:potential.basis_order
+    exps = exp.(im * θ .* ms)
+
+    j = sum(coefs[:,1] .* besselj.(ms,k*r) .* exps)
+    h = sum(coefs[:,2] .* hankelh1.(ms,k*r) .* exps)
+
+   return j + h
+end
+
+function field(potential::HelmholtzPotential, bearing::RollerBearing; kws...)
+
+    inner_circle = Circle(bearing.inner_radius)
+    outer_circle = Circle(bearing.outer_radius)
+
+    return field(potential, outer_circle;
+        exclude_region = inner_circle,
+        kws...
+    )
+end
+
 function field_modes(wave::ElasticWave{2}, r::T, FT::FieldType) where T <: AbstractFloat
 
     basis_order = wave.potentials[1].basis_order
@@ -11,15 +43,6 @@ function field_modes(wave::ElasticWave{2}, r::T, FT::FieldType) where T <: Abstr
     for m = -basis_order:basis_order]...)
 
     return transpose(pmodes + smodes) |> collect
-end
-
-
-function displacement(wave::ElasticWave, x::Vector{T}) where T <: AbstractFloat
-    field(wave, x, DisplacementType())
-end
-
-function traction(wave::ElasticWave, x::Vector{T}) where T <: AbstractFloat
-    field(wave, x, TractionType())
 end
 
 function field(wave::ElasticWave{2}, bearing::RollerBearing, fieldtype::FieldType; kws...)
@@ -46,118 +69,6 @@ function field(wave::ElasticWave{2}, sh::Shape, fieldtype::FieldType; kws...)
 
     return  FrequencySimulationResult(reshape(field_mat, :, 1), x_vec, [wave.ω])
 end
-
-# function field(wave::ElasticWave{3}, x::AbstractVector{T}, field_type::FieldType) where T <: AbstractFloat
-
-#     # pressure_field_basis, shearΦ_field_basis, shearχ_field_basis
-
-#     ω = 1.1
-#     basis_order = 8
-
-#     # medium = Elastic(3; ρ = 0.5, cp = 1.1, cs = 0.9)
-
-
-# end
-
-
-
-function pressure_field_basis(ω::AbstractFloat, x::AbstractVector{T}, medium::Elastic{3}, basis_order::Int, ::DisplacementType) where T
-    
-    rθφ = cartesian_to_radial_coordinates(x)
-    r, θ, φ = rθφ
-
-    kp = ω / medium.cp;
-    kpr = kp * r
-    cscθ = csc(θ)
-
-    Ys = spherical_harmonics(basis_order, θ, φ)
-    dYs = spherical_harmonics_dθ(basis_order, θ, φ)
-    
-    js = [sbesselj(l, kpr) for l = 0:basis_order]
-    djs = [diffsbesselj(l, kpr) for l = 0:basis_order]
-
-    lm_to_n = lm_to_spherical_harmonic_index
-    
-    # need to transform the 3D vectors from a spherical to a Cartesian coordinate basis
-    M = spherical_to_cartesian_transform(rθφ)
-
-    ps = [
-        transpose(
-            M * [
-                kp * Ys[lm_to_n(l,m)] * djs[l+1], 
-                js[l+1] * dYs[lm_to_n(l,m)], 
-                im * m * cscθ * js[l+1] * Ys[lm_to_n(l,m)]
-            ]
-        )        
-    for l = 0:basis_order for m = -l:l]
-
-    return vcat(ps...)
-end    
-
-function shearΦ_field_basis(ω::AbstractFloat, x::AbstractVector{T}, medium::Elastic{3}, basis_order::Int, ::DisplacementType) where T
-    
-    rθφ  = cartesian_to_radial_coordinates(x)
-    r, θ, φ  = rθφ
-
-    ks = ω / medium.cs;
-    ksr = ks * r
-    cscθ = csc(θ)
-
-    Ys = spherical_harmonics(basis_order, θ, φ)
-    dYs = spherical_harmonics_dθ(basis_order, θ, φ)
-    
-    js = [sbesselj(l, ksr) for l = 0:(basis_order+1)]
-    djs = [diffsbesselj(l, ksr) for l = 0:basis_order]
-    ddjs = [
-        2js[l+2] / ksr + (l^2 - l - ksr^2) * js[l+1] / ksr^2
-    for l = 0:basis_order]
-
-    lm_to_n = lm_to_spherical_harmonic_index
-
-    # need to transform the 3D vectors from a spherical to a Cartesian coordinate basis
-    M = spherical_to_cartesian_transform(rθφ)
-
-    ps = [
-        M * [
-            ks * Ys[lm_to_n(l,m)] * (ksr * js[l+1] + 2djs[l+1] + ksr * ddjs[l+1]), 
-            (js[l+1] + ksr * djs[l+1]) * dYs[lm_to_n(l,m)] / r,
-            im*m * cscθ * (js[l+1] + ksr * djs[l+1]) * Ys[lm_to_n(l,m)] / r
-        ] |> transpose
-    for l = 0:basis_order for m = -l:l]
-
-    return vcat(ps...)
-end    
-
-function shearχ_field_basis(ω::AbstractFloat, x::AbstractVector{T}, medium::Elastic{3}, basis_order::Int, ::DisplacementType) where T
-    
-    rθφ  = cartesian_to_radial_coordinates(x)
-    r, θ, φ  = rθφ
-    
-    ks = ω / medium.cs;
-    ksr = ks * r
-    cscθ = csc(θ)
-
-    Ys = spherical_harmonics(basis_order, θ, φ)
-    dYs = spherical_harmonics_dθ(basis_order, θ, φ)
-    
-    js = [sbesselj(l, ksr) for l = 0:(basis_order+1)]
-
-    lm_to_n = lm_to_spherical_harmonic_index
-
-    # the components of the vectors below are in a spherical coordinate basis. That is the vectors below have no radial component
-    # need to transform the 3D vectors from a spherical to a Cartesian coordinate basis
-    M = spherical_to_cartesian_transform(rθφ)
-
-    ps = [
-        M * [
-            zero(Complex{T}), 
-            im*m * ks * cscθ * js[l+1] * Ys[lm_to_n(l,m)],
-            - ks * js[l+1] * dYs[lm_to_n(l,m)]
-        ] |> transpose
-    for l = 0:basis_order for m = -l:l]
-
-    return vcat(ps...)
-end    
 
 
 function field(wave::ElasticWave{2}, x::AbstractVector{T}, field_type::FieldType) where T <: AbstractFloat
