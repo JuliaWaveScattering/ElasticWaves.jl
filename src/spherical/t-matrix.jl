@@ -116,7 +116,7 @@ The T-matrix for a 3D spherical elastic particle in a 3D elastic medium. This t-
 """
 function t_matrix(p::Particle{3,Elastic{3,T},Sphere{T,3}}, outer_medium::Elastic{3,T}, ω::T, basis_order::Integer) where T <: AbstractFloat
 
-    @warn "There is currently no unit test to show that this T-matrix satisfies the boundary conditions."
+    # @warn "There is a unit test to show that this T-matrix satisfies displacement boundary conditions but have not yet tested the traction boundary."
     
     MGφΦs, MGχs = modal_system(p, outer_medium, ω, basis_order) 
 

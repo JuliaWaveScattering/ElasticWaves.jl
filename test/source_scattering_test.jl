@@ -106,6 +106,13 @@ end
     in_matrix = internal_matrix(particle, medium, ω, 1)
     @test inner_mat(1) - in_matrix[4:6,4:6] |> norm ≈ 0
 
+    # Test the internal_field
+    gs = rand(3)
+    bs = inner_mat(1) * gs 
+    fs = Tmat(1) * gs 
+    bs2 = inner_mat(1) * (Tmat(1) \ fs)
+    @test bs - bs2 |> norm < 1e-15
+
     order = basis_order;
 
     pcoefs = [rand() + rand()*im for l = 0:order for m = -l:l] 
@@ -128,25 +135,36 @@ end
 
     # choose x on the boundary of the particle
     r = outer_radius(particle) + 10eps(T)
-    xs = [
-        centre + spherical_to_cartesian_coordinates([r,pi * rand(),2pi * rand()]) 
-    for i = 1:400] 
+    xout = [
+        centre + spherical_to_cartesian_coordinates([r, i * 2pi / 100, i * 7pi / 100]) 
+    for i = 1:100] 
+        
+    r = outer_radius(particle) - 10eps(T)
+    xin = [
+        centre + spherical_to_cartesian_coordinates([r, i * 2pi / 100, i * 7pi / 100]) 
+    for i = 1:100] 
     
     # xs = [centre + spherical_to_cartesian_coordinates([r,pi / 2,pi /2])] 
 
     # Need to include the source this time. 
     sim = FrequencySimulation([particle],sourceΦ)
-    result = run(sim,xs,ω; basis_order = basis_order)
-    fs = field(result)
+    
+    result = run(sim,xout,ω; basis_order = basis_order)
+    fout = field(result)
 
-    # calculate the field inside the particlce 
+    result = run(sim,xin,ω; basis_order = basis_order)
+    fin = field(result)
+
+    @test norm.(fin - fout) |> maximum < 1e-13
+
+    # Alternative to calculate the field inside the particlce 
     in_matrix = internal_matrix(particle, medium, ω, basis_order)
 
     internal_coes = in_matrix * source_coes[:]
 
     basis = regular_basis_function(particle.medium, ω, DisplacementType())
-    internal_fields = [basis(basis_order, x - centre) * internal_coes[:] for x in xs]
+    internal_fields = [basis(basis_order, x - centre) * internal_coes[:] for x in xin]
 
-    @test norm.(internal_fields - fs) |> maximum < 1e-13
+    @test norm.(internal_fields - fout) |> maximum < 1e-13
 end
 

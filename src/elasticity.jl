@@ -91,7 +91,7 @@ struct ElasticWave{Dim,T}
 end
 
 
-import MultipleScattering: name, basisorder_to_basislength, basislength_to_basisorder, regular_basis_function, regular_radial_basis, outgoing_basis_function, outgoing_radial_basis
+import MultipleScattering: name, basisorder_to_basislength, basislength_to_basisorder, regular_basis_function, regular_radial_basis, outgoing_basis_function, outgoing_radial_basis, internal_field
 
 name(a::Elastic{Dim}) where Dim = "$(Dim)D Elastic"
 
@@ -122,6 +122,34 @@ function outgoing_basis_function(medium::Elastic{3,T}, ω::T, field_type::FieldT
         χbasis = shearχ_outgoing_basis(ω, x, medium, order, field_type)
 
         return reshape([pbasis Φbasis χbasis] |> transpose,3,:)
+    end
+end
+
+"""
+    internal_field(x::AbstractVector, p::Particle{Dim,Elastic{Dim,T}},  source::RegularSource{Elastic{Dim,T}}, ω::T, scattering_coefficients::AbstractVector{Complex{T}})
+
+The internal field for an isotropic elastic particle in an isotropic elastic medium.
+"""
+function internal_field(x::AbstractVector{T}, p::Particle{Dim,Elastic{Dim,T}}, source::RegularSource{Elastic{Dim,T}}, ω::T, scattering_coefficients::AbstractVector{Complex{T}}) where {Dim,T}
+
+    if !(x ∈ p)
+        @error "Point $x is not inside the particle with shape $(p.shape)"
+    end
+    if iszero(p.medium.cp) || isinf(abs(p.medium.cp))
+        return zero(Complex{T})
+    else
+        fs = scattering_coefficients
+
+        order = basislength_to_basisorder(Elastic{Dim,T},length(fs))
+        r = outer_radius(p)
+
+        t_mat = t_matrix(p, source.medium, ω, order)
+        in_mat = internal_matrix(p, source.medium, ω, order)
+
+        internal_coefs = in_mat * (t_mat \ fs)
+        inner_basis = regular_basis_function(p, ω)
+
+        return inner_basis(order, x-origin(p)) * internal_coefs
     end
 end
 
