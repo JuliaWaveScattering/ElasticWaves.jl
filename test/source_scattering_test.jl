@@ -36,14 +36,14 @@ end
     kp = ω / medium.cp
 
     centre = [3.0, -3.0, 5.0]
-    centre = [0.0, 0.0, 0.0]
+    # centre = [0.0, 0.0, 0.0]
 
     source = plane_z_shear_source(medium)
 
     regular_coefficients = regular_spherical_coefficients(source)
     source_coes = regular_coefficients(basis_order,centre,ω)
 
-    particle_medium = Elastic(3; ρ = 0.6, cp = 0.6, cs = 0.7 ./ 1.2)
+    particle_medium = Elastic(3; ρ = 0.6, cp = 2.6, cs = 2.7 ./ 1.2)
     particle_shape = Sphere(centre,1.0)
     particle = Particle(particle_medium, particle_shape)
 
@@ -108,10 +108,15 @@ end
 
     # Test the internal_field
     gs = rand(3)
+    bs = inner_mat(0) * gs 
+    fs = Tmat(0) * gs 
+    bs2 = inner_mat(0) * (Tmat(0) \ fs)
+    @test bs - bs2 |> norm < 1e-15
+    
     bs = inner_mat(1) * gs 
     fs = Tmat(1) * gs 
     bs2 = inner_mat(1) * (Tmat(1) \ fs)
-    @test bs - bs2 |> norm < 1e-15
+    @test bs - bs2 |> norm < 5e-13
 
     order = basis_order;
 
@@ -166,5 +171,63 @@ end
     internal_fields = [basis(basis_order, x - centre) * internal_coes[:] for x in xin]
 
     @test norm.(internal_fields - fout) |> maximum < 1e-13
+
 end
 
+# check the traction boundary condition
+@testset "Scattering traction" begin
+
+    ω = 1.2
+    basis_order = 9
+    field_type = TractionType()
+
+    order = basis_order
+    T = Float64
+
+    medium = Elastic(3; ρ = 1.0, cp = 1.0, cs = 1.0 ./ 1.2)
+    ks = ω / medium.cs
+    kp = ω / medium.cp
+
+    centre = [3.0, -3.0, 5.0]
+
+    particle_medium = Elastic(3; ρ = 0.6, cp = 2.6, cs = 2.7 ./ 1.2)
+    particle_shape = Sphere(centre,1.0)
+    particle = Particle(particle_medium, particle_shape)
+
+    order = basis_order;
+
+    pcoefs = [rand() + rand()*im for l = 0:order for m = -l:l] 
+    Φcoefs = [rand() + rand()*im for l = 0:order for m = -l:l] 
+    χcoefs = [rand() + rand()*im for l = 0:order for m = -l:l] 
+
+    function sourceΦ_coes(order,centre,ω)
+        return [pcoefs Φcoefs χcoefs] |> transpose
+    end
+    
+    source_field = function (x1,ω) 
+        source_basis = regular_basis_function(medium, ω, field_type)
+        source_basis(basis_order, x1 - centre) * sourceΦ_coes(basis_order,centre,ω)[:] 
+    end
+    
+    sourceΦ = RegularSource{Elastic{3,T},WithoutSymmetry{3}}(medium, source_field, sourceΦ_coes)
+
+    regular_coefficients = regular_spherical_coefficients(sourceΦ)
+    source_coes = regular_coefficients(basis_order,centre,ω)
+
+    in_matrix = internal_matrix(particle, medium, ω, basis_order)
+    internal_coes = in_matrix * source_coes[:]
+
+     # choose x on the boundary of the particle
+     r = outer_radius(particle) + 10eps(T)
+     xout = [
+         centre + spherical_to_cartesian_coordinates([r, i * 2pi / 100, i * 7pi / 100]) 
+     for i = 1:100] 
+         
+     r = outer_radius(particle) - 10eps(T)
+     xin = [
+         centre + spherical_to_cartesian_coordinates([r, i * 2pi / 100, i * 7pi / 100]) 
+     for i = 1:100] 
+
+    basis = regular_basis_function(particle.medium, ω, field_type)
+    # internal_fields = [basis(basis_order, x - centre) * internal_coes[:] for x in xin]
+end

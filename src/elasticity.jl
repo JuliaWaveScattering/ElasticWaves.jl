@@ -130,7 +130,7 @@ end
 
 The internal field for an isotropic elastic particle in an isotropic elastic medium.
 """
-function internal_field(x::AbstractVector{T}, p::Particle{Dim,Elastic{Dim,T}}, source::RegularSource{Elastic{Dim,T}}, ω::T, scattering_coefficients::AbstractVector{Complex{T}}) where {Dim,T}
+function internal_field(x::AbstractVector{T}, p::Particle{Dim,Elastic{Dim,T}}, source::RegularSource{Elastic{Dim,T}}, ω::T, scattering_coefficients::AbstractVector{Complex{T}}, field_type::FieldType = DisplacementType()) where {Dim,T}
 
     if !(x ∈ p)
         @error "Point $x is not inside the particle with shape $(p.shape)"
@@ -147,7 +147,7 @@ function internal_field(x::AbstractVector{T}, p::Particle{Dim,Elastic{Dim,T}}, s
         in_mat = internal_matrix(p, source.medium, ω, order)
 
         internal_coefs = in_mat * (t_mat \ fs)
-        inner_basis = regular_basis_function(p, ω)
+        inner_basis = regular_basis_function(p.medium, ω, field_type)
 
         return inner_basis(order, x-origin(p)) * internal_coefs
     end
