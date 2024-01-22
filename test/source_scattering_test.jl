@@ -236,6 +236,6 @@ end
     
     external_fields = scat_fields + source_fields
 
-    norm.(internal_fields - external_fields) |> maximum
+    @test norm.(internal_fields - external_fields) |> maximum < 1e-13
 
 end
