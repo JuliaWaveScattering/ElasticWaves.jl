@@ -102,17 +102,15 @@ end
 
     Tmatrix = t_matrix(particle, medium, ω, 1)
     @test Tmat(1) - Tmatrix[4:6,4:6] |> norm ≈ 0
+    
+    # The order l = 0 should be different
+    @test Tmat(0) - Tmatrix[1:3,1:3] |> norm > 0.1
 
     in_matrix = internal_matrix(particle, medium, ω, 1)
     @test inner_mat(1) - in_matrix[4:6,4:6] |> norm ≈ 0
 
     # Test the internal_field
     gs = rand(3)
-    bs = inner_mat(0) * gs 
-    fs = Tmat(0) * gs 
-    bs2 = inner_mat(0) * (Tmat(0) \ fs)
-    @test bs - bs2 |> norm < 1e-15
-    
     bs = inner_mat(1) * gs 
     fs = Tmat(1) * gs 
     bs2 = inner_mat(1) * (Tmat(1) \ fs)
@@ -168,7 +166,7 @@ end
     internal_coes = in_matrix * source_coes[:]
 
     basis = regular_basis_function(particle.medium, ω, DisplacementType())
-    internal_fields = [basis(basis_order, x - centre) * internal_coes[:] for x in xin]
+    internal_fields = [basis(basis_order, x - centre) * internal_coes[:] for x in xout]
 
     @test norm.(internal_fields - fout) |> maximum < 1e-13
 
@@ -177,18 +175,17 @@ end
 # check the traction boundary condition
 @testset "Scattering traction" begin
 
-    ω = 1.2
-    basis_order = 9
+    ω = 0.9
+    basis_order = 10
     field_type = TractionType()
 
     order = basis_order
     T = Float64
 
     medium = Elastic(3; ρ = 1.0, cp = 1.0, cs = 1.0 ./ 1.2)
-    ks = ω / medium.cs
-    kp = ω / medium.cp
 
     centre = [3.0, -3.0, 5.0]
+    centre = [0.0, 0.0, 0.0]
 
     particle_medium = Elastic(3; ρ = 0.6, cp = 2.6, cs = 2.7 ./ 1.2)
     particle_shape = Sphere(centre,1.0)
@@ -199,6 +196,10 @@ end
     pcoefs = [rand() + rand()*im for l = 0:order for m = -l:l] 
     Φcoefs = [rand() + rand()*im for l = 0:order for m = -l:l] 
     χcoefs = [rand() + rand()*im for l = 0:order for m = -l:l] 
+
+    # Φcoefs[1] = 0.0
+    # χcoefs[1] = 0.0
+    # pcoefs[1] = 0.0
 
     function sourceΦ_coes(order,centre,ω)
         return [pcoefs Φcoefs χcoefs] |> transpose
@@ -216,18 +217,25 @@ end
 
     in_matrix = internal_matrix(particle, medium, ω, basis_order)
     internal_coes = in_matrix * source_coes[:]
+    
+    scat_matrix = t_matrix(particle, medium, ω, basis_order)
+    external_coes = scat_matrix * source_coes[:]
 
-     # choose x on the boundary of the particle
-     r = outer_radius(particle) + 10eps(T)
-     xout = [
-         centre + spherical_to_cartesian_coordinates([r, i * 2pi / 100, i * 7pi / 100]) 
-     for i = 1:100] 
+    # choose x on the boundary of the particle
+    r = outer_radius(particle)
+    xs = [
+        centre + spherical_to_cartesian_coordinates([r, i * 2pi / 100, i * 7pi / 100]) 
+    for i = 1:100] 
          
-     r = outer_radius(particle) - 10eps(T)
-     xin = [
-         centre + spherical_to_cartesian_coordinates([r, i * 2pi / 100, i * 7pi / 100]) 
-     for i = 1:100] 
-
     basis = regular_basis_function(particle.medium, ω, field_type)
-    # internal_fields = [basis(basis_order, x - centre) * internal_coes[:] for x in xin]
+    internal_fields = [basis(basis_order, x - centre) * internal_coes[:] for x in xs]
+    
+    basis = outgoing_basis_function(medium, ω, field_type)
+    scat_fields = [basis(basis_order, x - centre) * external_coes[:] for x in xs]
+    source_fields = [source_field(x,ω) for x in xs]
+    
+    external_fields = scat_fields + source_fields
+
+    norm.(internal_fields - external_fields) |> maximum
+
 end
