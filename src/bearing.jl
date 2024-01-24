@@ -150,12 +150,11 @@ function BearingSimulation(ω::T, bearing::RollerBearing{T}, boundarydata1::Boun
             if isempty(boundarydata2.fourier_modes)
                 println("As the keyword basis_order was not specified (and the fourier_modes of the boundary conditions were not provided), the basis_order will be estimated from the bearing geometry and wavenumbers.")
 
-                basis_order = estimate_basisorder(ω, bearing; tol = 1e3 * tol)
                 # lower the basis_order if there are not enough data points to estimate it
                 m1 = Int(round(length(boundarydata1.θs)/2.0 - 1/2.0))
                 m2 = Int(round(length(boundarydata2.θs)/2.0 - 1/2.0))
 
-                basis_order = min(m1, m2, basis_order)
+                basis_order = min(m1, m2)
 
             else basis_order = basislength_to_basisorder(Acoustic{T,2},size(boundarydata2.fourier_modes,1))
             end
