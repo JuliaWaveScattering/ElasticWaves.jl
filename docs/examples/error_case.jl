@@ -1,4 +1,5 @@
 using ElasticWaves
+using LinearAlgebra
 
 ωs = [10.0,4e4,7e4]
 
@@ -10,7 +11,7 @@ bearing = RollerBearing(medium=steel, inner_radius=1.0, outer_radius = 2.0)
 kpas = bearing.outer_radius .* ωs ./ steel.cp
 ksas = bearing.inner_radius .* ωs ./ steel.cs
 
-basis_order = 10
+basis_order = 1
 
 basis_length= 2*basis_order+1
 
@@ -44,3 +45,27 @@ xs = [bearing.outer_radius .* [cos(θ),sin(θ)] for θ in θs];
     for w in waves];
 
 errors = [maximum(abs.(forcing_inner - f)) for f in forcing_inners];
+
+
+
+A = boundarycondition_system(ωs[2], bearing, sims[2].boundarydata1.boundarytype, sims[2].boundarydata2.boundarytype, basis_order)
+        b = [
+             sims[2].boundarydata1.fourier_modes[basis_order+1,:];
+             sims[2].boundarydata2.fourier_modes[basis_order+1,:]
+        ]
+
+x = A \ b
+
+
+
+δ=0.0
+
+xT=[A; sqrt(δ) * diagm(ones(Float64,size(A)[2]))] \ [b; zeros(size(A)[2])]
+
+norm(x-xT)/norm(x)
+
+ κ=cond(A)
+
+ norm(A*x-b)/norm(b)
+
+κ*norm(A*xT-b)/norm(b)
