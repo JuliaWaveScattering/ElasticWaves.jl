@@ -25,12 +25,12 @@ function modal_system(p::Particle{3,Elastic{3,T},Sphere{T,3}}, outer_medium::Ela
     ks2 = ω / outer_medium.cs
     as2 = a*ks2
 
-    # the Lame parameters: cs = sqrt(μ/ρ), cp = sqrt((μ+2λ)/ρ)
+    # the Lame parameters: cs = sqrt(μ/ρ), cp = sqrt((λ + 2μ)/ρ)
     μ1 = p.medium.ρ * p.medium.cs^2
-    λ1 = p.medium.cp^2 * p.medium.ρ / 2 - μ1 / 2
+    λ1 = p.medium.cp^2 * p.medium.ρ - 2μ1 
     
     μ2 = outer_medium.ρ * outer_medium.cs^2
-    λ2 = outer_medium.cp^2 * outer_medium.ρ / 2 - μ2 / 2
+    λ2 = outer_medium.cp^2 * outer_medium.ρ - 2μ2 
 
     # pre-compute spherical bessel and hankel functions
     jp1   = [     sbesselj(l, ap1) for l = 0:basis_order]
@@ -126,11 +126,16 @@ function t_matrix(p::Particle{3,Elastic{3,T},Sphere{T,3}}, outer_medium::Elastic
         return [TφΦ zeros(T,2); T(0) T(0) Tχ]
     end
 
-    Tmats = Tmat.(0:basis_order)
+    function Tmat0()
+        Tφφ = (MGφΦs[1][1][1:2,1:2] \ MGφΦs[1][2][1:2,1])[1]
+        return [Tφφ zeros(T,1,2); zeros(T,2,3)]
+    end
+
+    Tmats = Tmat.(1:basis_order)
 
     len(order::Int) = basisorder_to_basislength(PhysicalMedium{3,1},order)
-    T_vec = [Tmats[1],
-        vcat([repeat(Tmats[l+1:l+1],len(l)-len(l-1)) for l = 1:basis_order]...)...
+    T_vec = [Tmat0(),
+        vcat([repeat(Tmats[l:l],len(l)-len(l-1)) for l = 1:basis_order]...)...
     ]
 
     return BlockDiagonal(T_vec)
@@ -151,12 +156,17 @@ function internal_matrix(p::Particle{3,Elastic{3,T},Sphere{T,3}}, outer_medium::
         return [TφΦ zeros(T,2); T(0) T(0) Tχ]
     end
 
-    inner_mats = inner_mat.(0:basis_order)
+    function inner_mat0()
+        Tφφ = (MGφΦs[1][1][1:2,1:2] \ MGφΦs[1][2][1:2,1])[2]
+        return [Tφφ zeros(T,1,2); zeros(T,2,3)]
+    end
+
+    inner_mats = inner_mat.(1:basis_order)
 
     len(order::Int) = basisorder_to_basislength(PhysicalMedium{3,1},order)
-    T_vec = [inner_mats[1],
+    T_vec = [inner_mat0(),
         vcat(
-            [repeat(inner_mats[l+1:l+1],len(l)-len(l-1)) for l = 1:basis_order]...
+            [repeat(inner_mats[l:l],len(l)-len(l-1)) for l = 1:basis_order]...
         )...
     ]
 
