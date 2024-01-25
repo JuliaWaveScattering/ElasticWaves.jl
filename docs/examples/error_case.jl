@@ -48,10 +48,10 @@ errors = [maximum(abs.(forcing_inner - f)) for f in forcing_inners];
 
 
 
-A = boundarycondition_system(ωs[2], bearing, sims[2].boundarydata1.boundarytype, sims[2].boundarydata2.boundarytype, basis_order)
+A = boundarycondition_system(ωs[1], bearing, sims[1].boundarydata1.boundarytype, sims[1].boundarydata2.boundarytype, basis_order)
         b = [
-             sims[2].boundarydata1.fourier_modes[basis_order+1,:];
-             sims[2].boundarydata2.fourier_modes[basis_order+1,:]
+             sims[1].boundarydata1.fourier_modes[basis_order+1,:];
+             sims[1].boundarydata2.fourier_modes[basis_order+1,:]
         ]
 
 x = A \ b
