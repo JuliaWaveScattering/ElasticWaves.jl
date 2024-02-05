@@ -10,9 +10,7 @@ using LinearAlgebra
 (For 1 Roller)
 The inverse problem solves well (almost exact) for number_of_sensors= basis_length for both cases (with prior and without). 
 If we put less than that the tractions observed in the inverse problem without prior are terrible. 
-The prior method can give good results with less than that. for example with basis_order=10 and number_of_sensors=11
- which gives basis_length=21 we can see the delta but not as in the input.
- 
+The prior method can give good results with less than that. with number_of_sensors= basis_order+2 it gives good results
  (For 10 Rollers)
  with basis_order=10 and number_of_sensors=21=basis_length we can see the deltas but not as in the input.
 =#
@@ -20,13 +18,13 @@ The prior method can give good results with less than that. for example with bas
 #Definining parameters of the problem
 #ω=1e6
 basis_order = 10;
-numberofsensors = 11
+numberofsensors = 3
 basis_length = 2*basis_order + 1
 
 #Friction coefficient
 
 μ=0.081
-#μ=1
+μ=0.5
 #θs = LinRange(0, 2pi, basis_length + 1)[1:end-1]
 θs = LinRange(0, 2pi, 500)[1:end-1] 
 #θ2s = LinRange(0, 2pi, 4*basis_length + 1)[1:end-1]
@@ -34,7 +32,7 @@ basis_length = 2*basis_order + 1
 θs_inv = LinRange(0, 2pi, numberofsensors + 1)[1:end-1]
 
 #Properties of the bearing
-steel = Elastic(2; ρ = 78.0, cp = 50.0, cs = 35.0)
+steel = Elastic(2; ρ = 7800.0, cp = 5000.0, cs = 3500.0)
 bearing = RollerBearing(medium=steel, inner_radius=1.0, outer_radius = 2.0, number_of_rollers=1.0)
 Z=bearing.number_of_rollers
 Δt = real((bearing.outer_radius - bearing.inner_radius)/steel.cp)
@@ -46,7 +44,7 @@ d=2pi/Z
 #time that we are observing the waves (one period of the bearings rolling)
 
 tmax =1*d/Ω
-#tmax=Δt
+tmax=Δt
 #tmax=0.05
 number_of_ts= 1*(tmax/Δt)
 number_of_ts= 124
@@ -223,7 +221,7 @@ results = map(eachindex(ωs)) do i
 
     bd2_inverse= bd2_forward
 
-    inverse_sim = BearingSimulation(ωs[i], bearing, bd1_inverse, bd2_inverse)    
+    inverse_sim = BearingSimulation(ωs[i], bearing, bd1_inverse, bd2_inverse, basis_order=basis_order)    
     # res = field(wave, bearing, TractionType(); res = 70)
 
     inv_wave=ElasticWave(inverse_sim)
@@ -408,7 +406,8 @@ results = map(eachindex(ωs)) do i
 
     bd2_inverse= bd2_forward
 
-    inverse_sim = BearingSimulation(ωs[i], bearing, bd1_inverse, bd2_inverse, boundarybasis1=boundarybasis[i])    
+    inverse_sim = BearingSimulation(ωs[i], bearing, bd1_inverse, bd2_inverse, boundarybasis1=boundarybasis[i];
+     basis_order=basis_order)    
     # res = field(wave, bearing, TractionType(); res = 70)
 
     inv_wave=ElasticWave(inverse_sim)
