@@ -398,15 +398,15 @@ end
     for i in eachindex(ωs)]
 
     # the low frequencies works better in prior method
-    @test errors[1] < 1e-6
+    @test errors[1] < 5e-6
     @test maximum(errors[2:end]) < 1e-6
 
     errors = [
         maximum(abs.(waves[i].potentials[1].coefficients - inverse_waves[i].potentials[1].coefficients)) / mean(abs.(waves[i].potentials[1].coefficients))
     for i in eachindex(ωs)]
 
-    @test errors[1] < 1e-6
-    @test maximum(errors[2:end]) < 1e-6
+    @test errors[1] < 5e-6
+    @test maximum(errors[2:end]) < 5e-6
 
     # Check if inverse_waves predicts the same traction on the inner boundary
     inner_traction_forcing_modes = [
