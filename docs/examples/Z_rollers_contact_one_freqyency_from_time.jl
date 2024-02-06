@@ -8,20 +8,20 @@ using LinearAlgebra
 #This code do the same of the Zrollers_contact but we extract only one frequency.
 
 basis_order = 3;
-numberofsensors = 7
+numberofsensors = 4
 basis_length = 2*basis_order + 1
 
 #Definining parameters
 
 μ=0.081
-#μ=1
+μ=5
 #θs = LinRange(0, 2pi, basis_length + 1)[1:end-1]
 θs = LinRange(0, 2pi, 500)[1:end-1] 
 #θ2s = LinRange(0, 2pi, 4*basis_length + 1)[1:end-1]
 θ2s = LinRange(0, 2pi, 2000)[1:end-1] 
 θs_inv = LinRange(0, 2pi, numberofsensors + 1)[1:end-1]
 
-steel = Elastic(2; ρ = 78.0, cp = 50.0, cs = 35.0)
+steel = Elastic(2; ρ = 7800.0, cp = 5000.0, cs = 3500.0)
 bearing = RollerBearing(medium=steel, inner_radius=1.0, outer_radius = 2.0, number_of_rollers=1.0)
 Z=bearing.number_of_rollers
 Δt = real((bearing.outer_radius - bearing.inner_radius)/steel.cp)
@@ -115,7 +115,7 @@ bd2_forward= BoundaryData(bc2_forward,θs=θs, fields=hcat(fouter,fouter))
 
 #select the index of some frequency and calculate everything for that frequency
 
-i=30
+i=1
 
 
 
@@ -177,7 +177,7 @@ fields = displacement_outer
 
 bd2_inverse= bd2_forward
 
-inverse_sim = BearingSimulation(ωs[i], bearing, bd1_inverse, bd2_inverse)    
+inverse_sim = BearingSimulation(ωs[i], bearing, bd1_inverse, bd2_inverse, basis_order=basis_order)    
 # res = field(wave, bearing, TractionType(); res = 70)
 
 inv_wave=ElasticWave(inverse_sim)
@@ -252,7 +252,7 @@ bd1_inverse = BoundaryData(
 
 bd2_inverse= bd2_forward
 
-inverse_sim = BearingSimulation(ωs[i], bearing, bd1_inverse, bd2_inverse, boundarybasis1=boundarybasis[i])    
+inverse_sim = BearingSimulation(ωs[i], bearing, bd1_inverse, bd2_inverse, boundarybasis1=boundarybasis[i], basis_order=basis_order)    
 # res = field(wave, bearing, TractionType(); res = 70)
 
 inv_wave=ElasticWave(inverse_sim)
