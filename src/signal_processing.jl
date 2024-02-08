@@ -8,6 +8,17 @@ function fields_to_fouriermodes(boundarydata::BoundaryData, basis_order::Int = r
     )
 end
 
+function fouriermodes_to_fields(boundarydata::BoundaryData)
+    fields = fouriermodes_to_fields(boundarydata.θs, boundarydata.fourier_modes)
+
+    return BoundaryData(boundarydata.boundarytype;
+        fourier_modes = boundarydata.fourier_modes,
+        fields = fields,
+        θs = boundarydata.θs
+    )
+end
+
+
 function fields_to_fouriermodes(θs::AbstractVector, fields::AbstractArray, basis_order::Int)
 
     exps = [
