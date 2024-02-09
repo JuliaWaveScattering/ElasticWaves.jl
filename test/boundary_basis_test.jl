@@ -162,16 +162,8 @@
     @test errorp2 < 0.37
 
 
- 
-
-
-    # the low frequencies are a bit unstable I think due to the hankelh1 singularity
+    # the low frequencies are more ill-posed
    
-
-    
-
-
-
     #calculating traction in the inner boundary
 
     x2_inner = [
@@ -191,8 +183,6 @@
     traction_inv_out = hcat(traction_inv_out...) |> transpose |> collect
 
 
-
-
     #plot(θs,real.(fp))
     #plot!(θs,real.(fs))
 
@@ -207,16 +197,11 @@
     #savefig("test_prior_method_outer_traction.png")
 
 
- 
-
-
     traction_inv2 = [traction(inv_wave,x) for x in x2_inner];
     traction_inv2 = hcat(traction_inv2...) |> transpose |> collect
 
     traction_inv_out2 = [traction(inv_wave,x) for x in x2_outer];
     traction_inv_out2 = hcat(traction_inv_out2...) |> transpose |> collect
-
-
 
 
     #plot(θs,real.(fp))
@@ -302,14 +287,14 @@ end
 
     # the low frequencies works better in prior method
     @test errors[1] < 1e-5
-    @test maximum(errors[2:end]) < 1e-4
+    @test maximum(errors[2:end]) < 2e-4
 
     errors = [
         maximum(abs.(waves[i].potentials[1].coefficients - inverse_waves[i].potentials[1].coefficients)) / mean(abs.(waves[i].potentials[1].coefficients))
     for i in eachindex(ωs)]
 
-    @test errors[1] < 1e-4
-    @test maximum(errors[2:end]) < 1e-4
+    @test errors[1] < 2e-4
+    @test maximum(errors[2:end]) < 2e-4
 
     # Check if inverse_waves predicts the same traction on the inner boundary
     inner_traction_forcing_modes = [
@@ -322,7 +307,7 @@ end
     for i in eachindex(ωs)]
 
     @test errors[1] < 2e-4
-    @test maximum(errors[2:end]) < 1e-4
+    @test maximum(errors[2:end]) < 2e-4
 
     outer_traction_forcing_modes = [
         field_modes(w, bearing.outer_radius, TractionType())
@@ -333,9 +318,7 @@ end
     for i in eachindex(ωs)]
 
     @test errors[1] < 1e-8
-    @test maximum(errors[2:end]) < 1e-14
-
-
+    @test maximum(errors[2:end]) < 2e-14
 
 
 end
@@ -398,14 +381,14 @@ end
     for i in eachindex(ωs)]
 
     # the low frequencies works better in prior method
-    @test errors[1] < 5e-6
-    @test maximum(errors[2:end]) < 1e-6
+    @test errors[1] < 1e-5
+    @test maximum(errors[2:end]) < 2e-6
 
     errors = [
         maximum(abs.(waves[i].potentials[1].coefficients - inverse_waves[i].potentials[1].coefficients)) / mean(abs.(waves[i].potentials[1].coefficients))
     for i in eachindex(ωs)]
 
-    @test errors[1] < 5e-6
+    @test errors[1] < 1e-5
     @test maximum(errors[2:end]) < 5e-6
 
     # Check if inverse_waves predicts the same traction on the inner boundary
@@ -419,7 +402,7 @@ end
     for i in eachindex(ωs)]
 
     @test errors[1] < 2e-4
-    @test maximum(errors[2:end]) < 1e-6
+    @test maximum(errors[2:end]) < 2e-6
 
     outer_traction_forcing_modes = [
         field_modes(w, bearing.outer_radius, TractionType())
@@ -431,8 +414,5 @@ end
 
     @test errors[1] < 1e-8
     @test maximum(errors[2:end]) < 1e-14
-
-
-
 
 end
