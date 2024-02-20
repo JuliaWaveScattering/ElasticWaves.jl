@@ -2,10 +2,26 @@
 
 abstract type BearingMethod end
 
-struct ModalMethod <: BearingMethod end
+struct ModalMethod <: BearingMethod
+    tol::Float64
+    # to use Tikhonov regularization give a non-zero parameter
+    regularisation_parameter::Float64
+end
 struct GapMethod <: BearingMethod end
-struct PriorMethod <: BearingMethod end
 
+struct PriorMethod <: BearingMethod
+    tol::Float64
+    # to use Tikhonov regularization give a non-zero parameter
+    regularisation_parameter::Float64
+end
+
+function ModalMethod(; tol::Float64 = eps(Float64)^(1/2), regularisation_parameter::Float64 = zero(Float64))
+    ModalMethod(tol, regularisation_parameter)
+end
+
+function PriorMethod(; tol::Float64 = eps(Float64)^(1/2), regularisation_parameter::Float64 = zero(Float64))
+    PriorMethod(tol, regularisation_parameter)
+end
 
 struct RollerBearing{T}
     medium::Elastic{2,T} # defining medium
@@ -127,7 +143,6 @@ struct BearingSimulation{M <: BearingMethod, BC1 <: BoundaryCondition, BC2 <: Bo
     ω::T
     basis_order::Int
     method::M
-    tol::T
     bearing::RollerBearing{T}
     boundarydata1::BoundaryData{BC1,T}
     boundarydata2::BoundaryData{BC2,T}
@@ -136,7 +151,8 @@ struct BearingSimulation{M <: BearingMethod, BC1 <: BoundaryCondition, BC2 <: Bo
 end
 
 function BearingSimulation(ω::T, bearing::RollerBearing{T}, boundarydata1::BoundaryData{BC1,T}, boundarydata2::BoundaryData{BC2,T};
-        tol::T = eps(T)^(1/2), basis_order::Int = -1,
+        method::M = ModalMethod(),
+        basis_order::Int = -1,
         boundarybasis1::BoundaryBasis{BCB1} = BoundaryBasis([BoundaryData(boundarydata1.boundarytype)]),
         boundarybasis2::BoundaryBasis{BCB2} = BoundaryBasis([BoundaryData(boundarydata2.boundarytype)])
     ) where {T, M <: BearingMethod, BC1 <: BoundaryCondition, BC2 <: BoundaryCondition, BCB1 <: BoundaryCondition, BCB2 <: BoundaryCondition}
@@ -195,15 +211,13 @@ function BearingSimulation(ω::T, bearing::RollerBearing{T}, boundarydata1::Boun
     end
     boundarybasis2 = BoundaryBasis(basis_vec)
 
-    if !isempty(bearing.inner_gaps) || !isempty(bearing.outer_gaps)
-        method = GapMethod()
-    elseif !isempty(boundarybasis1.basis[1].fourier_modes) || !isempty(boundarybasis2.basis[1].fourier_modes)
-        method = PriorMethod()
-    else 
-        method = ModalMethod()   
-    end
-
+    # if !isempty(bearing.inner_gaps) || !isempty(bearing.outer_gaps)
+    #     method = GapMethod()
+    # elseif !isempty(boundarybasis1.basis[1].fourier_modes) || !isempty(boundarybasis2.basis[1].fourier_modes)
+    #     method = PriorMethod()
+    # else 
+    #     method = ModalMethod()   
+    # end
     
-    
-    BearingSimulation{typeof(method),BC1,BC2,BCB1,BCB2,T}(ω, basis_order, method, tol, bearing, boundarydata1, boundarydata2, boundarybasis1, boundarybasis2)
+    BearingSimulation{typeof(method),BC1,BC2,BCB1,BCB2,T}(ω, basis_order, method, bearing, boundarydata1, boundarydata2, boundarybasis1, boundarybasis2)
 end

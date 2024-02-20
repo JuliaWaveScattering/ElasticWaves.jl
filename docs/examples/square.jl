@@ -27,9 +27,9 @@ basis_length = 2*basis_order + 1
 
 l=2
 
-fourier_modes_p=[l *exp(-im*n*θ_line)* sinc(n*l/2pi)/2pi for n in -basis_order:basis_order ]
+fourier_modes_p =[l *exp(-im*n*θ_line)* sinc(n*l/2pi)/2pi for n in -basis_order:basis_order ]
 
-fourier_modes_s= μ.*[l *exp(-im*n*θ_line)* sinc(n*l/2pi)/2pi for n in -basis_order:basis_order ]
+fourier_modes_s = μ.*[l *exp(-im*n*θ_line)* sinc(n*l/2pi)/2pi for n in -basis_order:basis_order ]
 
 bc1_forward = TractionBoundary(inner=true)
 bc2_forward = TractionBoundary(outer=true)

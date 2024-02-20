@@ -4,6 +4,7 @@ authors = ["Art Gower <arturgower@gmail.com>", "Jess Kent <rkent2@sheffield.ac.u
 version = "0.1.0"
 
 [deps]
+BlockArrays = "8e7c35d0-a365-5155-bbbb-fb81a777f24e"
 BlockDiagonals = "0a1fb500-61f7-11e9-3c65-f5ef3456f9f0"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 MultipleScattering = "80a8ab25-5750-5d93-a6d7-4adc97cdd5fb"

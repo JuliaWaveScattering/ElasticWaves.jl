@@ -39,7 +39,7 @@ using MultipleScattering
 using SpecialFunctions
 using LinearAlgebra
 using StaticArrays: SVector
-using BlockDiagonals
+using BlockArrays, BlockDiagonals
 
 
 include("elasticity.jl")

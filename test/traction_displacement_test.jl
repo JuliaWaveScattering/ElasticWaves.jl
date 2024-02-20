@@ -102,7 +102,9 @@
     dr = 1e-3
     dθ = 1e-5
 
-    errors = norm.(displacement_numerical(wave, rθs; dr=dr, dθ=dθ) - [displacement(wave, x) for x in xs])
+    errors = norm.(
+        displacement_numerical(wave, rθs; dr=dr, dθ=dθ) - [displacement(wave, x) for x in xs]
+    )
     max_error = maximum(errors) / mean(norm.([displacement(wave, x) for x in xs]));
     @test max_error < 1e-8
 

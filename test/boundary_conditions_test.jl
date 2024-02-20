@@ -23,7 +23,14 @@
     bd1 = BoundaryData(TractionBoundary(inner=true); fourier_modes=forcing_modes[:, 1:2])
     bd2 = BoundaryData(TractionBoundary(outer=true); fourier_modes=forcing_modes[:, 3:4])
 
-    sims = [BearingSimulation(ω, bearing, bd1, bd2) for ω in ωs];
+    # need to regularise the lowest frequency
+    δs = [1e-2,0.0,0.0]
+    sims = [
+        BearingSimulation(ωs[i], bearing, bd1, bd2; 
+            method = ModalMethod(regularisation_parameter = δs[i])
+        ) 
+    for i in eachindex(ωs)];
+
     waves = [ElasticWave(s) for s in sims];
 
     θs = -pi:0.1:pi; θs |> length;
