@@ -7,7 +7,7 @@
     basis_order = 3
     basis_length = 2basis_order + 1
 
-    θ1s = LinRange(0.0, 2pi, basis_length + 1)[1:end-1]
+    θs = LinRange(0.0, 2pi, basis_length + 1)[1:end-1]
 
     # the pressure and shear fields on the boundaries 
     fp1 = sum([exp.(-20.0 .* (θs .- θ).^2) + θs .* 0im for θ = [0,pi/2,pi]])
@@ -116,8 +116,18 @@
     #ϵ = 0.01*max(bd1_inverse)
     #bd1_inverse= bd1_inverse .+ ϵ.*randn(length(bd1_inverse))
 
-    inverse_sim = BearingSimulation(ω, bearing, bd1_inverse, bd2_inverse; boundarybasis1=boundarybasis1)
-    inverse_sim2 = BearingSimulation(ω, bearing, bd1_inverse, bd2_inverse; boundarybasis1=boundarybasis1, boundarybasis2=boundarybasis2,basis_order=Int(basis_order))
+    method = PriorMethod(tol = 1e-12)
+
+    inverse_sim = BearingSimulation(ω, bearing, bd1_inverse, bd2_inverse;
+        boundarybasis1 = boundarybasis1,
+        method = method
+    )
+    inverse_sim2 = BearingSimulation(ω, bearing, bd1_inverse, bd2_inverse;
+        boundarybasis1 = boundarybasis1, 
+        boundarybasis2 = boundarybasis2, 
+        basis_order = Int(basis_order),
+        method = method
+    )
     
     inv_wave=ElasticWave(inverse_sim)
     inv_wave2=ElasticWave(inverse_sim2)

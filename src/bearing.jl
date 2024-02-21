@@ -6,6 +6,7 @@ struct ModalMethod <: BearingMethod
     tol::Float64
     # to use Tikhonov regularization give a non-zero parameter
     regularisation_parameter::Float64
+    only_stable_modes::Bool
 end
 struct GapMethod <: BearingMethod end
 
@@ -13,14 +14,23 @@ struct PriorMethod <: BearingMethod
     tol::Float64
     # to use Tikhonov regularization give a non-zero parameter
     regularisation_parameter::Float64
+    modal_method::ModalMethod
 end
 
-function ModalMethod(; tol::Float64 = eps(Float64)^(1/2), regularisation_parameter::Float64 = zero(Float64))
-    ModalMethod(tol, regularisation_parameter)
+function ModalMethod(; 
+        tol::Float64 = eps(Float64)^(1/2), 
+        regularisation_parameter::Float64 = zero(Float64),
+        only_stable_modes = false
+    )
+    ModalMethod(tol, regularisation_parameter, only_stable_modes)
 end
 
-function PriorMethod(; tol::Float64 = eps(Float64)^(1/2), regularisation_parameter::Float64 = zero(Float64))
-    PriorMethod(tol, regularisation_parameter)
+function PriorMethod(; 
+        tol::Float64 = eps(Float64)^(1/2), 
+        regularisation_parameter::Float64 = zero(Float64),
+        modal_method = ModalMethod(tol = tol)
+    )
+    PriorMethod(tol, regularisation_parameter, modal_method)
 end
 
 struct RollerBearing{T}
@@ -139,7 +149,7 @@ end
 # """
 # EmptyBoundaryBasis(bd::BoundaryData) =  BoundaryBasis(bd[])
 
-struct BearingSimulation{M <: BearingMethod, BC1 <: BoundaryCondition, BC2 <: BoundaryCondition, BCB1 <: BoundaryCondition, BCB2 <: BoundaryCondition, T}
+mutable struct BearingSimulation{M <: BearingMethod, BC1 <: BoundaryCondition, BC2 <: BoundaryCondition, BCB1 <: BoundaryCondition, BCB2 <: BoundaryCondition, T}
     ω::T
     basis_order::Int
     method::M

@@ -42,7 +42,7 @@ function ElasticWave(sim::BearingSimulation{ModalMethod})
 
     mode_errors = zeros(T, 2basis_order + 1)
 
-     for m in -basis_order:basis_order
+    for m in -basis_order:basis_order
         A = boundarycondition_system(ω, bearing, sim.boundarydata1.boundarytype, sim.boundarydata2.boundarytype, m)
         b = [
              sim.boundarydata1.fourier_modes[m+basis_order+1,:];
@@ -50,6 +50,7 @@ function ElasticWave(sim::BearingSimulation{ModalMethod})
         ]
 
         # solve A*x = b with tikinov regulariser
+        # x = A \ b
         δ = sim.method.regularisation_parameter
         x = [A; sqrt(δ) * I] \ [b; zeros(size(A)[2])]
 
@@ -63,6 +64,27 @@ function ElasticWave(sim::BearingSimulation{ModalMethod})
     end
 
     coefficients = transpose(hcat(coefficients...)) |> collect
+
+    if sim.method.only_stable_modes
+        inds = findall(mode_errors .< sim.method.tol)
+
+        orders = inds .- (basis_order + 1)
+
+        # find a contiguous block with small mode_errors
+        m = min(abs(orders[1]),abs(orders[end]))
+        unstable_orders = setdiff(-m:m,orders)
+        if !(unstable_orders |> isempty)
+            m = minimum(abs.(unstable_orders)) - 1
+            if m < 0 
+                @error "no stable modes found for the given tolerance tol = $(sim.method.tol)"
+            end 
+        end
+
+        inds = (-m:m) .+ (basis_order + 1)
+        
+        coefficients = coefficients[inds,:]
+        mode_errors = mode_errors[inds]
+    end
 
     pressure_coefficients = coefficients[:,1:2] |> transpose
     shear_coefficients = coefficients[:,3:4] |> transpose
@@ -84,6 +106,18 @@ function ElasticWave(sim::BearingSimulation{PriorMethod})
     
     boundarybasis1 = sim.boundarybasis1
     boundarybasis2 = sim.boundarybasis2
+
+    basis_order = sim.basis_order
+
+    # check which orders are stable for the forward problem
+        mode_errors = zeros(T, 2basis_order + 1)
+
+        Ms = [
+            boundarycondition_system(ω, bearing, boundarybasis1.basis[1].boundarytype, boundarybasis2.basis[1].boundarytype, n)  
+        for n in -basis_order:basis_order]
+
+        M_forward = BlockDiagonal(Ms)
+
 
     # Create the Prior matrix P 
         N1 = length(boundarybasis1.basis)
@@ -146,24 +180,6 @@ function ElasticWave(sim::BearingSimulation{PriorMethod})
         bias_vector = b[:]
         
     T = typeof(ω)
-
-    kP = ω / bearing.medium.cp;
-    kS = ω / bearing.medium.cs
-
-    basis_order = sim.basis_order
-
-    coefficients = [
-        zeros(Complex{T}, 4)
-    for n = -basis_order:basis_order]
-
-    mode_errors = zeros(T, 2basis_order + 1)
-
-
-    Ms = [
-        boundarycondition_system(ω, bearing, boundarybasis1.basis[1].boundarytype, boundarybasis2.basis[1].boundarytype, n)  
-    for n in -basis_order:basis_order]
-
-    M_forward = BlockDiagonal(Ms)
     
     P = Matrix{ComplexF64}(P)
     
