@@ -18,12 +18,6 @@ function boundarycondition_system(ω::AbstractFloat, bearing::RollerBearing, bc1
     return vcat(first_boundary, second_boundary)
 end
 
-# replace the below with
-# function ElasticWave(sim::BearingSimulation{ModalMethod})
-
-# write another function for the priors
-# function ElasticWave(sim::BearingSimulation{PriorMethod})
-
 function ElasticWave(sim::BearingSimulation{ModalMethod})
 
     ω = sim.ω
@@ -38,53 +32,56 @@ function ElasticWave(sim::BearingSimulation{ModalMethod})
 
     coefficients = [
         zeros(Complex{T}, 4)
-    for m = -basis_order:basis_order]
+    for n = -basis_order:basis_order]
 
     mode_errors = zeros(T, 2basis_order + 1)
 
-    for m in -basis_order:basis_order
-        A = boundarycondition_system(ω, bearing, sim.boundarydata1.boundarytype, sim.boundarydata2.boundarytype, m)
-        b = [
-             sim.boundarydata1.fourier_modes[m+basis_order+1,:];
-             sim.boundarydata2.fourier_modes[m+basis_order+1,:]
-        ]
+    for m1 in 0:basis_order
+        for m = [-m1,m1]
+            A = boundarycondition_system(ω, bearing, sim.boundarydata1.boundarytype, sim.boundarydata2.boundarytype, m)
+            b = [
+                sim.boundarydata1.fourier_modes[m+basis_order+1,:];
+                sim.boundarydata2.fourier_modes[m+basis_order+1,:]
+            ]
 
-        # solve A*x = b with tikinov regulariser
-        # x = A \ b
-        δ = sim.method.regularisation_parameter
-        x = [A; sqrt(δ) * I] \ [b; zeros(size(A)[2])]
+            # solve A*x = b with tikinov regulariser
+            # x = A \ b
+            δ = sim.method.regularisation_parameter
+            x = [A; sqrt(δ) * I] \ [b; zeros(size(A)[2])]
 
-        relative_error = norm(A*x - b) / norm(b)
-        if relative_error > sim.method.tol
-            @warn "The relative error for the boundary conditions was $(relative_error) for (ω,basis_order) = $((ω,m))"
+            relative_error = norm(A*x - b) / norm(b);
+            relative_error_x = cond(A) * eps(T) 
+            error = max(relative_error,relative_error_x)
+
+            coefficients[m + basis_order + 1] = x
+            mode_errors[m + basis_order + 1] = error
         end
 
-        coefficients[m + basis_order + 1] = x
-        mode_errors[m + basis_order + 1] = relative_error
+        error = max(mode_errors[m1 + basis_order + 1], mode_errors[-m1 + basis_order + 1])
+
+        if error > sim.method.tol
+            @warn "The relative error for the boundary conditions was $(error) for (ω,basis_order) = $((ω,m1))"
+            if sim.method.only_stable_modes 
+                m1 = m1 - 1
+                break 
+            end
+        end
     end
 
     coefficients = transpose(hcat(coefficients...)) |> collect
 
-    if sim.method.only_stable_modes
-        inds = findall(mode_errors .< sim.method.tol)
+    # just in case the loop terminated early due to keeping only_stable_modes
+    n = findfirst(mode_errors .== zero(T))
+    if !isnothing(n)
+        if n == 0
+            error("there are no stable modes, and therefore no solution found")
+        end    
 
-        orders = inds .- (basis_order + 1)
-
-        # find a contiguous block with small mode_errors
-        m = min(abs(orders[1]),abs(orders[end]))
-        unstable_orders = setdiff(-m:m,orders)
-        if !(unstable_orders |> isempty)
-            m = minimum(abs.(unstable_orders)) - 1
-            if m < 0 
-                @error "no stable modes found for the given tolerance tol = $(sim.method.tol)"
-            end 
-        end
-
-        inds = (-m:m) .+ (basis_order + 1)
-        
+        inds = 1:(n-1)
+            
         coefficients = coefficients[inds,:]
         mode_errors = mode_errors[inds]
-    end
+    end    
 
     pressure_coefficients = coefficients[:,1:2] |> transpose
     shear_coefficients = coefficients[:,3:4] |> transpose
@@ -115,6 +112,9 @@ function ElasticWave(sim::BearingSimulation{PriorMethod})
         Ms = [
             boundarycondition_system(ω, bearing, boundarybasis1.basis[1].boundarytype, boundarybasis2.basis[1].boundarytype, n)  
         for n in -basis_order:basis_order]
+
+        relative_error_x = cond.(Ms) .* eps(T) 
+        error = max(relative_error,relative_error_x)
 
         M_forward = BlockDiagonal(Ms)
 

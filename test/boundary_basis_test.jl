@@ -1,32 +1,78 @@
 @testset "Boundary basis" begin
-   
+
+## Forward problem with forcing on inner boundary to create a basis
+    basis_order = 30;    
+    θs = LinRange(0.0, 2pi, 2basis_order+2)[1:end-1]
+    # using 2basis_order + 2 guarantees that we can exactly represent the above with Fourier modes with basis_order number of modes
+
+    # choose a basis for the pressure and shear on the inner boundary
+    fp1s = [
+        exp.(-20.0 .* (sin.(θs ./ 2.0) .- sin(θ ./ 2.0)).^2) + θs .* 0im 
+    for θ = [0.0,pi/3,pi]]; 
+        
+    fs1s = [
+        0.5 .* exp.(-20.0 .* (sin.(θs ./ 2.0) .- sin(θ ./ 2.0)).^2) + θs .* 0im 
+    for θ = [0,pi/3,pi]];
+
+    # as there are three basis functions, we will need to measure at least three measurements. Typically each sensor, or point on the boundary, gives two measurements. So two sensors results in 4 measurements. 
     numberofsensors = 2
+    
+    # choose one combination of the basis to be the true case.
+    fp1 = sum(fp1s);
+    fs1 = sum(fs1s);
 
-## Forward problem with forcing on inner boundary to create a basis    
-    ω = 1e6
-    basis_order = 3
-    basis_length = 2basis_order + 1
+    # choose just zero traction for the outer boundary
+    fp2 = 0.0 .* fp1 + 0im .* fp1;
+    fs2 = 0.0 .* fp1 + 0im .* fp1;
 
-    θs = LinRange(0.0, 2pi, basis_length + 1)[1:end-1]
+    # Create boundary data for the forward problem
+        bc1_forward = TractionBoundary(inner=true)
+        bc2_forward = TractionBoundary(outer=true)
 
-    # the pressure and shear fields on the boundaries 
-    fp1 = sum([exp.(-20.0 .* (θs .- θ).^2) + θs .* 0im for θ = [0,pi/2,pi]])
-    fs1 = sum([exp.(-20.0 .* (θs .- pi).^2) + θs .* 0im for θ = [0,pi/2,pi]])
+        bd1_for = BoundaryData(bc1_forward, θs=θs, fields = hcat(fp1,fs1))
+        bd1 = fields_to_fouriermodes(bd1)
+ 
+        # a quick test that the fields and Fourier modes are exactly invertable for convenience 
+        bd_test = fouriermodes_to_fields(bd1)
+        @test norm(bd_test.fields - bd1.fields) / norm(bd1.fields) < 1e-14
+        
+        bd2_for = BoundaryData(bc2_forward, θs=θs, fields = hcat(fp2,fs2))
 
-    fp2 = 0.0 .* exp.(-20.0 .* (θs .- pi/2).^2) + θs .* 0im
-    fs2 = 0.0 .* exp.(-20.0 .* (θs .- pi/2).^2) + θs .* 0im
+    # Create a boundary basis for the inverse problem for just one boundary
+        bd1s = [
+            BoundaryData(bc1_forward, θs=θs, fields = hcat(fp1s[j],fs1s[j]))
+        for j in eachindex(fp1s)]
+
+
+
+
+        bd2s = [
+            BoundaryData(bc2_forward, θs=θs, fields = hcat(fp2s[j],fs2s[j]))
+        for j in eachindex(fp2s)]
+        
+        boundarybasis1 = BoundaryBasis(bd1s)
+        boundarybasis2 = BoundaryBasis(bd2s)   
+
+
+
+        bc1_inverse = DisplacementBoundary(outer=true)
+        bc2_inverse = TractionBoundary(outer=true)
 
     f0 = θs .* 0im
 
-    fouter= 0*exp.(-20.0 .* (θs .- pi).^2) + θs .* 0im
+    fouter = 0 .* exp.(-20.0 .* (θs .- pi).^2) + θs .* 0im
 
     # create boundary data for these fields
  
-    bd1 = BoundaryData(TractionBoundary(inner=true), θs=θs, fields = hcat(fp1,fouter))
-    bd1 = fields_to_fouriermodes(bd1, basis_order)
+    bd1 = BoundaryData(bc1_forward, θs=θs, fields = hcat(fp1,fouter))
+    bd1 = fields_to_fouriermodes(bd1)
 
-    bd2 =  BoundaryData(TractionBoundary(outer=true), θs=θs, fields = hcat(fouter, fs1 ))
-    bd2 = fields_to_fouriermodes(bd2, basis_order)
+    # a test that the fields and Fourier modes are exactly invertable for convenience 
+    bd_test = fouriermodes_to_fields(bd1)
+    @test norm(bd_test.fields - bd1.fields) / norm(bd1.fields) < 1e-14
+
+    bd2 = BoundaryData(bc2_forward, θs=θs, fields = hcat(fouter, fs1 ))
+    bd2 = fields_to_fouriermodes(bd2)
     
     bd3 = BoundaryData(TractionBoundary(outer=true), θs=θs, fields = hcat(fp2,fouter))
     bd3 = fields_to_fouriermodes(bd3, basis_order)
@@ -46,14 +92,13 @@
 
     fouter= 0*exp.(-20.0 .* (θs .- pi).^2) + θs .* 0im
 
-    bc1_forward = TractionBoundary(inner=true)
-    bc2_forward = TractionBoundary(outer=true)
 
-    bc1_inverse = DisplacementBoundary(outer=true)
-    bc2_inverse = TractionBoundary(outer=true)
 
 
     #bd1_inverse =  BoundaryData(bc1_inverse,θs=θs, fields=hcat(fp,fs))
+    ω = 1e6
+    basis_order = 5
+    basis_length = 2basis_order + 1
 
     bd1_forward =  BoundaryData(bc1_forward,θs=θs, fields=hcat(fp,fs))
     bd1_forward=fields_to_fouriermodes(bd1_forward, basis_order)

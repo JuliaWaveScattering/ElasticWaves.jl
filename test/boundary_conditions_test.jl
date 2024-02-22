@@ -25,9 +25,9 @@
 
     # could regularise the lowest frequency, though it doesn't appear necessary
     δs = [1e-8,0.0,0.0]
-    tols = [1.0,1e-8,1e-8]
+    tol = 1e-3
     sims = map(eachindex(ωs)) do i
-        method = ModalMethod(regularisation_parameter = δs[i], tol = tols[i])
+        method = ModalMethod(regularisation_parameter = δs[i], tol = tol)
         BearingSimulation(ωs[i], bearing, bd1, bd2; 
             method = method
         ) 
@@ -225,7 +225,7 @@
     
     maximum(abs.(wave.potentials[2].coefficients - wave2.potentials[2].coefficients)) / mean(abs.(wave.potentials[2].coefficients)) > 0.1
     
-    # the instability is because the problem is ill posed when either decreasing the frequency or increasing the basis_order. Let us decrease the basis_order to see:
+    # the instability is because the problem is ill posed when either decreasing the frequency or increasing the basis_order. Let us keep only_stable_modes to solve this, and only solve for smaller modes
 
     basis_order = 5
     basis_length = basisorder_to_basislength(Acoustic{Float64,2}, basis_order)
@@ -244,32 +244,38 @@
         fourier_modes=forcing_modes[:, 3:4]
     )
 
+    method = ModalMethod(tol = 1e-1, regularisation_parameter = 1e-10, only_stable_modes = true)
     sim = BearingSimulation(ω, bearing, bd1, bd2; method = method)
     wave = ElasticWave(sim)
 
     # setup a problem with displacement boundary conditions
     # add 1% error to boundary conditions
-    ε = 0.01 * maximum(abs.(field_modes(wave, bearing.inner_radius, DisplacementType())))
-    error = ε .* (rand(basis_length, 2) .- 0.5) + ε .* (rand(basis_length, 2) .- 0.5) .* im
+    ε = 0.01 * maximum(abs.(field_modes(wave, bearing.inner_radius, DisplacementType())));
+    error = ε .* (rand(basis_length, 2) .- 0.5) + ε .* (rand(basis_length, 2) .- 0.5) .* im;
 
     bd1 = BoundaryData(
         DisplacementBoundary(inner=true);
         fourier_modes=field_modes(wave, bearing.inner_radius, DisplacementType()) + error
-    )
+    );
 
     ε = 0.01 * maximum(abs.(field_modes(wave, bearing.outer_radius, DisplacementType())))
-    error = ε .* (rand(basis_length, 2) .- 0.5) + ε .* (rand(basis_length, 2) .- 0.5) .* im
+    error = ε .* (rand(basis_length, 2) .- 0.5) + ε .* (rand(basis_length, 2) .- 0.5) .* im;
 
     bd2 = BoundaryData(
         DisplacementBoundary(outer=true);
         fourier_modes=field_modes(wave, bearing.outer_radius, DisplacementType()) + error
-    )
+    );
 
-    sim = BearingSimulation(ω, bearing, bd1, bd2)
-    wave2 = ElasticWave(sim)
+    sim = BearingSimulation(ω, bearing, bd1, bd2);
+    wave2 = ElasticWave(sim);
 
     # the problem is still sensitive to errors, but a managable tolerance
-    @test maximum(abs.(wave.potentials[2].coefficients - wave2.potentials[2].coefficients)) / mean(abs.(wave.potentials[2].coefficients)) < 0.085
-    @test maximum(abs.(wave.potentials[1].coefficients - wave2.potentials[1].coefficients)) / mean(abs.(wave.potentials[1].coefficients)) < 0.1
+    @test maximum(abs.(wave.potentials[2].coefficients - wave2.potentials[2].coefficients)) / mean(abs.(wave.potentials[2].coefficients)) < 0.18
+   
+    @test maximum(abs.(wave.potentials[1].coefficients - wave2.potentials[1].coefficients)) / mean(abs.(wave.potentials[1].coefficients)) < 0.18
 
+    # but the average error is at most 5 times the noise
+    @test mean(abs.(wave.potentials[1].coefficients - wave2.potentials[1].coefficients)) / mean(abs.(wave.potentials[2].coefficients)) < 0.05
+    
+    @test mean(abs.(wave.potentials[2].coefficients - wave2.potentials[2].coefficients)) / mean(abs.(wave.potentials[2].coefficients)) < 0.05
 end
