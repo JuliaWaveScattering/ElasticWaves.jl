@@ -160,21 +160,25 @@ mutable struct BearingSimulation{M <: BearingMethod, BC1 <: BoundaryCondition, B
     boundarybasis2::BoundaryBasis{BCB2,T}
 end
 
-function BearingSimulation(ω::T, bearing::RollerBearing{T}, boundarydata1::BoundaryData{BC1,T}, boundarydata2::BoundaryData{BC2,T};
-        method::M = ModalMethod(),
+function BearingSimulation(ω::T, bearing::RollerBearing{T}, boundarydata1::BD1, boundarydata2::BD2;
+    method::M = ModalMethod(),
+    kws...
+) where {T, M <: BearingMethod, BD1 <: BoundaryData, BD2 <: BoundaryData}
+    
+    return BearingSimulation(ω ,method, bearing, boundarydata1, boundarydata2; kws...)
+
+end
+
+function BearingSimulation(ω::T, method::ModalMethod, bearing::RollerBearing{T}, boundarydata1::BoundaryData{BC1,T}, boundarydata2::BoundaryData{BC2,T};
         basis_order::Int = -1,
         boundarybasis1::BoundaryBasis{BCB1} = BoundaryBasis([BoundaryData(boundarydata1.boundarytype)]),
         boundarybasis2::BoundaryBasis{BCB2} = BoundaryBasis([BoundaryData(boundarydata2.boundarytype)])
     ) where {T, M <: BearingMethod, BC1 <: BoundaryCondition, BC2 <: BoundaryCondition, BCB1 <: BoundaryCondition, BCB2 <: BoundaryCondition}
 
-    if size(boundarydata1.fourier_modes,1) != size(boundarydata2.fourier_modes,1)
-        @error "number of fourier_modes in boundarydata1 and boundarydata2 needs to be the same"
-    end
-
     if basis_order == -1
         if isempty(boundarydata1.fourier_modes)
             if isempty(boundarydata2.fourier_modes)
-                println("As the keyword basis_order was not specified (and the fourier_modes of the boundary conditions were not provided), the basis_order will be estimated from the bearing geometry and wavenumbers.")
+                println("As the keyword basis_order was not specified (and the fourier_modes of the boundary conditions were not provided), the basis_order will be chosen to match the number of points θs given in the boundary data.")
 
                 # lower the basis_order if there are not enough data points to estimate it
                 m1 = Int(round(length(boundarydata1.θs)/2.0 - 1/2.0))
@@ -185,7 +189,7 @@ function BearingSimulation(ω::T, bearing::RollerBearing{T}, boundarydata1::Boun
             else basis_order = basislength_to_basisorder(Acoustic{T,2},size(boundarydata2.fourier_modes,1))
             end
 
-        else basis_order = basislength_to_basisorder(Acoustic{T,2},size(boundarydata2.fourier_modes,1))
+        else basis_order = basislength_to_basisorder(Acoustic{T,2},size(boundarydata1.fourier_modes,1))
         end
     end
 
@@ -200,6 +204,10 @@ function BearingSimulation(ω::T, bearing::RollerBearing{T}, boundarydata1::Boun
         println("The Fourier modes for boundarydata2 are empty, they will be calculated from the fields provided")
 
         boundarydata2 = fields_to_fouriermodes(boundarydata2, basis_order)
+    end
+
+    if size(boundarydata1.fourier_modes,1) != size(boundarydata2.fourier_modes,1)
+        error("number of fourier_modes in boundarydata1 and boundarydata2 needs to be the same")
     end
 
     # Calculate the fourier_modes for the boundarybasis
@@ -230,4 +238,67 @@ function BearingSimulation(ω::T, bearing::RollerBearing{T}, boundarydata1::Boun
     # end
     
     BearingSimulation{typeof(method),BC1,BC2,BCB1,BCB2,T}(ω, basis_order, method, bearing, boundarydata1, boundarydata2, boundarybasis1, boundarybasis2)
+end
+
+function BearingSimulation(ω::T, method::PriorMethod, bearing::RollerBearing{T}, boundarydata1::BoundaryData{BC1,T}, boundarydata2::BoundaryData{BC2,T};
+    basis_order::Int = -1,
+    boundarybasis1::BoundaryBasis{BCB1} = BoundaryBasis([BoundaryData(boundarydata1.boundarytype)]),
+    boundarybasis2::BoundaryBasis{BCB2} = BoundaryBasis([BoundaryData(boundarydata2.boundarytype)])
+) where {T, M <: BearingMethod, BC1 <: BoundaryCondition, BC2 <: BoundaryCondition, BCB1 <: BoundaryCondition, BCB2 <: BoundaryCondition}
+
+if basis_order == -1
+    if isempty(boundarydata1.fourier_modes)
+        if isempty(boundarydata2.fourier_modes)
+            println("As the keyword basis_order was not specified (and the fourier_modes of the boundary conditions were not provided), the basis_order will be chosen to match the number of points θs given in the boundary data.")
+
+            # lower the basis_order if there are not enough data points to estimate it
+            m1 = Int(round(length(boundarydata1.θs)/2.0 - 1/2.0))
+            m2 = Int(round(length(boundarydata2.θs)/2.0 - 1/2.0))
+
+            basis_order = min(m1, m2)
+
+        else basis_order = basislength_to_basisorder(Acoustic{T,2},size(boundarydata2.fourier_modes,1))
+        end
+
+    else basis_order = basislength_to_basisorder(Acoustic{T,2},size(boundarydata1.fourier_modes,1))
+    end
+end
+
+# we need the fourier modes of the boundary data
+if isempty(boundarydata1.fourier_modes)
+    println("The Fourier modes for boundarydata1 are empty, they will be calculated from the fields provided")
+
+    boundarydata1 = fields_to_fouriermodes(boundarydata1, basis_order)
+end
+
+if isempty(boundarydata2.fourier_modes)
+    println("The Fourier modes for boundarydata2 are empty, they will be calculated from the fields provided")
+
+    boundarydata2 = fields_to_fouriermodes(boundarydata2, basis_order)
+end
+
+if size(boundarydata1.fourier_modes,1) != size(boundarydata2.fourier_modes,1)
+    error("number of fourier_modes in boundarydata1 and boundarydata2 needs to be the same")
+end
+
+# Calculate the fourier_modes for the boundarybasis
+basis_vec = map(boundarybasis1.basis) do b
+    if isempty(b.fourier_modes)
+        isempty(b.fields) ? b : fields_to_fouriermodes(b,basis_order)
+    else
+        b
+    end
+end
+boundarybasis1 = BoundaryBasis(basis_vec)
+
+basis_vec = map(boundarybasis2.basis) do b
+    if isempty(b.fourier_modes)
+        isempty(b.fields) ? b : fields_to_fouriermodes(b,basis_order)
+    else
+        b
+    end
+end
+boundarybasis2 = BoundaryBasis(basis_vec)
+
+return BearingSimulation{typeof(method),BC1,BC2,BCB1,BCB2,T}(ω, basis_order, method, bearing, boundarydata1, boundarydata2, boundarybasis1, boundarybasis2)
 end

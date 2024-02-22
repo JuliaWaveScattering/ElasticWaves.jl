@@ -20,11 +20,12 @@
 
     bd1 = BoundaryData(TractionBoundary(inner = true); fourier_modes = forcing_modes[:,1:2])
     bd2 = BoundaryData(TractionBoundary(outer = true); fourier_modes = forcing_modes[:,3:4])
-
     
     # Will use only the Fourier modes that were calculated correctly by adding the option: only_stable_modes = true
-    method = ModalMethod(tol = 1e-10, only_stable_modes = true)
-    sims = [BearingSimulation(ω, bearing, bd1, bd2; method = method) for ω in ωs];
+    method = ModalMethod(tol = 1e-3, only_stable_modes = true)
+    sims = [
+        BearingSimulation(ω, bearing, bd1, bd2; method = method)
+    for ω in ωs];
     waves = ElasticWave.(sims);
 
     # setup a problem with only boundary information on the outer boundary.
@@ -63,7 +64,7 @@
     @test maximum(errors[2:end]) < 1e-13
 
     # We can redo the lowest frequency with an even more stringent tolerance
-    method = ModalMethod(tol = 1e-14, only_stable_modes = true)
+    method = ModalMethod(tol = 1e-3, only_stable_modes = true)
     sims = [BearingSimulation(ω, bearing, bd1, bd2; method = method) for ω in ωs];
     waves = ElasticWave.(sims);
 

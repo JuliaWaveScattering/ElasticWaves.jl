@@ -62,7 +62,9 @@ function ElasticWave(sim::BearingSimulation{ModalMethod})
         if error > sim.method.tol
             @warn "The relative error for the boundary conditions was $(error) for (ω,basis_order) = $((ω,m1))"
             if sim.method.only_stable_modes 
-                m1 = m1 - 1
+                mode_errors[m1 + basis_order + 1] = zero(T)
+                mode_errors[-m1 + basis_order + 1] = zero(T)
+
                 break 
             end
         end
@@ -71,13 +73,14 @@ function ElasticWave(sim::BearingSimulation{ModalMethod})
     coefficients = transpose(hcat(coefficients...)) |> collect
 
     # just in case the loop terminated early due to keeping only_stable_modes
-    n = findfirst(mode_errors .== zero(T))
+    n = findfirst(mode_errors[basis_order+1:end] .== zero(T))
     if !isnothing(n)
-        if n == 0
+        if n == 1
             error("there are no stable modes, and therefore no solution found")
         end    
+        m = n - 2
 
-        inds = 1:(n-1)
+        inds = (-m:m) .+ (basis_order+1)
             
         coefficients = coefficients[inds,:]
         mode_errors = mode_errors[inds]
