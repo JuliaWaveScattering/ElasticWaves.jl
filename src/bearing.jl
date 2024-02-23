@@ -2,6 +2,8 @@
 
 abstract type BearingMethod end
 
+struct NoBearingMethod <: BearingMethod end
+
 struct ModalMethod <: BearingMethod
     tol::Float64
     # to use Tikhonov regularization give a non-zero parameter
@@ -22,6 +24,11 @@ function ModalMethod(;
         regularisation_parameter::Float64 = zero(Float64),
         only_stable_modes = false
     )
+
+    if !only_stable_modes 
+        @warn "only_stable_modes was set to false. This means that potentially ill-posed (or unstable) modes will attempt to be solved, which could lead to non-sense solutions." 
+    end
+
     ModalMethod(tol, regularisation_parameter, only_stable_modes)
 end
 
@@ -53,6 +60,9 @@ function RollerBearing(; medium::Elastic{2},
     if isodd(length(inner_gaps)) && isodd(length(outer_gaps))
         @error "both inner_gaps and outer_gaps need to be an even number of angles"
     end
+
+    println("Note that the traction on the inner boundary (τn,τt) is interpreted to be the vector τ = - τn * er - τt * eθ.")
+
     RollerBearing{T}(medium, inner_radius, inner_gaps, outer_radius, outer_gaps, number_of_rollers)
 end
 
@@ -129,11 +139,20 @@ end
 
 struct BoundaryBasis{BC <: BoundaryCondition, T}
     basis::Vector{BoundaryData{BC,T}}
-end
 
-# function BoundaryBasis(basis::Vector{BoundaryData{BC,T}}) where {BC <: BoundaryCondition, T}
-#     return BoundaryBasis{BC, T}(basis)
-# end
+    function BoundaryBasis(basis::Vector{BoundaryData{BC,T}}) where {BC <: BoundaryCondition, T}
+        field_lengths = [size(b.fields, 1) for b in basis]
+        fourier_mode_lengths = [size(b.fourier_modes, 1) for b in basis]
+
+        allsame(x) = all(y -> y == first(x), x)
+
+        if !allsame(fourier_mode_lengths) || !allsame(field_lengths)
+            error("The length of the fields and fourier_modes of each BoundaryData in a BoundaryBasis need to be equal")
+        end    
+
+    return new{BC,T}(basis)
+    end    
+end
 
 # """
 #     EmptyBoundaryData(T)
@@ -157,23 +176,37 @@ mutable struct BearingSimulation{M <: BearingMethod, BC1 <: BoundaryCondition, B
     boundarydata1::BoundaryData{BC1,T}
     boundarydata2::BoundaryData{BC2,T}
     boundarybasis1::BoundaryBasis{BCB1,T}
-    boundarybasis2::BoundaryBasis{BCB2,T}
+    boundarybasis2::BoundaryBasis{BCB2,T}  
+    
+    function BearingSimulation(ω::T, basis_order::Int, method::M, bearing::RollerBearing{T}, 
+            boundarydata1::BoundaryData{BC1,T},
+            boundarydata2::BoundaryData{BC2,T},
+            boundarybasis1::BoundaryBasis{BCB1,T}  = BoundaryBasis([BoundaryData(boundarydata1.boundarytype)]),
+            boundarybasis2::BoundaryBasis{BCB2,T}  = BoundaryBasis([BoundaryData(boundarydata2.boundarytype)])
+        ) where {T, M <: BearingMethod, BC1 <: BoundaryCondition, BC2 <: BoundaryCondition, BCB1 <: BoundaryCondition, BCB2 <: BoundaryCondition}
+    
+        return new{M,BC1,BC2,BCB1,BCB2,T}(ω, basis_order, method, bearing, boundarydata1, boundarydata2, boundarybasis1, boundarybasis2)
+    end 
 end
 
+
 function BearingSimulation(ω::T, bearing::RollerBearing{T}, boundarydata1::BD1, boundarydata2::BD2;
-    method::M = ModalMethod(),
+    method::M = NoBearingMethod(),
     kws...
 ) where {T, M <: BearingMethod, BD1 <: BoundaryData, BD2 <: BoundaryData}
+
+    if typeof(method) == NoBearingMethod
+        @warn "no method was chosen for this bearing simulation. Will choose the default ModalMethod which makes no assumption about the forcing or bearings"
+        
+        method = ModalMethod()
+    end    
     
     return BearingSimulation(ω ,method, bearing, boundarydata1, boundarydata2; kws...)
-
 end
 
 function BearingSimulation(ω::T, method::ModalMethod, bearing::RollerBearing{T}, boundarydata1::BoundaryData{BC1,T}, boundarydata2::BoundaryData{BC2,T};
         basis_order::Int = -1,
-        boundarybasis1::BoundaryBasis{BCB1} = BoundaryBasis([BoundaryData(boundarydata1.boundarytype)]),
-        boundarybasis2::BoundaryBasis{BCB2} = BoundaryBasis([BoundaryData(boundarydata2.boundarytype)])
-    ) where {T, M <: BearingMethod, BC1 <: BoundaryCondition, BC2 <: BoundaryCondition, BCB1 <: BoundaryCondition, BCB2 <: BoundaryCondition}
+    ) where {T, BC1 <: BoundaryCondition, BC2 <: BoundaryCondition}
 
     if basis_order == -1
         if isempty(boundarydata1.fourier_modes)
@@ -181,8 +214,8 @@ function BearingSimulation(ω::T, method::ModalMethod, bearing::RollerBearing{T}
                 println("As the keyword basis_order was not specified (and the fourier_modes of the boundary conditions were not provided), the basis_order will be chosen to match the number of points θs given in the boundary data.")
 
                 # lower the basis_order if there are not enough data points to estimate it
-                m1 = Int(round(length(boundarydata1.θs)/2.0 - 1/2.0))
-                m2 = Int(round(length(boundarydata2.θs)/2.0 - 1/2.0))
+                m1 = Int(floor(length(boundarydata1.θs)/2.0 - 1/2.0))
+                m2 = Int(floor(length(boundarydata2.θs)/2.0 - 1/2.0))
 
                 basis_order = min(m1, m2)
 
@@ -210,7 +243,48 @@ function BearingSimulation(ω::T, method::ModalMethod, bearing::RollerBearing{T}
         error("number of fourier_modes in boundarydata1 and boundarydata2 needs to be the same")
     end
 
-    # Calculate the fourier_modes for the boundarybasis
+    return BearingSimulation(ω, basis_order, method, bearing, boundarydata1, boundarydata2)
+end
+
+function BearingSimulation(ω::T, method::PriorMethod, bearing::RollerBearing{T}, boundarydata1::BoundaryData{BC1,T}, boundarydata2::BoundaryData{BC2,T};
+        basis_order::Int = -1,
+        boundarybasis1::BoundaryBasis{BCB1} = BoundaryBasis([BoundaryData(boundarydata1.boundarytype)]),
+        boundarybasis2::BoundaryBasis{BCB2} = BoundaryBasis([BoundaryData(boundarydata2.boundarytype)])
+    ) where {T, BC1 <: BoundaryCondition, BC2 <: BoundaryCondition, BCB1 <: BoundaryCondition, BCB2 <: BoundaryCondition}
+
+    # we need the fields of the boundary data for the PriorMethod
+    if isempty(boundarydata1.fields) || isempty(boundarydata2.fields)
+
+        @error "The fields of boundarydata1 or boundarydata2 are empty. We expect that the fields are given for the PriorMethod because as the number of fourier_modes can be far greater than the length of the fields. Meaning it is not possible to calculate the fourier_modes of the boundary data directly"
+    end
+
+    if basis_order == -1
+        println("No basis_order was specified. Will use the largest order according to the data provided for boundarybasis1 and boundarybasis2")
+
+        # if both boundarybasis1 and boundarybasis2 are given need to use the same number of modes
+        mode_lengths = [size(bb.basis[1].fourier_modes,1) for bb in [boundarybasis1, boundarybasis2]]
+
+        inds = findall(mode_lengths .> 0)
+        mode_lengths = unique(mode_lengths[inds])
+
+        if length(mode_lengths) == 2
+            error("The number of Fourier modes for boundarybasis1 and boundarybasis2 need to be the same")
+        end
+        
+        if isempty(mode_lengths)
+            field_lengths = [size(bb.basis[1].fields,1) for bb in [boundarybasis1, boundarybasis2]]
+            inds = findall(field_lengths .> 0)
+            field_lengths = field_lengths[inds]
+
+            # need to use the smallest field length to calculate the fourier_modes of both boundarybasis'
+            field_length = minimum(field_lengths)
+            basis_order = Int(floor((field_length - 1)/2 ))
+
+        else basis_order = basislength_to_basisorder(PhysicalMedium{2,1},mode_lengths[1])
+        end
+    end
+
+    # We need the fourier_modes for the boundarybasis
     basis_vec = map(boundarybasis1.basis) do b
         if isempty(b.fourier_modes)
             isempty(b.fields) ? b : fields_to_fouriermodes(b,basis_order)
@@ -219,7 +293,7 @@ function BearingSimulation(ω::T, method::ModalMethod, bearing::RollerBearing{T}
         end
     end
     boundarybasis1 = BoundaryBasis(basis_vec)
-    
+
     basis_vec = map(boundarybasis2.basis) do b
         if isempty(b.fourier_modes)
             isempty(b.fields) ? b : fields_to_fouriermodes(b,basis_order)
@@ -229,76 +303,5 @@ function BearingSimulation(ω::T, method::ModalMethod, bearing::RollerBearing{T}
     end
     boundarybasis2 = BoundaryBasis(basis_vec)
 
-    # if !isempty(bearing.inner_gaps) || !isempty(bearing.outer_gaps)
-    #     method = GapMethod()
-    # elseif !isempty(boundarybasis1.basis[1].fourier_modes) || !isempty(boundarybasis2.basis[1].fourier_modes)
-    #     method = PriorMethod()
-    # else 
-    #     method = ModalMethod()   
-    # end
-    
-    BearingSimulation{typeof(method),BC1,BC2,BCB1,BCB2,T}(ω, basis_order, method, bearing, boundarydata1, boundarydata2, boundarybasis1, boundarybasis2)
-end
-
-function BearingSimulation(ω::T, method::PriorMethod, bearing::RollerBearing{T}, boundarydata1::BoundaryData{BC1,T}, boundarydata2::BoundaryData{BC2,T};
-    basis_order::Int = -1,
-    boundarybasis1::BoundaryBasis{BCB1} = BoundaryBasis([BoundaryData(boundarydata1.boundarytype)]),
-    boundarybasis2::BoundaryBasis{BCB2} = BoundaryBasis([BoundaryData(boundarydata2.boundarytype)])
-) where {T, M <: BearingMethod, BC1 <: BoundaryCondition, BC2 <: BoundaryCondition, BCB1 <: BoundaryCondition, BCB2 <: BoundaryCondition}
-
-if basis_order == -1
-    if isempty(boundarydata1.fourier_modes)
-        if isempty(boundarydata2.fourier_modes)
-            println("As the keyword basis_order was not specified (and the fourier_modes of the boundary conditions were not provided), the basis_order will be chosen to match the number of points θs given in the boundary data.")
-
-            # lower the basis_order if there are not enough data points to estimate it
-            m1 = Int(round(length(boundarydata1.θs)/2.0 - 1/2.0))
-            m2 = Int(round(length(boundarydata2.θs)/2.0 - 1/2.0))
-
-            basis_order = min(m1, m2)
-
-        else basis_order = basislength_to_basisorder(Acoustic{T,2},size(boundarydata2.fourier_modes,1))
-        end
-
-    else basis_order = basislength_to_basisorder(Acoustic{T,2},size(boundarydata1.fourier_modes,1))
-    end
-end
-
-# we need the fourier modes of the boundary data
-if isempty(boundarydata1.fourier_modes)
-    println("The Fourier modes for boundarydata1 are empty, they will be calculated from the fields provided")
-
-    boundarydata1 = fields_to_fouriermodes(boundarydata1, basis_order)
-end
-
-if isempty(boundarydata2.fourier_modes)
-    println("The Fourier modes for boundarydata2 are empty, they will be calculated from the fields provided")
-
-    boundarydata2 = fields_to_fouriermodes(boundarydata2, basis_order)
-end
-
-if size(boundarydata1.fourier_modes,1) != size(boundarydata2.fourier_modes,1)
-    error("number of fourier_modes in boundarydata1 and boundarydata2 needs to be the same")
-end
-
-# Calculate the fourier_modes for the boundarybasis
-basis_vec = map(boundarybasis1.basis) do b
-    if isempty(b.fourier_modes)
-        isempty(b.fields) ? b : fields_to_fouriermodes(b,basis_order)
-    else
-        b
-    end
-end
-boundarybasis1 = BoundaryBasis(basis_vec)
-
-basis_vec = map(boundarybasis2.basis) do b
-    if isempty(b.fourier_modes)
-        isempty(b.fields) ? b : fields_to_fouriermodes(b,basis_order)
-    else
-        b
-    end
-end
-boundarybasis2 = BoundaryBasis(basis_vec)
-
-return BearingSimulation{typeof(method),BC1,BC2,BCB1,BCB2,T}(ω, basis_order, method, bearing, boundarydata1, boundarydata2, boundarybasis1, boundarybasis2)
+    return BearingSimulation(ω, basis_order, method, bearing, boundarydata1, boundarydata2, boundarybasis1, boundarybasis2)
 end

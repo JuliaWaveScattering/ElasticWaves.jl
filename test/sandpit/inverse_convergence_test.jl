@@ -1,8 +1,6 @@
 ## We define the inverse problem as taking only information from one boundary, such as the outer boundary, and then predicting fields on the other boundary.
-#include("/Users/user/.julia/packages/ElasticWaves/REv3o/test/runtests.jl")
 
-# include("/home/mep21jjk/.julia/packages/ElasticWaves/REv3o/test/runtests.jl")
-include("../src/ElasticWaves.jl")
+using ElasticWave
 
 ω = 10.0
 # steel = Elastic(2; ρ = 7.0, cp = 5.0, cs = 3.5)

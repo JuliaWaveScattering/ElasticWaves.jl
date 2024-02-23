@@ -63,8 +63,8 @@
     errors[1] < 1.0
     @test maximum(errors[2:end]) < 1e-13
 
-    # We can redo the lowest frequency with an even more stringent tolerance
-    method = ModalMethod(tol = 1e-3, only_stable_modes = true)
+    # We can redo the lowest frequency with an even more stringent tolerance that excludes unstable modes
+    method = ModalMethod(tol = 1e-9, only_stable_modes = true)
     sims = [BearingSimulation(ω, bearing, bd1, bd2; method = method) for ω in ωs];
     waves = ElasticWave.(sims);
 
@@ -98,7 +98,6 @@
 
     @test maximum(errors) < 1e-13
     
-
     # Check if inverse_waves predicts the same traction on the inner boundary
     inner_traction_forcing_modes = [
         field_modes(w, bearing.inner_radius, TractionType())

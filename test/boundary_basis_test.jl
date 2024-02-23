@@ -1,4 +1,4 @@
-# Here is an example of using a traction basis with three elements
+# Here is an example of using a traction basis with three elements that should give an exact inversion
 @testset "Boundary basis example" begin
 
     ω = 1e6
@@ -53,46 +53,40 @@
 
 ## The inverse problem
 
-    bc1_inv = DisplacementBoundary(outer=true)
-    bc2_inv = TractionBoundary(outer=true)
+        bc1_inv = DisplacementBoundary(outer=true)
+        bc2_inv = TractionBoundary(outer=true)
 
     # Use the solution of the forward problem to generate data for the inverse problem
     # the data is only measured in a few locations    
-    θs_inv = LinRange(0, 2pi, numberofsensors + 1)[1:end-1]
-    x_outer = [radial_to_cartesian_coordinates([bearing.outer_radius,θ]) for θ in θs_inv ]
+        θs_inv = LinRange(0, 2pi, numberofsensors + 1)[1:end-1]
+        x_outer = [radial_to_cartesian_coordinates([bearing.outer_radius,θ]) for θ in θs_inv ]
 
 
-    field1_outer = [field(wave, x, bc1_inv.fieldtype) for x in x_outer];
-    field1_outer = hcat(field1_outer...) |> transpose |> collect;
+        field1_outer = [field(wave, x, bc1_inv.fieldtype) for x in x_outer];
+        field1_outer = hcat(field1_outer...) |> transpose |> collect;
 
-    bd1_inverse = BoundaryData(
-        bc1_inv;
-        θs = θs_inv,
-        fields = field1_outer
-    )
+        bd1_inverse = BoundaryData(
+            bc1_inv;
+            θs = θs_inv,
+            fields = field1_outer
+        )
 
-    field2_outer = [field(wave, x, bc2_inv.fieldtype) for x in x_outer];
-    field2_outer = hcat(field2_outer...) |> transpose |> collect;
+    # the traction field is known to be zero everywhere. There needs to be enough points sampled here to match the basis_order used, I think. So instead just using the modal representation that was used for the forward problem.
 
-    bd2_inverse = BoundaryData(
-        bc2_inv;
-        θs = θs_inv,
-        fields = field2_outer
-    )
+        bd2_inverse = bd2_for # this is a bit of an inverse crime.
 
     # Create a boundary basis for the inverse problem for the inner boundary
-    bd1s = [
-        BoundaryData(bc1_forward, θs = θs, fields = hcat(fp1s[j],fs1s[j]))
-    for j in eachindex(fp1s)]
+        bd1s = [
+            BoundaryData(bc1_forward, θs = θs, fields = hcat(fp1s[j],fs1s[j]))
+        for j in eachindex(fp1s)]
 
-    boundarybasis1 = BoundaryBasis(bd1s)
+        boundarybasis1 = BoundaryBasis(bd1s)
 
     # solve the inverse problem with the PriorMethod
     method = PriorMethod(tol = modal_method.tol, modal_method = modal_method)
 
-    inverse_sim = BearingSimulation(ω, bearing, bd1_inverse, bd2_inverse;
+    inverse_sim = BearingSimulation(ω, method, bearing, bd1_inverse, bd2_inverse;
         boundarybasis1 = boundarybasis1,
-        method = method
     )
 
 end

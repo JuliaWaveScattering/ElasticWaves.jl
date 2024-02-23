@@ -99,27 +99,66 @@ end
 function ElasticWave(sim::BearingSimulation{PriorMethod})
 
     ω = sim.ω
+    T = typeof(ω)
+
     bearing = sim.bearing
     
     boundarydata1 = sim.boundarydata1
     boundarydata2 = sim.boundarydata2
     
-    boundarybasis1 = sim.boundarybasis1
-    boundarybasis2 = sim.boundarybasis2
+    boundarybasis1 = deepbcopy(sim.boundarybasis1)
+    boundarybasis2 = deepbcopy(sim.boundarybasis2)
 
     basis_order = sim.basis_order
 
-    # check which orders are stable for the forward problem
+    ## The forward problem
         mode_errors = zeros(T, 2basis_order + 1)
+        Ms = [zeros(Complex{T},4,4) for n = -basis_order:basis_order]
 
-        Ms = [
-            boundarycondition_system(ω, bearing, boundarybasis1.basis[1].boundarytype, boundarybasis2.basis[1].boundarytype, n)  
-        for n in -basis_order:basis_order]
+        for m1 = 0:basis_order
+            for n in [-m1,m1]
+                M = boundarycondition_system(ω, bearing, boundarybasis1.basis[1].boundarytype, boundarybasis2.basis[1].boundarytype, n)  
 
-        relative_error_x = cond.(Ms) .* eps(T) 
-        error = max(relative_error,relative_error_x)
+                mode_errors[n + basis_order + 1] = cond(M) * eps(T)
+
+                Ms[n + basis_order + 1] = M
+            end
+            
+            error = max(mode_errors[m1 + basis_order + 1], mode_errors[-m1 + basis_order + 1])
+
+            if error > sim.method.tol
+                @warn "The relative error for the boundary conditions was $(error) for (ω,basis_order) = $((ω,m1))"
+                if sim.method.modal_method.only_stable_modes
+                    mode_errors[m1 + basis_order + 1] = zero(T)
+                    mode_errors[-m1 + basis_order + 1] = zero(T)
+
+                    break 
+                end
+            end
+        end        
+
+        # in case the loop terminated early due to keeping only_stable_modes
+        n = findfirst(mode_errors[basis_order+1:end] .== zero(T))
+        if !isnothing(n)
+            if n == 1
+                error("there are no stable modes, and therefore no solution found")
+            end    
+            m = n - 2
+
+            inds = (-m:m) .+ (basis_order+1)
+                
+            Ms = Ms[inds]
+            mode_errors = mode_errors[inds]
+
+            # need to change all the boundarybasis modes now
+            boundarybasis1.basis[1].fourier_modes = boundarybasis1.basis[1].fourier_modes[inds,:]    
+            
+            
+            basis_order = m
+        end    
 
         M_forward = BlockDiagonal(Ms)
+
 
 
     # Create the Prior matrix P 
@@ -181,12 +220,13 @@ function ElasticWave(sim::BearingSimulation{PriorMethod})
         
         # flatten to solve the matrix system
         bias_vector = b[:]
-        
-    T = typeof(ω)
-    
+          
     P = Matrix{ComplexF64}(P)
     
     # Define the linear prior matrix B and prior c
+        # δ = sim.method.regularisation_parameter
+        # x = [A; sqrt(δ) * I] \ [b; zeros(size(A)[2])]
+
     B = M_forward \ P
     c = M_forward \ bias_vector
 

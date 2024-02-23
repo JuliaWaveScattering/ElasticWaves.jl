@@ -41,7 +41,6 @@ using LinearAlgebra
 using StaticArrays: SVector
 using BlockArrays, BlockDiagonals
 
-
 include("elasticity.jl")
 include("source.jl")
 
