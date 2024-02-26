@@ -1,45 +1,3 @@
-## methods to solve for waves in bearings 
-
-abstract type BearingMethod end
-
-struct NoBearingMethod <: BearingMethod end
-
-struct ModalMethod <: BearingMethod
-    tol::Float64
-    # to use Tikhonov regularization give a non-zero parameter
-    regularisation_parameter::Float64
-    only_stable_modes::Bool
-end
-struct GapMethod <: BearingMethod end
-
-struct PriorMethod <: BearingMethod
-    tol::Float64
-    # to use Tikhonov regularization give a non-zero parameter
-    regularisation_parameter::Float64
-    modal_method::ModalMethod
-end
-
-function ModalMethod(; 
-        tol::Float64 = eps(Float64)^(1/2), 
-        regularisation_parameter::Float64 = zero(Float64),
-        only_stable_modes = false
-    )
-
-    if !only_stable_modes 
-        @warn "only_stable_modes was set to false. This means that potentially ill-posed (or unstable) modes will attempt to be solved, which could lead to non-sense solutions." 
-    end
-
-    ModalMethod(tol, regularisation_parameter, only_stable_modes)
-end
-
-function PriorMethod(; 
-        tol::Float64 = eps(Float64)^(1/2), 
-        regularisation_parameter::Float64 = zero(Float64),
-        modal_method = ModalMethod(tol = tol)
-    )
-    PriorMethod(tol, regularisation_parameter, modal_method)
-end
-
 struct RollerBearing{T}
     medium::Elastic{2,T} # defining medium
     inner_radius::T
@@ -168,7 +126,7 @@ end
 # """
 # EmptyBoundaryBasis(bd::BoundaryData) =  BoundaryBasis(bd[])
 
-mutable struct BearingSimulation{M <: BearingMethod, BC1 <: BoundaryCondition, BC2 <: BoundaryCondition, BCB1 <: BoundaryCondition, BCB2 <: BoundaryCondition, T}
+mutable struct BearingSimulation{M <: SolutionMethod, BC1 <: BoundaryCondition, BC2 <: BoundaryCondition, BCB1 <: BoundaryCondition, BCB2 <: BoundaryCondition, T}
     ω::T
     basis_order::Int
     method::M
@@ -183,7 +141,7 @@ mutable struct BearingSimulation{M <: BearingMethod, BC1 <: BoundaryCondition, B
             boundarydata2::BoundaryData{BC2,T},
             boundarybasis1::BoundaryBasis{BCB1,T}  = BoundaryBasis([BoundaryData(boundarydata1.boundarytype)]),
             boundarybasis2::BoundaryBasis{BCB2,T}  = BoundaryBasis([BoundaryData(boundarydata2.boundarytype)])
-        ) where {T, M <: BearingMethod, BC1 <: BoundaryCondition, BC2 <: BoundaryCondition, BCB1 <: BoundaryCondition, BCB2 <: BoundaryCondition}
+        ) where {T, M <: SolutionMethod, BC1 <: BoundaryCondition, BC2 <: BoundaryCondition, BCB1 <: BoundaryCondition, BCB2 <: BoundaryCondition}
     
         return new{M,BC1,BC2,BCB1,BCB2,T}(ω, basis_order, method, bearing, boundarydata1, boundarydata2, boundarybasis1, boundarybasis2)
     end 
@@ -193,7 +151,7 @@ end
 function BearingSimulation(ω::T, bearing::RollerBearing{T}, boundarydata1::BD1, boundarydata2::BD2;
     method::M = NoBearingMethod(),
     kws...
-) where {T, M <: BearingMethod, BD1 <: BoundaryData, BD2 <: BoundaryData}
+) where {T, M <: SolutionMethod, BD1 <: BoundaryData, BD2 <: BoundaryData}
 
     if typeof(method) == NoBearingMethod
         @warn "no method was chosen for this bearing simulation. Will choose the default ModalMethod which makes no assumption about the forcing or bearings"
@@ -253,7 +211,7 @@ function BearingSimulation(ω::T, method::PriorMethod, bearing::RollerBearing{T}
     ) where {T, BC1 <: BoundaryCondition, BC2 <: BoundaryCondition, BCB1 <: BoundaryCondition, BCB2 <: BoundaryCondition}
 
     # we need the fields of the boundary data for the PriorMethod
-    if isempty(boundarydata1.fields) || isempty(boundarydata2.fields)
+    if isempty(boundarydata1.fields) && isempty(boundarydata2.fields)
 
         @error "The fields of boundarydata1 or boundarydata2 are empty. We expect that the fields are given for the PriorMethod because as the number of fourier_modes can be far greater than the length of the fields. Meaning it is not possible to calculate the fourier_modes of the boundary data directly"
     end

@@ -24,10 +24,15 @@
     bd2 = BoundaryData(TractionBoundary(outer=true); fourier_modes=forcing_modes[:, 3:4])
 
     # could regularise the lowest frequency, though it doesn't appear necessary
+
     δs = [1e-8,0.0,0.0]
     tol = 1e-3
     sims = map(eachindex(ωs)) do i
-        method = ModalMethod(regularisation_parameter = δs[i], tol = tol)
+        # the option only_stable_modes = false means the method will try to solve for modes which are ill posed 
+        method = ModalMethod(regularisation_parameter = δs[i], 
+            tol = tol, 
+            only_stable_modes = false 
+        )
         BearingSimulation(ωs[i], bearing, bd1, bd2; 
             method = method
         ) 
@@ -106,7 +111,8 @@
         fourier_modes = forcing_modes[:,3:4]
     )
 
-    method = ModalMethod()
+    # include ill posed modes by setting only_stable_modes = false
+    method = ModalMethod(only_stable_modes = false)
     sims = [BearingSimulation(ω, bearing, bd1, bd2; method = method) for ω in ωs];
     waves = [ElasticWave(s) for s in sims];
 
@@ -216,7 +222,7 @@
         fourier_modes = field_modes(wave, bearing.outer_radius, DisplacementType()) + error
     )
 
-    method = ModalMethod(regularisation_parameter = 0.0)
+    method = ModalMethod(regularisation_parameter = 0.0, only_stable_modes = false)
     sim = BearingSimulation(ω, bearing, bd1, bd2; method = method)
     wave2 = ElasticWave(sim)
 

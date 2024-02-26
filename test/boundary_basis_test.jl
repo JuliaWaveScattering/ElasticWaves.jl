@@ -2,6 +2,7 @@
 @testset "Boundary basis example" begin
 
     ω = 1e6
+    ω = 1e4
     steel = Elastic(2; ρ = 7800.0, cp = 5000.0, cs = 3500.0)
     bearing = RollerBearing(medium=steel, inner_radius=1.0, outer_radius = 2.0)
 
@@ -87,8 +88,8 @@
 
     inverse_sim = BearingSimulation(ω, method, bearing, bd1_inverse, bd2_inverse;
         boundarybasis1 = boundarybasis1,
-    )
-
+    );
+    sim = inverse_sim;
 end
 
 @testset "Boundary basis and priors" begin

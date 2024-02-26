@@ -92,7 +92,10 @@ function ElasticWave(sim::BearingSimulation{ModalMethod})
     φ = HelmholtzPotential{2}(bearing.medium.cp, kP, pressure_coefficients)
     ψ = HelmholtzPotential{2}(bearing.medium.cs, kS, shear_coefficients)
 
-    return ElasticWave(ω, bearing.medium, [φ, ψ]; mode_errors = mode_errors)
+    
+    @reset sim.method.mode_errors = mode_errors
+
+    return ElasticWave(ω, bearing.medium, [φ, ψ], sim.method)
 end
 
 
@@ -106,8 +109,8 @@ function ElasticWave(sim::BearingSimulation{PriorMethod})
     boundarydata1 = sim.boundarydata1
     boundarydata2 = sim.boundarydata2
     
-    boundarybasis1 = deepbcopy(sim.boundarybasis1)
-    boundarybasis2 = deepbcopy(sim.boundarybasis2)
+    boundarybasis1 = deepcopy(sim.boundarybasis1)
+    boundarybasis2 = deepcopy(sim.boundarybasis2)
 
     basis_order = sim.basis_order
 
@@ -150,15 +153,29 @@ function ElasticWave(sim::BearingSimulation{PriorMethod})
             Ms = Ms[inds]
             mode_errors = mode_errors[inds]
 
-            # need to change all the boundarybasis modes now
-            boundarybasis1.basis[1].fourier_modes = boundarybasis1.basis[1].fourier_modes[inds,:]    
+            # need to change all the boundarybasis modes if they exist
+            basis1 = map(boundarybasis1.basis) do b
+                if !isempty(b.fourier_modes)
+                   @reset b.fourier_modes = b.fourier_modes[inds,:]
+                end
+                b
+            end
+            boundarybasis1 = BoundaryBasis(basis1)
             
+            basis2 = map(boundarybasis2.basis) do b
+                if !isempty(b.fourier_modes)
+                   @reset b.fourier_modes = b.fourier_modes[inds,:]
+                end
+                b
+            end
+            boundarybasis2 = BoundaryBasis(basis2)
             
             basis_order = m
-        end    
+        end
+        
+        @reset sim.method.modal_method.mode_errors = mode_errors
 
         M_forward = BlockDiagonal(Ms)
-
 
 
     # Create the Prior matrix P 
@@ -177,8 +194,8 @@ function ElasticWave(sim::BearingSimulation{PriorMethod})
         P2 = vcat([ [0.0*P; P]  for P in P2s]...)
 
         # reshape just in case matrix is empty so hcat can work seemlesly
-        P1 = reshape(P1, 4 * (2 * sim.basis_order + 1), :)
-        P2 = reshape(P2, 4 * (2 * sim.basis_order + 1), :)
+        P1 = reshape(P1, 4 * (2 * basis_order + 1), :)
+        P2 = reshape(P2, 4 * (2 * basis_order + 1), :)
     
         P = hcat(P1,P2)
         
@@ -188,47 +205,76 @@ function ElasticWave(sim::BearingSimulation{PriorMethod})
         boundarydatas = [boundarydata1, boundarydata2]
         boundarydata_types = [b.boundarytype for b in boundarydatas]
 
+        zs = zeros(Complex{T},2basis_order + 1)
+
         b = if isempty(P1)
             i = findfirst(bt -> boundarybasis1.basis[1].boundarytype == bt, boundarydata_types)
             if isnothing(i) 
                 @error "The basis boundarybasis1 was empty and there was no boundary data provided that matched the type of boundary condition given in boundarybasis1.basis[1].boundarytype. This means it is impossible to solve the forward problem."
             end
 
+            l = boundarydatas[i].fourier_modes |> length
+
+            if l > 2basis_order + 1
+
+                data_basis_order = Int((l - 1) / 2)
+                inds = (-2basis_order:2basis_order) .+ (data_basis_order+1)
+                @reset boundarydatas[i].fourier_modes = boundarydatas[i].fourier_modes[inds]
+
+            elseif size(boundarydatas[i].fields,1) > 2basis_order + 1
+                
+                boundarydatas[i] = fields_to_fouriermodes(boundarydatas[i],basis_order)
+            end   
+
             hcat(
                 boundarydatas[i].fourier_modes[:,1], 
                 boundarydatas[i].fourier_modes[:,2], 
-                0.0 .* boundarydatas[i].fourier_modes[:,1], 
-                0.0 .* boundarydatas[i].fourier_modes[:,1]
+                zs, 
+                zs
             ) |> transpose
         else
-            b = hcat(
-                0.0 .* boundarydatas[1].fourier_modes[:,1], 
-                0.0 .* boundarydatas[1].fourier_modes[:,2], 
-                0.0 .* boundarydatas[1].fourier_modes[:,1], 
-                0.0 .* boundarydatas[1].fourier_modes[:,1]
-            ) |>transpose     
+        
+            hcat(zs,zs,zs,zs) |> transpose     
         end    
 
-        if isempty(P2)
+        b = if isempty(P2)
             i = findfirst(bt -> boundarybasis2.basis[1].boundarytype == bt, boundarydata_types)
             if isnothing(i) 
                 @error "The basis boundarybasis2 was empty and there was no boundary data provided that matched the type of boundary condition given in boundarybasis2.basis[1].boundarytype. This means it is impossible to solve the forward problem."
             end
 
-            b = transpose(b) + hcat(0.0 .* boundarydatas[i].fourier_modes[:,1], 0.0 .* boundarydatas[i].fourier_modes[:,2], boundarydatas[i].fourier_modes[:,1], boundarydatas[i].fourier_modes[:,2]) |> transpose
+            l = boundarydatas[i].fourier_modes |> length
+
+            if l > 2basis_order + 1
+
+                data_basis_order = Int((l - 1) / 2)
+                inds = (-2basis_order:2basis_order) .+ (data_basis_order+1)
+                @reset boundarydatas[i].fourier_modes = boundarydatas[i].fourier_modes[inds]
+
+            elseif size(boundarydatas[i].fields,1) > 2basis_order + 1
+                
+                boundarydatas[i] = fields_to_fouriermodes(boundarydatas[i],basis_order)
+            end
+            
+            transpose(b) + hcat(
+                zs, zs, 
+                boundarydatas[i].fourier_modes[:,1], 
+                boundarydatas[i].fourier_modes[:,2]
+            ) |> transpose
+        else b    
         end
         
         # flatten to solve the matrix system
         bias_vector = b[:]
           
-    P = Matrix{ComplexF64}(P)
-    
     # Define the linear prior matrix B and prior c
         # δ = sim.method.regularisation_parameter
         # x = [A; sqrt(δ) * I] \ [b; zeros(size(A)[2])]
 
-    B = M_forward \ P
-    c = M_forward \ bias_vector
+        P = Matrix{ComplexF64}(P)
+
+        B = M_forward \ P
+        c = M_forward \ bias_vector
 
     # Use the prior to solve the inverse problem
     Ms_inverse = [
@@ -291,6 +337,8 @@ function ElasticWave(sim::BearingSimulation{PriorMethod})
 #         @warn "The relative error for the boundary conditions was $(relative_error) for (ω,basis_order) = $((ω,basis_order))"
     end
 
+    # @reset sim.method.error = 
+
     coefficients = a
     mode_errors = relative_error
 
@@ -302,7 +350,6 @@ function ElasticWave(sim::BearingSimulation{PriorMethod})
     φ = HelmholtzPotential{2}(bearing.medium.cp, kP, pressure_coefficients)
     ψ = HelmholtzPotential{2}(bearing.medium.cs, kS, shear_coefficients)
 
-    return ElasticWave(ω, bearing.medium, [φ, ψ])
 
-    # return ElasticWave(ω, bearing.medium, [φ, ψ]; mode_errors = mode_errors)
+    return ElasticWave(ω, bearing.medium, [φ, ψ], sim.method)
 end

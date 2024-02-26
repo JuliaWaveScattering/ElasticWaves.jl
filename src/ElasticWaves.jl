@@ -37,10 +37,12 @@ export ModalMethod, PriorMethod, GapMethod
 
 using MultipleScattering
 using SpecialFunctions
+using Accessors
 using LinearAlgebra
 using StaticArrays: SVector
 using BlockArrays, BlockDiagonals
 
+include("types.jl")
 include("elasticity.jl")
 include("source.jl")
 
