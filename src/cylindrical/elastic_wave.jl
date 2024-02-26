@@ -26,7 +26,7 @@ function ElasticWave(sim::BearingSimulation{ModalMethod})
     T = typeof(ω)
 
     kP = ω / bearing.medium.cp;
-    kS = ω / bearing.medium.cs
+    kS = ω / bearing.medium.cs;
 
     basis_order = sim.basis_order
 
@@ -251,7 +251,7 @@ function ElasticWave(sim::BearingSimulation{PriorMethod})
                 inds = (-2basis_order:2basis_order) .+ (data_basis_order+1)
                 @reset boundarydatas[i].fourier_modes = boundarydatas[i].fourier_modes[inds]
 
-            elseif size(boundarydatas[i].fields,1) > 2basis_order + 1
+            elseif size(boundarydatas[i].fields,1) >= 2basis_order + 1
                 
                 boundarydatas[i] = fields_to_fouriermodes(boundarydatas[i],basis_order)
             end
@@ -276,15 +276,9 @@ function ElasticWave(sim::BearingSimulation{PriorMethod})
         B = M_forward \ P
         c = M_forward \ bias_vector
 
-    # Use the prior to solve the inverse problem
-    Ms_inverse = [
-        boundarycondition_system(ω, bearing, sim.boundarydata1.boundarytype, sim.boundarydata2.boundarytype, n) 
-    for n in -basis_order:basis_order]
-       
-    M_inverse = BlockDiagonal(Ms_inverse)
+## Calculate the inverse problem 
 
-## Calculate the block boundary field data y_inv
-
+    # block boundary field data y_inv
     y1 = sim.boundarydata1.fields
     y2 = sim.boundarydata2.fields
 
@@ -303,6 +297,13 @@ function ElasticWave(sim::BearingSimulation{PriorMethod})
 
     y_inv = hcat(y1, y2) |> transpose
     y_inv = y_inv[:]
+
+    # Use the prior to solve the inverse problem
+    Ms_inverse = [
+        boundarycondition_system(ω, bearing, sim.boundarydata1.boundarytype, sim.boundarydata2.boundarytype, n) 
+    for n in -basis_order:basis_order]
+       
+    M_inverse = BlockDiagonal(Ms_inverse)
 
 ## Calculate the block matrix E where E * M_inverse * a is how the potentials contribute to the fields of the boundary conditions
 
@@ -332,24 +333,29 @@ function ElasticWave(sim::BearingSimulation{PriorMethod})
 
     a = B*x + c
 
-    relative_error = norm(EM_inverse*a - y_inv) / norm(y_inv)
-    if relative_error > sim.method.tol
+    boundary_error = norm(EM_inverse*a - y_inv) / norm(y_inv)
+    condition_number = cond(EM_inverse)
+
+    @reset sim.method.boundary_error = boundary_error
+    @reset sim.method.condition_number = condition_number
+
+    # if relative_error > sim.method.tol
 #         @warn "The relative error for the boundary conditions was $(relative_error) for (ω,basis_order) = $((ω,basis_order))"
-    end
+    # end
 
     # @reset sim.method.error = 
 
     coefficients = a
-    mode_errors = relative_error
-
     coefficients = reshape(coefficients,(4,:)) |> transpose |> collect
 
     pressure_coefficients = coefficients[:,1:2] |> transpose
     shear_coefficients = coefficients[:,3:4] |> transpose
 
+    kP = ω / bearing.medium.cp;
+    kS = ω / bearing.medium.cs;
+
     φ = HelmholtzPotential{2}(bearing.medium.cp, kP, pressure_coefficients)
     ψ = HelmholtzPotential{2}(bearing.medium.cs, kS, shear_coefficients)
-
 
     return ElasticWave(ω, bearing.medium, [φ, ψ], sim.method)
 end

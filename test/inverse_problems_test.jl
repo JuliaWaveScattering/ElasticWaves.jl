@@ -43,7 +43,7 @@
 
     # Calculate the wave only from the outer boundary. We typically think of this as an inverse problem as the (non-zero) traction was specified on the inner boundary
     inverse_sims = [
-        BearingSimulation(ωs[i], bearing, bd1s[i], bd2s[i]; method = ModalMethod())
+        BearingSimulation(ωs[i], bearing, bd1s[i], bd2s[i]; method = ModalMethod(only_stable_modes = false))
     for i in eachindex(ωs)];
     inverse_waves = ElasticWave.(inverse_sims);
 
@@ -82,7 +82,7 @@
     end
 
     inverse_sims = [
-        BearingSimulation(ωs[i], bearing, bd1s[i], bd2s[i]; method = ModalMethod())
+        BearingSimulation(ωs[i], bearing, bd1s[i], bd2s[i]; method = ModalMethod(only_stable_modes = false))
     for i in eachindex(ωs)];
     inverse_waves = ElasticWave.(inverse_sims);
 
@@ -164,7 +164,7 @@ end
     bd1 = BoundaryData(TractionBoundary(inner = true); θs = θs, fields = hcat(fp,fs))
     bd2 = BoundaryData(TractionBoundary(outer = true); θs = θs, fields = hcat(fs,fs))
 
-    method = ModalMethod()
+    method = ModalMethod(only_stable_modes = false)
     sim = BearingSimulation(ω, bearing, bd1, bd2; method = method)
 
     # let's have a look at the modes that were calculated for this BearingSimulation. This is the field we will actual approximate

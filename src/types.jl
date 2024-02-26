@@ -20,7 +20,8 @@ struct PriorMethod <: SolutionMethod
     # to use Tikhonov regularization give a non-zero parameter
     regularisation_parameter::Float64
     modal_method::ModalMethod
-    error::Float64
+    condition_number::Float64
+    boundary_error::Float64
 end
 
 function ModalMethod(; 
@@ -41,8 +42,9 @@ function PriorMethod(;
         tol::Float64 = eps(Float64)^(1/2), 
         regularisation_parameter::Float64 = zero(Float64),
         modal_method = ModalMethod(tol = tol),
-        error = -one(Float64)
+        condition_number = -one(Float64),
+        boundary_error = -one(Float64),
 
     )
-    PriorMethod(tol, regularisation_parameter, modal_method, error)
+    PriorMethod(tol, regularisation_parameter, modal_method, condition_number, boundary_error)
 end

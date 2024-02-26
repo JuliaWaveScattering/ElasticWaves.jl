@@ -90,6 +90,8 @@
         boundarybasis1 = boundarybasis1,
     );
     sim = inverse_sim;
+
+    wave = ElasticWave(inverse_sim);
 end
 
 @testset "Boundary basis and priors" begin
