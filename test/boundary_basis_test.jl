@@ -1,8 +1,8 @@
 # Here is an example of using a traction basis with three elements that should give an exact inversion
 @testset "Boundary basis example" begin
 
-    ω = 1e6
     ω = 1e4
+    ω = 1e6
     steel = Elastic(2; ρ = 7800.0, cp = 5000.0, cs = 3500.0)
     bearing = RollerBearing(medium=steel, inner_radius=1.0, outer_radius = 2.0)
 
@@ -12,16 +12,16 @@
     # using 2basis_order + 2 guarantees that we can exactly represent the above with Fourier modes with basis_order number of modes
 
     # choose a basis for the pressure and shear on the inner boundary
+    # with twp boundaries we need only one sensor position that measures both pressure and shear
+    # θos = [0.0,pi/3,pi];
+    θos = [0.0,pi/3];
     fp1s = [
         exp.(-20.0 .* (sin.(θs ./ 2.0) .- sin(θ ./ 2.0)).^2) + θs .* 0im 
-    for θ = [0.0,pi/3,pi]]; 
+    for θ = θos]; 
         
     fs1s = [
         0.5 .* exp.(-20.0 .* (sin.(θs ./ 2.0) .- sin(θ ./ 2.0)).^2) + θs .* 0im 
-    for θ = [0,pi/3,pi]];
-
-    # as there are three basis functions, we will need to measure at least three measurements. Typically each sensor, or point on the boundary, gives two measurements. So two sensors results in 4 measurements. 
-    numberofsensors = 2
+    for θ = θos];
 
 ## The forward problem
 
@@ -49,8 +49,11 @@
     # Solve the whole field for the forward problem        
         # the method specifies to use only stable modes.
         modal_method = ModalMethod(tol = 1e-3, only_stable_modes = true)
-        sim = BearingSimulation(ω, bearing, bd1_for, bd2_for; method = modal_method)
-        wave = ElasticWave(sim)
+        forward_sim = BearingSimulation(ω, bearing, bd1_for, bd2_for; method = modal_method);
+        wave = ElasticWave(forward_sim);
+
+        # as = vcat(wave.potentials[1].coefficients,wave.potentials[2].coefficients)
+        # a = as[:]
 
 ## The inverse problem
 
@@ -58,10 +61,12 @@
         bc2_inv = TractionBoundary(outer=true)
 
     # Use the solution of the forward problem to generate data for the inverse problem
-    # the data is only measured in a few locations    
+    
+    # as there are two basis functions, we will need to at least two measurements. Typically each sensor, or point on the boundary, gives two measurements. So one sensor can be enough. 
+        numberofsensors = Int(ceil(length(θos)/2))
+        
         θs_inv = LinRange(0, 2pi, numberofsensors + 1)[1:end-1]
-        x_outer = [radial_to_cartesian_coordinates([bearing.outer_radius,θ]) for θ in θs_inv ]
-
+        x_outer = [radial_to_cartesian_coordinates([bearing.outer_radius,θ]) for θ in θs_inv]
 
         field1_outer = [field(wave, x, bc1_inv.fieldtype) for x in x_outer];
         field1_outer = hcat(field1_outer...) |> transpose |> collect;
@@ -91,7 +96,40 @@
     );
     sim = inverse_sim;
 
-    wave = ElasticWave(inverse_sim);
+    inverse_wave = ElasticWave(inverse_sim);
+
+## Test how well we recover the inner traction
+    x_inner = [
+        radial_to_cartesian_coordinates([bearing.inner_radius,θ]) 
+    for θ in θs]
+    
+    field1_inner = [
+        field(inverse_wave, x, bc1_forward.fieldtype) 
+    for x in x_inner]
+    field1_inner = hcat(field1_inner...) |> transpose |> collect
+
+    using Plots
+    plot(θs, real.(bd1_for.fields), lab = ["forward pressure" "forward shear"])
+    plot!(θs, real.(field1_inner), 
+        lab = ["inverse pressure" "inverse shear"]
+        , linestyle = :dash, linewidth = 2.0
+    )
+
+    # even excluding some modes the recovery is very good with just one sensor
+    # this is because the higher order modes (in this case) contribute very little to the field
+    @test norm(field1_inner - bd1_for.fields) / norm(bd1_for.fields) < 1e-3
+    
+    @test norm(wave.potentials[1].coefficients - inverse_wave.potentials[1].coefficients) / norm(wave.potentials[1].coefficients) < 2e-6
+
+    @test norm(wave.potentials[2].coefficients - inverse_wave.potentials[2].coefficients) / norm(wave.potentials[2].coefficients) < 2e-6
+
+    
+    modes1 = field_modes(wave, bearing.inner_radius, bc1_forward.fieldtype);
+    inverse_modes1 = field_modes(inverse_wave, bearing.inner_radius, bc1_forward.fieldtype);
+
+    norm(modes1 - inverse_modes1) / norm(modes1)
+    
+
 end
 
 @testset "Boundary basis and priors" begin

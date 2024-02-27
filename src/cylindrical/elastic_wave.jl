@@ -276,6 +276,16 @@ function ElasticWave(sim::BearingSimulation{PriorMethod})
         B = M_forward \ P
         c = M_forward \ bias_vector
 
+        # a = B*x + c
+        # norm(B * [1.0,1.0] + c - a) / norm(a)
+
+        # P * x 
+        # M_forward * a
+        # a = vcat(wave.potentials[1].coefficients,wave.potentials[2].coefficients)[:]
+        # x = P \ (M_forward * a)
+        # norm(P * x - M_forward * a) / norm(P * x)
+        # norm(P * [1.0,1.0] - M_forward * a) / norm(P * x)
+
 ## Calculate the inverse problem 
 
     # block boundary field data y_inv
@@ -299,11 +309,15 @@ function ElasticWave(sim::BearingSimulation{PriorMethod})
     y_inv = y_inv[:]
 
     # Use the prior to solve the inverse problem
-    Ms_inverse = [
+    Mns = [
         boundarycondition_system(ω, bearing, sim.boundarydata1.boundarytype, sim.boundarydata2.boundarytype, n) 
     for n in -basis_order:basis_order]
        
-    M_inverse = BlockDiagonal(Ms_inverse)
+    M_inverse = BlockDiagonal(Mns)
+
+     sum(Mns[i] * as[:,i] for i in eachindex(Mns))
+     ys = vcat(sim.boundarydata1.fields[1,:], sim.boundarydata2.fields[1,:]);
+     sum(Mns[i] * as[:,i] for i in eachindex(Mns)) - ys
 
 ## Calculate the block matrix E where E * M_inverse * a is how the potentials contribute to the fields of the boundary conditions
 
@@ -323,18 +337,22 @@ function ElasticWave(sim::BearingSimulation{PriorMethod})
     Es = [
         [Id*χ1[m]*exp(im*n*θ1[m]) Z; 
         Z Id*χ2[m]*exp(im*n*θ2[m])]
-    for m = 1:M, n in -basis_order:basis_order]
+    for m = 1:M, n in -basis_order:basis_order];
 
-    EM_inverse = Matrix(mortar(Es)) * M_inverse
+    EM_inverse = Matrix(mortar(Es)) * M_inverse;
 
 ## Solve with the prior method
+
+    # EM_inverse * (B * x + c) =  y_inv 
 
     x = (EM_inverse * B) \ (y_inv - EM_inverse * c)
 
     a = B*x + c
 
+    # norm(EM_inverse * a - y_inv) / norm(y_inv)
+
     boundary_error = norm(EM_inverse*a - y_inv) / norm(y_inv)
-    condition_number = cond(EM_inverse)
+    condition_number = cond(EM_inverse * B)
 
     @reset sim.method.boundary_error = boundary_error
     @reset sim.method.condition_number = condition_number
