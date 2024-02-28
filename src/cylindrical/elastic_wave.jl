@@ -315,9 +315,9 @@ function ElasticWave(sim::BearingSimulation{PriorMethod})
        
     M_inverse = BlockDiagonal(Mns)
 
-     sum(Mns[i] * as[:,i] for i in eachindex(Mns))
-     ys = vcat(sim.boundarydata1.fields[1,:], sim.boundarydata2.fields[1,:]);
-     sum(Mns[i] * as[:,i] for i in eachindex(Mns)) - ys
+    #  sum(Mns[i] * as[:,i] for i in eachindex(Mns))
+    #  ys = vcat(sim.boundarydata1.fields[1,:], sim.boundarydata2.fields[1,:]);
+    #  sum(Mns[i] * as[:,i] for i in eachindex(Mns)) - ys
 
 ## Calculate the block matrix E where E * M_inverse * a is how the potentials contribute to the fields of the boundary conditions
 

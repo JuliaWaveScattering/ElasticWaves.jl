@@ -5,6 +5,11 @@
     ω = 1e6
     steel = Elastic(2; ρ = 7800.0, cp = 5000.0, cs = 3500.0)
     bearing = RollerBearing(medium=steel, inner_radius=1.0, outer_radius = 2.0)
+    
+    kp = real(ω / steel.cp)
+
+    steel = Elastic(2; ρ = 1 / ω^2, cp = ω, cs = ω *  steel.cs / steel.cp)
+    bearing = RollerBearing(medium=steel, inner_radius = bearing.inner_radius * kp, outer_radius = bearing.outer_radius * kp)
 
 ## Forward problem with forcing on inner boundary to create a basis
     basis_order = 30;    
@@ -52,8 +57,18 @@
         forward_sim = BearingSimulation(ω, bearing, bd1_for, bd2_for; method = modal_method);
         wave = ElasticWave(forward_sim);
 
+
         # as = vcat(wave.potentials[1].coefficients,wave.potentials[2].coefficients)
         # a = as[:]
+
+        θs2 = LinRange(0, 2pi, 10*basis_order + 1)[1:end-1]
+        x_outer = [radial_to_cartesian_coordinates([bearing.outer_radius,θ]) for θ in θs2]
+
+        field1_outer = [field(wave, x, bc2_inv.fieldtype) for x in x_outer];
+        field1_outer = hcat(field1_outer...) |> transpose |> collect;
+
+        using Plots
+        plot(θs2, abs.(field1_outer))
 
 ## The inverse problem
 
@@ -109,7 +124,8 @@
     field1_inner = hcat(field1_inner...) |> transpose |> collect
 
     using Plots
-    plot(θs, real.(bd1_for.fields), lab = ["forward pressure" "forward shear"])
+    plot(θs, real.(bd1_for.fields), 
+        lab = ["forward pressure" "forward shear"])
     plot!(θs, real.(field1_inner), 
         lab = ["inverse pressure" "inverse shear"]
         , linestyle = :dash, linewidth = 2.0
