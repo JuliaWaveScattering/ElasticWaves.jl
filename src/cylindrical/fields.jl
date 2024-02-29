@@ -3,7 +3,7 @@
 
 Returns the value of the potentical at the point `x`
 """
-function field(potential::HelmholtzPotential{2}, x::AbstractVector{T}) where T<:AbstractFloat
+function field(potential::HelmholtzPotential{2}, x::AbstractVector{T}) where T
 
     k = potential.wavenumber
     r, θ = cartesian_to_radial_coordinates(x)
@@ -30,7 +30,7 @@ function field(potential::HelmholtzPotential, bearing::RollerBearing; kws...)
     )
 end
 
-function field_modes(wave::ElasticWave{2}, r::T, FT::FieldType) where T <: AbstractFloat
+function field_modes(wave::ElasticWave{2}, r::T, FT::FieldType) where T
 
     basis_order = wave.potentials[1].basis_order
     pmodes = hcat([
@@ -71,7 +71,7 @@ function field(wave::ElasticWave{2}, sh::Shape, fieldtype::FieldType; kws...)
 end
 
 
-function field(wave::ElasticWave{2}, x::AbstractVector{T}, field_type::FieldType) where T <: AbstractFloat
+function field(wave::ElasticWave{2}, x::AbstractVector{T}, field_type::FieldType) where T 
 
     r, θ = cartesian_to_radial_coordinates(x)
     # exps = exp.(im * θ .* (-basis_order:basis_order))
@@ -98,7 +98,7 @@ function field(wave::ElasticWave{2}, x::AbstractVector{T}, field_type::FieldType
 end
 
 
-function pressure_field_mode(ω::AbstractFloat, r::AbstractFloat, medium::Elastic{2}, basis_order::Int, ::DisplacementType)
+function pressure_field_mode(ω::T, r::Union{T,Complex{T}}, medium::Elastic{2}, basis_order::Int, ::DisplacementType) where T
 
     kP = ω / medium.cp;
     n = basis_order;
@@ -108,7 +108,7 @@ function pressure_field_mode(ω::AbstractFloat, r::AbstractFloat, medium::Elasti
     return hcat(bessel_modes(besselj), bessel_modes(hankelh1))
 end
 
-function shear_field_mode(ω::AbstractFloat, r::AbstractFloat, medium::Elastic{2}, basis_order::Int, ::DisplacementType)
+function shear_field_mode(ω::T, r::Union{T,Complex{T}}, medium::Elastic{2}, basis_order::Int, ::DisplacementType) where T
 
     n = basis_order;
     cs = medium.cs
@@ -119,7 +119,7 @@ function shear_field_mode(ω::AbstractFloat, r::AbstractFloat, medium::Elastic{2
     return hcat(bessel_modes(besselj), bessel_modes(hankelh1))
 end
 
-function pressure_field_mode(ω::AbstractFloat, r::AbstractFloat, medium::Elastic{2}, basis_order::Int, ::TractionType)
+function pressure_field_mode(ω::T, r::Union{T,Complex{T}}, medium::Elastic{2}, basis_order::Int, ::TractionType) where T
 
     ρ = medium.ρ
     n = basis_order;
@@ -135,7 +135,7 @@ function pressure_field_mode(ω::AbstractFloat, r::AbstractFloat, medium::Elasti
     return hcat(bessel_modes(besselj), bessel_modes(hankelh1))
 end
 
-function shear_field_mode(ω::AbstractFloat, r::AbstractFloat, medium::Elastic{2}, basis_order::Int, ::TractionType)
+function shear_field_mode(ω::T, r::Union{T,Complex{T}}, medium::Elastic{2}, basis_order::Int, ::TractionType) where T
 
     ρ = medium.ρ
     n = basis_order;

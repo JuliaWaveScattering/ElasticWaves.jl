@@ -6,10 +6,16 @@
     steel = Elastic(2; ρ = 7800.0, cp = 5000.0, cs = 3500.0)
     bearing = RollerBearing(medium=steel, inner_radius=1.0, outer_radius = 2.0)
     
-    kp = real(ω / steel.cp)
+    kp = (ω / steel.cp)
+    μ = steel.ρ * steel.cs^2
+    # λ2μ = real(ω / steel.cp)
 
     steel = Elastic(2; ρ = 1 / ω^2, cp = ω, cs = ω *  steel.cs / steel.cp)
-    bearing = RollerBearing(medium=steel, inner_radius = bearing.inner_radius * kp, outer_radius = bearing.outer_radius * kp)
+    bearing = RollerBearing(
+        medium = steel, 
+        inner_radius = bearing.inner_radius * kp, 
+        outer_radius = bearing.outer_radius * kp
+    )
 
 ## Forward problem with forcing on inner boundary to create a basis
     basis_order = 30;    
@@ -21,11 +27,11 @@
     # θos = [0.0,pi/3,pi];
     θos = [0.0,pi/3];
     fp1s = [
-        exp.(-20.0 .* (sin.(θs ./ 2.0) .- sin(θ ./ 2.0)).^2) + θs .* 0im 
+        μ .* exp.(-20.0 .* (sin.(θs ./ 2.0) .- sin(θ ./ 2.0)).^2) + θs .* 0im 
     for θ = θos]; 
         
     fs1s = [
-        0.5 .* exp.(-20.0 .* (sin.(θs ./ 2.0) .- sin(θ ./ 2.0)).^2) + θs .* 0im 
+        μ .* 0.5 .* exp.(-20.0 .* (sin.(θs ./ 2.0) .- sin(θ ./ 2.0)).^2) + θs .* 0im 
     for θ = θos];
 
 ## The forward problem
@@ -61,14 +67,25 @@
         # as = vcat(wave.potentials[1].coefficients,wave.potentials[2].coefficients)
         # a = as[:]
 
-        θs2 = LinRange(0, 2pi, 10*basis_order + 1)[1:end-1]
-        x_outer = [radial_to_cartesian_coordinates([bearing.outer_radius,θ]) for θ in θs2]
+        # θ2s = LinRange(0.0, 2pi, 45basis_order+2)[1:end-1]
+        θ2s = θs
+        x_outer = [
+            radial_to_cartesian_coordinates([bearing.outer_radius,θ]) 
+        for θ in θ2s]
+        
+        field2_outer = [
+            field(wave, x, bc2_forward.fieldtype) 
+        for x in x_outer]
+        field2_outer = hcat(field2_outer...) |> transpose |> collect
+ 
+        # plot(θ2s, abs.(field2_outer))
 
-        field1_outer = [field(wave, x, bc2_inv.fieldtype) for x in x_outer];
-        field1_outer = hcat(field1_outer...) |> transpose |> collect;
+        field1_outer = [
+            field(wave, x, DisplacementType()) 
+        for x in x_outer]
+        field1_outer = hcat(field1_outer...) |> transpose |> collect
 
-        using Plots
-        plot(θs2, abs.(field1_outer))
+        # plot(θ2s, abs.(field1_outer))
 
 ## The inverse problem
 

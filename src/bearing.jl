@@ -1,20 +1,21 @@
-struct RollerBearing{T}
+struct RollerBearing{T <: AbstractFloat}
     medium::Elastic{2,T} # defining medium
-    inner_radius::T
+    inner_radius::Union{T,Complex{T}} # due to nondimensionalisation radius might be complex
     "vector of angles delimiting gaps in the inner radius"
     inner_gaps::Vector{T}
-    outer_radius::T
+    outer_radius::Union{T,Complex{T}}
     "vector of angles delimiting gaps in the outer radius"
     outer_gaps::Vector{T}
-    number_of_rollers::T
+    number_of_rollers::Int
 end
 
-function RollerBearing(; medium::Elastic{2},
-        inner_radius::T = 0.0, outer_radius::T = 0.0,
-        inner_gaps::Vector{T} = typeof(inner_radius)[],
-        outer_gaps::Vector{T} = typeof(outer_radius)[],
-        number_of_rollers::T=1.0
-    ) where T<:Number
+function RollerBearing(; medium::Elastic{2,T},
+        inner_radius::Union{T,Complex{T}} = 0.0, 
+        outer_radius::Union{T,Complex{T}} = 0.0,
+        inner_gaps::Vector{T} = typeof(medium).parameters[2][],
+        outer_gaps::Vector{T} = typeof(medium).parameters[2][],
+        number_of_rollers::Int = 1
+    ) where T <: AbstractFloat
     if isodd(length(inner_gaps)) && isodd(length(outer_gaps))
         @error "both inner_gaps and outer_gaps need to be an even number of angles"
     end
@@ -130,22 +131,46 @@ mutable struct BearingSimulation{M <: SolutionMethod, BC1 <: BoundaryCondition, 
     ω::T
     basis_order::Int
     method::M
+    nondimensionalise::Bool 
     bearing::RollerBearing{T}
     boundarydata1::BoundaryData{BC1,T}
     boundarydata2::BoundaryData{BC2,T}
     boundarybasis1::BoundaryBasis{BCB1,T}
     boundarybasis2::BoundaryBasis{BCB2,T}  
-    
-    function BearingSimulation(ω::T, basis_order::Int, method::M, bearing::RollerBearing{T}, 
-            boundarydata1::BoundaryData{BC1,T},
-            boundarydata2::BoundaryData{BC2,T},
-            boundarybasis1::BoundaryBasis{BCB1,T}  = BoundaryBasis([BoundaryData(boundarydata1.boundarytype)]),
-            boundarybasis2::BoundaryBasis{BCB2,T}  = BoundaryBasis([BoundaryData(boundarydata2.boundarytype)])
-        ) where {T, M <: SolutionMethod, BC1 <: BoundaryCondition, BC2 <: BoundaryCondition, BCB1 <: BoundaryCondition, BCB2 <: BoundaryCondition}
-    
-        return new{M,BC1,BC2,BCB1,BCB2,T}(ω, basis_order, method, bearing, boundarydata1, boundarydata2, boundarybasis1, boundarybasis2)
-    end 
 end
+
+function BearingSimulation(ω::T, basis_order::Int, method::M, bearing::RollerBearing{T}, 
+        boundarydata1::BoundaryData{BC1,T},
+        boundarydata2::BoundaryData{BC2,T};
+        nondimensionalise::Bool = false,
+        boundarybasis1::BoundaryBasis{BCB1,T}  = BoundaryBasis([BoundaryData(boundarydata1.boundarytype)]),
+        boundarybasis2::BoundaryBasis{BCB2,T}  = BoundaryBasis([BoundaryData(boundarydata2.boundarytype)])
+    ) where {T, M <: SolutionMethod, BC1 <: BoundaryCondition, BC2 <: BoundaryCondition, BCB1 <: BoundaryCondition, BCB2 <: BoundaryCondition}
+
+    return BearingSimulation{M,BC1,BC2,BCB1,BCB2,T}(ω, basis_order, method, nondimensionalise, bearing, boundarydata1, boundarydata2, boundarybasis1, boundarybasis2)
+end 
+
+function nondimensionalise(sim::BearingSimulation)
+
+    ω = sim.ω
+    medium = sim.bearing.medium 
+
+    kp = ω / medium.cp;
+
+    non_medium = Elastic(2; ρ = 1 / ω^2, cp = ω, cs = medium.cs * kp)
+    bearing = RollerBearing(
+        medium = medium, 
+        inner_radius = bearing.inner_radius * kp, 
+        outer_radius = bearing.outer_radius * kp
+    )
+
+    λ2μ = medium.ρ * medium.cp^2
+
+    boundarydata1
+
+    return sim
+end   
+
 
 
 function BearingSimulation(ω::T, bearing::RollerBearing{T}, boundarydata1::BD1, boundarydata2::BD2;
@@ -159,11 +184,11 @@ function BearingSimulation(ω::T, bearing::RollerBearing{T}, boundarydata1::BD1,
         method = ModalMethod()
     end    
     
-    return BearingSimulation(ω ,method, bearing, boundarydata1, boundarydata2; kws...)
+    return BearingSimulation(ω, method, bearing, boundarydata1, boundarydata2; kws...)
 end
 
 function BearingSimulation(ω::T, method::ModalMethod, bearing::RollerBearing{T}, boundarydata1::BoundaryData{BC1,T}, boundarydata2::BoundaryData{BC2,T};
-        basis_order::Int = -1,
+        basis_order::Int = -1, kws...
     ) where {T, BC1 <: BoundaryCondition, BC2 <: BoundaryCondition}
 
     if basis_order == -1
@@ -201,13 +226,14 @@ function BearingSimulation(ω::T, method::ModalMethod, bearing::RollerBearing{T}
         error("number of fourier_modes in boundarydata1 and boundarydata2 needs to be the same")
     end
 
-    return BearingSimulation(ω, basis_order, method, bearing, boundarydata1, boundarydata2)
+    return BearingSimulation(ω, basis_order, method, bearing, boundarydata1, boundarydata2; kws...)
 end
 
 function BearingSimulation(ω::T, method::PriorMethod, bearing::RollerBearing{T}, boundarydata1::BoundaryData{BC1,T}, boundarydata2::BoundaryData{BC2,T};
         basis_order::Int = -1,
         boundarybasis1::BoundaryBasis{BCB1} = BoundaryBasis([BoundaryData(boundarydata1.boundarytype)]),
-        boundarybasis2::BoundaryBasis{BCB2} = BoundaryBasis([BoundaryData(boundarydata2.boundarytype)])
+        boundarybasis2::BoundaryBasis{BCB2} = BoundaryBasis([BoundaryData(boundarydata2.boundarytype)]), 
+        kws...
     ) where {T, BC1 <: BoundaryCondition, BC2 <: BoundaryCondition, BCB1 <: BoundaryCondition, BCB2 <: BoundaryCondition}
 
     # we need the fields of the boundary data for the PriorMethod
@@ -261,5 +287,5 @@ function BearingSimulation(ω::T, method::PriorMethod, bearing::RollerBearing{T}
     end
     boundarybasis2 = BoundaryBasis(basis_vec)
 
-    return BearingSimulation(ω, basis_order, method, bearing, boundarydata1, boundarydata2, boundarybasis1, boundarybasis2)
+    return BearingSimulation(ω, basis_order, method, bearing, boundarydata1, boundarydata2; boundarybasis1 = boundarybasis1, boundarybasis2 = boundarybasis2, kws...)
 end
