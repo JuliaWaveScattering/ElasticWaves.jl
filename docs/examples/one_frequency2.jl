@@ -7,14 +7,6 @@ using LinearAlgebra
 
 #This code do the same of the Zrollers_contact but we extract only one frequency.
 
-function δ(m,ω,ω_0)
-
-
-    return (1/2pi)*sum( exp(im*n*(ω-ω_0) ) for n in -m:m   )
-    
-end
-
-
 basis_order = 10;
 numberofsensors = 11
 basis_length = 2*basis_order + 1
@@ -36,7 +28,7 @@ basis_length = 2*basis_order + 1
 #Properties of the bearing
 
 steel = Elastic(2; ρ = 7800.0, cp = 5000.0, cs = 3500.0)
-bearing = RollerBearing(medium=steel, inner_radius=1.0, outer_radius = 2.0, number_of_rollers=10.0)
+bearing = RollerBearing(medium=steel, inner_radius=1.0, outer_radius = 2.0, number_of_rollers=1.0)
 
 Z=bearing.number_of_rollers
 
@@ -46,22 +38,20 @@ Z=bearing.number_of_rollers
 
 #frequencies
 n_order=basis_order
-#ωs=[n*Z*Ω for n in -n_order:n_order] 
-n=10
-ω=n*Z*Ω
+ωs=[n*Z*Ω for n in 0:n_order] 
 
-ωs=LinRange(0.8*ω,1.2*ω,number_of_ωs)
+size=2*n_order*Z+1 |>Int
 
+fourier_coef_p=zeros(size)
 
+for n in -n_order:n_order
+    fourier_coef_p[Int(n_order*Z)+1+Int(n*Z)]=Z/2pi
 
-
-
-fourier_coef_p=[(Z/Ω)* δ(1000,n*Z*Ω,ωs[i]) for n in -n_order:n_order]
-
+end
 
 fourier_coef_s=μ.*fourier_coef_p 
 
-
+i=10
 
 bc1_forward = TractionBoundary(inner=true)
 bc2_forward = TractionBoundary(outer=true)
@@ -69,12 +59,12 @@ bc2_forward = TractionBoundary(outer=true)
 bc1_inverse = DisplacementBoundary(outer=true)
 bc2_inverse = TractionBoundary(outer=true)
 
-fouter= 0*fourier_coef_p
+fouter= 0*exp.(-20.0 .* (θs .- pi).^2) + θs .* 0im
 
-bd1_forward =  BoundaryData(bc1_forward, θs=θs, fourier_modes=hcat(fourier_coef_p,fourier_coef_s))  
+bd1_forward =  BoundaryData(bc1_forward, θs=θs, fourier_modes=hcat(fourier_coef_p,fourier_coef_s)) 
 bd2_forward = BoundaryData(bc2_forward,θs=θs, fourier_modes=hcat(fouter,fouter))
 
-sim = BearingSimulation(ω, bearing, bd1_forward, bd2_forward; basis_order = basis_order)
+sim = BearingSimulation(ωs[i], bearing, bd1_forward, bd2_forward; basis_order = basis_order)
 
 
 wave = ElasticWave(sim)
@@ -202,8 +192,8 @@ plot!(Circle(bearing.outer_radius))
 
 n=i
 
-Fp=[(Z/Ω)* δ(1000,n*Z*Ω,ωs[i]) for n in -n_order:n_order] 
-Fs=[(Z/Ω)* δ(1000,n*Z*Ω,ωs[i]) for n in -n_order:n_order]
+Fp=fourier_coef_p
+Fs=fourier_coef_p 
 
 
 
@@ -228,6 +218,7 @@ bd1_inverse = BoundaryData(
     fields = displacement_outer
 )
 
+bd1_inverse=fields_to_fouriermodes(bd1_inverse,n_order)
 
 #bd1_inverse=fields_to_fouriermodes(bd1_inverse, basis_order)
 
@@ -240,7 +231,7 @@ bd2_inverse= BoundaryData(
 
 #bd2_inverse=fields_to_fouriermodes(bd2_inverse, basis_order)
 
-inverse_sim = BearingSimulation(ωs[i], bearing, bd1_inverse, bd2_inverse, boundarybasis1=boundarybasis,basis_order=basis_order)    
+inverse_sim = BearingSimulation(ωs[i], bearing, bd1_inverse, bd2_inverse, boundarybasis1=boundarybasis,basis_order=n_order)    
 # res = field(wave, bearing, TractionType(); res = 70)
 
 inv_wave=ElasticWave(inverse_sim)
