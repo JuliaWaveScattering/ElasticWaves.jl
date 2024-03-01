@@ -150,27 +150,53 @@ function BearingSimulation(ω::T, basis_order::Int, method::M, bearing::RollerBe
     return BearingSimulation{M,BC1,BC2,BCB1,BCB2,T}(ω, basis_order, method, nondimensionalise, bearing, boundarydata1, boundarydata2, boundarybasis1, boundarybasis2)
 end 
 
-function nondimensionalise(sim::BearingSimulation)
 
-    ω = sim.ω
-    medium = sim.bearing.medium 
+function nondimensionalise!(boundarydata::BoundaryData{BoundaryCondition{TractionType}}, sim::BearingSimulation)
 
-    kp = ω / medium.cp;
+    λ2μ = sim.bearing.medium.ρ * sim.bearing.medium.cp^2
+    boundarydata.fields[:] = boundarydata.fields ./ λ2μ
+    boundarydata.fourier_modes[:] = boundarydata.fourier_modes ./ λ2μ
 
-    non_medium = Elastic(2; ρ = 1 / ω^2, cp = ω, cs = medium.cs * kp)
-    bearing = RollerBearing(
-        medium = medium, 
-        inner_radius = bearing.inner_radius * kp, 
-        outer_radius = bearing.outer_radius * kp
-    )
+    return boundarydata
+end
 
-    λ2μ = medium.ρ * medium.cp^2
+function nondimensionalise!(boundarydata::BoundaryData{BoundaryCondition{DisplacementType}}, sim::BearingSimulation)
 
-    boundarydata1
+    kp = sim.ω / sim.bearing.medium.cp;
+    boundarydata.fields[:] = boundarydata.fields .* kp
+    boundarydata.fourier_modes[:] = boundarydata.fourier_modes .* kp
+
+    return boundarydata
+end
+
+function nondimensionalise(bearing::RollerBearing, sim::BearingSimulation)
+
+    kp = sim.ω / bearing.medium.cp;
+    non_medium = Elastic(2; ρ = 1 / sim.ω^2, cp = sim.ω, cs = bearing.medium.cs * kp)
+    
+    # nondimensionalise bearing geometry
+    @reset bearing.medium = non_medium
+    @reset bearing.inner_radius = bearing.inner_radius * kp
+    @reset bearing.outer_radius = bearing.outer_radius * kp
+    
+    return bearing
+end
+
+function nondimensionalise!(sim::BearingSimulation)
+
+    # nondimensionalise boundary data
+    nondimensionalise!(sim.boundarydata1, sim)
+    nondimensionalise!(sim.boundarydata2, sim)
+    
+    # nondimensionalise boundary basis
+    sim.boundarybasis1.basis[:] = [nondimensionalise!(bd, sim) for bd in sim.boundarybasis1.basis]
+    sim.boundarybasis2.basis[:] = [nondimensionalise!(bd, sim) for bd in sim.boundarybasis2.basis]
+
+    # nondimensionalise bearing
+    sim.bearing = nondimensionalise(sim.bearing,sim)
 
     return sim
-end   
-
+end
 
 
 function BearingSimulation(ω::T, bearing::RollerBearing{T}, boundarydata1::BD1, boundarydata2::BD2;

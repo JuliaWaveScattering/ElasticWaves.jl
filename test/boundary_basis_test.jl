@@ -1,21 +1,17 @@
 # Here is an example of using a traction basis with three elements that should give an exact inversion
 @testset "Boundary basis example" begin
 
-    ω = 1e4
+    # the higher the frequency, the worse the result. This is already a high frequency.
     ω = 1e6
     steel = Elastic(2; ρ = 7800.0, cp = 5000.0, cs = 3500.0)
     bearing = RollerBearing(medium=steel, inner_radius=1.0, outer_radius = 2.0)
     
+    dr = bearing.outer_radius - bearing.inner_radius
     kp = (ω / steel.cp)
-    μ = steel.ρ * steel.cs^2
-    # λ2μ = real(ω / steel.cp)
+    kp * dr
 
-    steel = Elastic(2; ρ = 1 / ω^2, cp = ω, cs = ω *  steel.cs / steel.cp)
-    bearing = RollerBearing(
-        medium = steel, 
-        inner_radius = bearing.inner_radius * kp, 
-        outer_radius = bearing.outer_radius * kp
-    )
+    μ = steel.ρ * steel.cs^2
+    λ2μ = steel.cp^2 * steel.ρ
 
 ## Forward problem with forcing on inner boundary to create a basis
     basis_order = 30;    
@@ -59,45 +55,46 @@
 
     # Solve the whole field for the forward problem        
         # the method specifies to use only stable modes.
-        modal_method = ModalMethod(tol = 1e-3, only_stable_modes = true)
-        forward_sim = BearingSimulation(ω, bearing, bd1_for, bd2_for; method = modal_method);
+        modal_method = ModalMethod(tol = 1e-6, only_stable_modes = true)
+        forward_sim = BearingSimulation(ω, bearing, bd1_for, bd2_for; 
+            method = modal_method,
+            nondimensionalise = true);
         wave = ElasticWave(forward_sim);
 
-
-        # as = vcat(wave.potentials[1].coefficients,wave.potentials[2].coefficients)
-        # a = as[:]
-
-        # θ2s = LinRange(0.0, 2pi, 45basis_order+2)[1:end-1]
-        θ2s = θs
+        # The traction and displacement field on the outside boundary are similar, because traction for steel is far higher than displacement
+        
         x_outer = [
             radial_to_cartesian_coordinates([bearing.outer_radius,θ]) 
-        for θ in θ2s]
+        for θ in θs]
         
         field2_outer = [
             field(wave, x, bc2_forward.fieldtype) 
         for x in x_outer]
         field2_outer = hcat(field2_outer...) |> transpose |> collect
  
-        # plot(θ2s, abs.(field2_outer))
-
         field1_outer = [
             field(wave, x, DisplacementType()) 
         for x in x_outer]
         field1_outer = hcat(field1_outer...) |> transpose |> collect
 
-        # plot(θ2s, abs.(field1_outer))
+        using Plots
+        plot(θs, abs.(field2_outer))
+        plot!(θs, abs.(field1_outer), linestyle= :dash)
+
 
 ## The inverse problem
-
         bc1_inv = DisplacementBoundary(outer=true)
         bc2_inv = TractionBoundary(outer=true)
 
     # Use the solution of the forward problem to generate data for the inverse problem
+    # we will use the angle that led to the highest error in the forward problem, though this doesn't seem to make any difference
+    i = findmax(abs.(field2_outer[:,1]))[2]
+    θs_inv = [θs[i]]
     
     # as there are two basis functions, we will need to at least two measurements. Typically each sensor, or point on the boundary, gives two measurements. So one sensor can be enough. 
         numberofsensors = Int(ceil(length(θos)/2))
         
-        θs_inv = LinRange(0, 2pi, numberofsensors + 1)[1:end-1]
+        # θs_inv = LinRange(0, 2pi, numberofsensors + 1)[1:end-1]
         x_outer = [radial_to_cartesian_coordinates([bearing.outer_radius,θ]) for θ in θs_inv]
 
         field1_outer = [field(wave, x, bc1_inv.fieldtype) for x in x_outer];
@@ -125,8 +122,8 @@
 
     inverse_sim = BearingSimulation(ω, method, bearing, bd1_inverse, bd2_inverse;
         boundarybasis1 = boundarybasis1,
+        nondimensionalise = true
     );
-    sim = inverse_sim;
 
     inverse_wave = ElasticWave(inverse_sim);
 
@@ -140,29 +137,28 @@
     for x in x_inner]
     field1_inner = hcat(field1_inner...) |> transpose |> collect
 
-    using Plots
-    plot(θs, real.(bd1_for.fields), 
-        lab = ["forward pressure" "forward shear"])
-    plot!(θs, real.(field1_inner), 
-        lab = ["inverse pressure" "inverse shear"]
-        , linestyle = :dash, linewidth = 2.0
-    )
+    # using Plots
+    # h = 260
+    # gr(size = (h * 1.6, h))
+    # plot(θs, real.(bd1_for.fields), 
+    #     lab = ["forward pressure" "forward shear"], linewidth = 2.0)
+    # plot!(θs, real.(field1_inner) , 
+    #     lab = ["inverse pressure" "inverse shear"]
+    #     , linestyle = :dot, linewidth = 3.0
+    # )
 
     # even excluding some modes the recovery is very good with just one sensor
     # this is because the higher order modes (in this case) contribute very little to the field
-    @test norm(field1_inner - bd1_for.fields) / norm(bd1_for.fields) < 1e-3
+    @test norm(field1_inner - bd1_for.fields) / norm(bd1_for.fields) < 1e-8
     
-    @test norm(wave.potentials[1].coefficients - inverse_wave.potentials[1].coefficients) / norm(wave.potentials[1].coefficients) < 2e-6
+    @test norm(wave.potentials[1].coefficients - inverse_wave.potentials[1].coefficients) / norm(wave.potentials[1].coefficients) < 2e-12
 
-    @test norm(wave.potentials[2].coefficients - inverse_wave.potentials[2].coefficients) / norm(wave.potentials[2].coefficients) < 2e-6
+    @test norm(wave.potentials[2].coefficients - inverse_wave.potentials[2].coefficients) / norm(wave.potentials[2].coefficients) < 2e-12
 
-    
     modes1 = field_modes(wave, bearing.inner_radius, bc1_forward.fieldtype);
     inverse_modes1 = field_modes(inverse_wave, bearing.inner_radius, bc1_forward.fieldtype);
 
-    norm(modes1 - inverse_modes1) / norm(modes1)
-    
-
+    @test norm(modes1 - inverse_modes1) / norm(modes1) < 2e-12
 end
 
 @testset "Boundary basis and priors" begin

@@ -18,17 +18,6 @@ function Elastic(Dim::Integer; ρ::T = 0.0, cp::Union{T,Complex{T}} = 0.0, cs::U
      Elastic{Dim,T}(ρ,Complex{T}(cp),Complex{T}(cs))
 end
 
-## field types
-"""
-    FieldType
-
-A type used to specify what type of physical field, such as traction or displacement.
-"""
-abstract type FieldType end
-
-struct DisplacementType <: FieldType end
-struct TractionType <: FieldType end
-
 ## wave types
 
 """

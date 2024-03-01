@@ -1,3 +1,15 @@
+
+## field types
+"""
+    FieldType
+
+A type used to specify what type of physical field, such as traction or displacement.
+"""
+abstract type FieldType end
+
+struct DisplacementType <: FieldType end
+struct TractionType <: FieldType end
+
 ## methods to solve for waves in bearings 
 
 abstract type SolutionMethod end

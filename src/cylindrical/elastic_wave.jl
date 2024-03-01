@@ -20,28 +20,25 @@ end
 
 function ElasticWave(sim::BearingSimulation)
 
-    if sim.nondimensionalise
-        sim_dimensional = deepcopy(sim)
-        sim = nondimensionalise(sim)
-    end
-
-    ω = sim.ω
+    # using the bearing properties before nondimensionalise
     bearing = sim.bearing
+    simcopy = deepcopy(sim)
 
-    coefficients = modal_coefficients!(sim)
-
-    method = sim.method
-
-    bearing = if sim.nondimensionalise
-        sim_dimensional.bearing
-    else sim.bearing    
+    if simcopy.nondimensionalise
+        nondimensionalise!(simcopy)
     end
+
+    ω = simcopy.ω
+
+    coefficients = modal_coefficients!(simcopy)
+
+    method = simcopy.method
 
     kP = ω / bearing.medium.cp;
     kS = ω / bearing.medium.cs;
 
-    coefficients = if sim.nondimensionalise
-        coefficients .* kP
+    coefficients = if simcopy.nondimensionalise
+        coefficients ./ kP^2
     else coefficients   
     end
 
@@ -52,13 +49,13 @@ function ElasticWave(sim::BearingSimulation)
     ψ = HelmholtzPotential{2}(bearing.medium.cs, kS, shear_coefficients)
 
     return ElasticWave(ω, bearing.medium, [φ, ψ], method)
-
-end    
+end
 
 function modal_coefficients!(sim::BearingSimulation{ModalMethod})
 
     ω = sim.ω
     bearing = sim.bearing
+    method = sim.method
 
     T = typeof(ω)
 
@@ -80,7 +77,7 @@ function modal_coefficients!(sim::BearingSimulation{ModalMethod})
 
             # solve A*x = b with tikinov regulariser
             # x = A \ b
-            δ = sim.method.regularisation_parameter
+            δ = method.regularisation_parameter
             x = [A; sqrt(δ) * I] \ [b; zeros(size(A)[2])]
 
             relative_error = norm(A*x - b) / norm(b);
@@ -93,9 +90,9 @@ function modal_coefficients!(sim::BearingSimulation{ModalMethod})
 
         error = max(mode_errors[m1 + basis_order + 1], mode_errors[-m1 + basis_order + 1])
 
-        if error > sim.method.tol
+        if error > method.tol
             @warn "The relative error for the boundary conditions was $(error) for (ω,basis_order) = $((ω,m1))"
-            if sim.method.only_stable_modes 
+            if method.only_stable_modes 
                 mode_errors[m1 + basis_order + 1] = zero(T)
                 mode_errors[-m1 + basis_order + 1] = zero(T)
 
@@ -118,9 +115,10 @@ function modal_coefficients!(sim::BearingSimulation{ModalMethod})
             
         coefficients = coefficients[inds,:]
         mode_errors = mode_errors[inds]
-    end    
+    end       
     
-    @reset sim.method.mode_errors = mode_errors
+    @reset method.mode_errors = mode_errors
+    sim.method = method
 
     return coefficients
 end
@@ -132,6 +130,7 @@ function modal_coefficients!(sim::BearingSimulation{PriorMethod})
     T = typeof(ω)
 
     bearing = sim.bearing
+    method = sim.method
     
     boundarydata1 = sim.boundarydata1
     boundarydata2 = sim.boundarydata2
@@ -156,9 +155,9 @@ function modal_coefficients!(sim::BearingSimulation{PriorMethod})
             
             error = max(mode_errors[m1 + basis_order + 1], mode_errors[-m1 + basis_order + 1])
 
-            if error > sim.method.tol
+            if error > method.tol
                 @warn "The relative error for the boundary conditions was $(error) for (ω,basis_order) = $((ω,m1))"
-                if sim.method.modal_method.only_stable_modes
+                if method.modal_method.only_stable_modes
                     mode_errors[m1 + basis_order + 1] = zero(T)
                     mode_errors[-m1 + basis_order + 1] = zero(T)
 
@@ -200,7 +199,7 @@ function modal_coefficients!(sim::BearingSimulation{PriorMethod})
             basis_order = m
         end
         
-        @reset sim.method.modal_method.mode_errors = mode_errors
+        @reset method.modal_method.mode_errors = mode_errors
 
         M_forward = BlockDiagonal(Ms)
 
@@ -209,7 +208,7 @@ function modal_coefficients!(sim::BearingSimulation{PriorMethod})
 
           
     # Define the linear prior matrix B and prior c
-        # δ = sim.method.regularisation_parameter
+        # δ = method.regularisation_parameter
         # x = [A; sqrt(δ) * I] \ [b; zeros(size(A)[2])]
 
         B = M_forward \ prior_matrix
@@ -296,8 +295,9 @@ function modal_coefficients!(sim::BearingSimulation{PriorMethod})
     boundary_error = norm(EM_inverse*a - y_inv) / norm(y_inv)
     condition_number = cond(EM_inverse * B)
 
-    @reset sim.method.boundary_error = boundary_error
-    @reset sim.method.condition_number = condition_number
+    @reset method.boundary_error = boundary_error
+    @reset method.condition_number = condition_number
+    sim.method = method
 
     # if relative_error > sim.method.tol
 #         @warn "The relative error for the boundary conditions was $(relative_error) for (ω,basis_order) = $((ω,basis_order))"

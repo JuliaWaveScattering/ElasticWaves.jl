@@ -1,16 +1,19 @@
 module ElasticWaves
 
+# types.jl
+export ModalMethod, PriorMethod, GapMethod
+export DisplacementType, TractionType
+
 # elasticity.jl
 export Elastic, ElasticWave
 export regular_basis_function, HelmholtzPotential 
-export DisplacementType, TractionType
 
 # source.jl
 export plane_z_shear_source
 
 # bearing.jl
 export RollerBearing, BoundaryCondition, DisplacementBoundary, TractionBoundary
-export BoundaryData, BoundaryBasis, BearingSimulation
+export BoundaryData, BoundaryBasis, BearingSimulation, nondimensionalise, nondimensionalise!
 
 # fields.jl
 export field
@@ -32,8 +35,7 @@ export fouriermodes_to_fields, fields_to_fouriermodes
 export estimate_basisorder # soon to be removed
 
 # cylindrical/elastic_wave.jl
-export boundarycondition_mode, boundarycondition_system # soon to be removed
-export ModalMethod, PriorMethod, GapMethod
+export boundarycondition_mode, boundarycondition_system, modal_coefficients! 
 
 using MultipleScattering
 using SpecialFunctions

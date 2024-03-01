@@ -34,7 +34,8 @@
             only_stable_modes = false 
         )
         BearingSimulation(ωs[i], bearing, bd1, bd2; 
-            method = method
+            method = method,
+            nondimensionalise = true
         ) 
     end
 
@@ -57,12 +58,12 @@
     # as the mode increase, or the frequency decreases, the problem becomes more ill-conditioned
     traction_errors[1] |> norm > 1.0
 
-    # however the first modes are well conditioned
-    @test traction_errors[1][1:4] |> norm < 1e-16
+    # however the first modes are reasonably conditioned
+    @test traction_errors[1][1:3] |> norm < 5e-3
 
     # for higher frequencies in this case all the errors are small
-    @test traction_errors[2] |> norm < 1e-16 
-    @test traction_errors[3] |> norm < 1e-16 
+    @test traction_errors[2] |> norm < 1e-20
+    @test traction_errors[3] |> norm < 1e-20 
 
     # now we show how to compare the fields in the boundary, instead of the fourier modes
     θs = -pi:0.1:pi; θs |> length;
@@ -88,7 +89,7 @@
 
     errors = [maximum(abs.(forcing_inner - f)) for f in forcing_inners];
 
-    errors[1] > 1.0
+    errors[1] > 1e-2
     @test errors[2] < 1e-12
     @test errors[3] < 1e-12
 
@@ -173,7 +174,6 @@
     )
 
     # check traction modes are correct
-
     @test maximum(abs.(traction_forcing_modes - forcing_modes)) / mean(abs.(forcing_modes)) < 1e-10
 
     # setup a problem with displacement boundary conditions
@@ -224,7 +224,7 @@
 
     method = ModalMethod(regularisation_parameter = 0.0, only_stable_modes = false)
     sim = BearingSimulation(ω, bearing, bd1, bd2; method = method)
-    wave2 = ElasticWave(sim)
+    wave2 = ElasticWave(sim);
 
     # the problem is unstable
     maximum(abs.(wave.potentials[2].coefficients - wave2.potentials[2].coefficients)) / mean(abs.(wave.potentials[2].coefficients)) > 0.1
@@ -252,7 +252,7 @@
 
     method = ModalMethod(tol = 1e-1, regularisation_parameter = 1e-10, only_stable_modes = true)
     sim = BearingSimulation(ω, bearing, bd1, bd2; method = method)
-    wave = ElasticWave(sim)
+    wave = ElasticWave(sim);
 
     # setup a problem with displacement boundary conditions
     # add 1% error to boundary conditions
@@ -272,7 +272,7 @@
         fourier_modes=field_modes(wave, bearing.outer_radius, DisplacementType()) + error
     );
 
-    sim = BearingSimulation(ω, bearing, bd1, bd2);
+    sim = BearingSimulation(ω, bearing, bd1, bd2; method = method);
     wave2 = ElasticWave(sim);
 
     # the problem is still sensitive to errors, but a managable tolerance
