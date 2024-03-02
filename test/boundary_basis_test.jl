@@ -61,50 +61,27 @@
             nondimensionalise = true);
         wave = ElasticWave(forward_sim);
 
-        # The traction and displacement field on the outside boundary are similar, because traction for steel is far higher than displacement
-        
-        x_outer = [
-            radial_to_cartesian_coordinates([bearing.outer_radius,θ]) 
-        for θ in θs]
-        
-        field2_outer = [
-            field(wave, x, bc2_forward.fieldtype) 
-        for x in x_outer]
-        field2_outer = hcat(field2_outer...) |> transpose |> collect
- 
-        field1_outer = [
-            field(wave, x, DisplacementType()) 
-        for x in x_outer]
-        field1_outer = hcat(field1_outer...) |> transpose |> collect
-
-        # using Plots
-        # plot(θs, abs.(field2_outer))
-        # plot!(θs, abs.(field1_outer), linestyle= :dash)
-
-## The inverse problem
+    ## The inverse problem
         bc1_inv = DisplacementBoundary(outer=true)
         bc2_inv = TractionBoundary(outer=true)
 
-    # Use the solution of the forward problem to generate data for the inverse problem
-    # we will use the angle that led to the highest error in the forward problem, though this doesn't seem to make any difference
-    i = findmax(abs.(field2_outer[:,1]))[2]
-    θs_inv = [θs[i]]
+        # The traction and displacement field on the outside boundary are similar, because traction for steel is far higher than displacement
+        
+        # bd1_outer = BoundaryData(bc1_inv, bearing.outer_radius, θs, wave)
+        # bd2_outer = BoundaryData(bc2_inv, bearing.outer_radius, θs, wave)
+        # using Plots
+        # plot(θs, abs.(bd2_outer.fields))
+        # plot!(θs, abs.(bd1_outer.fields), linestyle= :dash)
+
     
     # as there are two basis functions, we will need to at least two measurements. Typically each sensor, or point on the boundary, gives two measurements. So one sensor can be enough. 
         numberofsensors = Int(ceil(length(θos)/2))
         
-        # θs_inv = LinRange(0, 2pi, numberofsensors + 1)[1:end-1]
-        x_outer = [radial_to_cartesian_coordinates([bearing.outer_radius,θ]) for θ in θs_inv]
+        θs_inv = LinRange(0, 2pi, numberofsensors + 1)[1:end-1]
 
-        field1_outer = [field(wave, x, bc1_inv.fieldtype) for x in x_outer];
-        field1_outer = hcat(field1_outer...) |> transpose |> collect;
-
-        bd1_inverse = BoundaryData(
-            bc1_inv;
-            θs = θs_inv,
-            fields = field1_outer
-        )
-
+        # create the data from evaluating the forward problem 
+        bd1_inverse = BoundaryData(bc1_inv, bearing.outer_radius, θs_inv, wave)
+        
     # the traction field is known to be zero everywhere. There needs to be enough points sampled here to match the basis_order used, I think. So instead just using the modal representation that was used for the forward problem.
 
         bd2_inverse = bd2_for # this is a bit of an inverse crime.
@@ -127,28 +104,12 @@
     inverse_wave = ElasticWave(inverse_sim);
 
 ## Test how well we recover the inner traction
-    x_inner = [
-        radial_to_cartesian_coordinates([bearing.inner_radius,θ]) 
-    for θ in θs]
-    
-    field1_inner = [
-        field(inverse_wave, x, bc1_forward.fieldtype) 
-    for x in x_inner]
-    field1_inner = hcat(field1_inner...) |> transpose |> collect
-
-    # using Plots
-    # h = 260
-    # gr(size = (h * 1.6, h))
-    # plot(θs, real.(bd1_for.fields), 
-    #     lab = ["forward pressure" "forward shear"], linewidth = 2.0)
-    # plot!(θs, real.(field1_inner) , 
-    #     lab = ["inverse pressure" "inverse shear"]
-    #     , linestyle = :dot, linewidth = 3.0
-    # )
+    # using a convenience function
+    bd1_inner, bd2_outer = boundary_data(forward_sim, inverse_wave)
 
     # even excluding some modes the recovery is very good with just one sensor
     # this is because the higher order modes (in this case) contribute very little to the field
-    @test norm(field1_inner - bd1_for.fields) / norm(bd1_for.fields) < 1e-8
+    @test norm(bd1_inner.fields - bd1_for.fields) / norm(bd1_for.fields) < 1e-10
     
     @test norm(wave.potentials[1].coefficients - inverse_wave.potentials[1].coefficients) / norm(wave.potentials[1].coefficients) < 2e-12
 
@@ -206,23 +167,28 @@ end
         bc1_forward = DisplacementBoundary(inner=true)
         bc2_forward = TractionBoundary(inner=true)
 
-       
+    # choose a combination of the boundary basis to be the boundary data
+
+        boundarydata1s = map(eachindex(ωs)) do i
+            fp1 = sum(fp1s[1:numberofbasis[i]]); 
+            fs1 = sum(fs1s[1:numberofbasis[i]]);
+
+            BoundaryData(bc1_forward, θs=θs, fields = hcat(fp1,fs1))
+        end    
+
+        boundarydata2s = map(eachindex(ωs)) do i
+            fp2 = sum(fp2s[1:numberofbasis[i]]); 
+            fs2 = sum(fs2s[1:numberofbasis[i]]);
+
+            bd2_for = BoundaryData(bc2_forward, θs=θs, fields = hcat(fp2,fs2))
+        end    
 
     # Solve the whole field for the forward problem        
         # the method specifies to use only stable modes.
         modal_method = ModalMethod(tol = 1e-9, only_stable_modes = true)
 
         sims = map(eachindex(ωs)) do i
-
-            # choose one combination of the basis to be the true boundary data.
-            fp1 = sum(fp1s[1:numberofbasis[i]]); 
-            fs1 = sum(fs1s[1:numberofbasis[i]]);
-            fp2 = sum(fp2s[1:numberofbasis[i]]); 
-            fs2 = sum(fs2s[1:numberofbasis[i]]);
-
-            bd1_for = BoundaryData(bc1_forward, θs=θs, fields = hcat(fp1,fs1))
-            bd2_for = BoundaryData(bc2_forward, θs=θs, fields = hcat(fp2,fs2))
-            BearingSimulation(ωs[i], bearing, bd1_for, bd2_for; 
+            BearingSimulation(ωs[i], bearing, boundarydata1s[i], boundarydata2s[i]; 
                 method = modal_method,
                 nondimensionalise = true
             )
@@ -240,26 +206,21 @@ end
             LinRange(0, 2pi, numberofsensors[i] + 1)[1:end-1] 
         for i in eachindex(ωs)]
 
-        x_outers = [
-            [radial_to_cartesian_coordinates([bearing.outer_radius,θ]) for θ in θs_inv[i]]
-        for i in eachindex(ωs)]
-
-        field1s_outer = map(eachindex(ωs)) do i 
-            f = [field(waves[i], x, bc1_inv.fieldtype) for x in x_outers[i]];
-            hcat(f...) |> transpose |> collect
-        end;
-
-        field2s_outer = map(eachindex(ωs)) do i 
-            f = [field(waves[i], x, bc2_inv.fieldtype) for x in x_outers[i]];
-            hcat(f...) |> transpose |> collect
-        end;
-
-        boundarydata1_inverses = [
-            BoundaryData(bc1_inv; θs = θs_inv[i], fields = field1s_outer[i])
+        boundarydata1_inverses = [ 
+            BoundaryData(bc1_inv, bearing.outer_radius, θs_inv[i], waves[i])
         for i in eachindex(ωs)];
 
-        boundarydata2_inverses = [
-            BoundaryData(bc2_inv; θs = θs_inv[i], fields = field2s_outer[i])
+        boundarydata2_inverses = [ 
+            BoundaryData(bc2_inv, bearing.outer_radius, θs_inv[i], waves[i])
+        for i in eachindex(ωs)];
+
+    # will use a fine grid to demonstrate and explain some issues.    
+        boundarydata1_fine_inverses = [ 
+            BoundaryData(bc1_inv, bearing.outer_radius, θs, waves[i])
+        for i in eachindex(ωs)];
+
+        boundarydata2_fine_inverses = [ 
+            BoundaryData(bc2_inv, bearing.outer_radius, θs, waves[i])
         for i in eachindex(ωs)];
 
     # Create a boundary basis for the inverse problem for the inner boundaries
@@ -283,15 +244,23 @@ end
     # - method 2 : with prior for one boundary condition
     # - method 3 : with prior for two boundary conditions
 
-    # method 1
-    # sims = map(eachindex(ωs)) do i
-
-    #     # choose one combination of the basis to be the true boundary data.
-
-    #     BearingSimulation(ωs[i], modal_method, bearing, bd1_inverse, bd2_inverse;
-    #         nondimensionalise = true
-    #     )
-    # end
+## Method 1
+    # when using very limited data, this method performs poorly. It requires fine data to get fine predictions
+    
+    # using coarse boundary data
+    sims = map(eachindex(ωs)) do i
+        BearingSimulation(ωs[i], modal_method, bearing, boundarydata1_inverses[i], boundarydata2_inverses[i];
+            nondimensionalise = true
+        )
+    end;
+    inverse_waves = ElasticWave.(sims);
+    
+    sims = map(eachindex(ωs)) do i
+        BearingSimulation(ωs[i], modal_method, bearing, boundarydata1_fine_inverses[i], boundarydata2_fine_inverses[i];
+            nondimensionalise = true
+        )
+    end;
+    inverse_waves = ElasticWave.(sims);
 
     # method = PriorMethod(tol = modal_method.tol, modal_method = modal_method)
 

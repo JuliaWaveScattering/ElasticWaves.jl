@@ -150,6 +150,44 @@ function BearingSimulation(ω::T, basis_order::Int, method::M, bearing::RollerBe
     return BearingSimulation{M,BC1,BC2,BCB1,BCB2,T}(ω, basis_order, method, nondimensionalise, bearing, boundarydata1, boundarydata2, boundarybasis1, boundarybasis2)
 end 
 
+import MultipleScattering: boundary_data
+"""
+    boundary_data(wave::ElasticWave{2}, sim::BearingSimulation)
+
+A convenience function to predict the boundary data of 'sim' according to the solution 'wave'.    
+"""
+function boundary_data(sim::BearingSimulation, wave::ElasticWave{2})
+
+    bd1 = sim.boundarydata1;
+    bd2 = sim.boundarydata2;
+
+    radius_inner_outer(in) = (in == true) ? sim.bearing.inner_radius : sim.bearing.outer_radius
+
+    inners = [bd1.boundarytype.inner, bd2.boundarytype.inner]
+    radiuses = radius_inner_outer.(inners)
+    
+    bd1 = BoundaryData(bd1.boundarytype, radiuses[1], bd1.θs, wave)
+    bd2 = BoundaryData(bd2.boundarytype, radiuses[2], bd2.θs, wave)
+
+    return [bd1, bd2]
+end
+
+"""
+    BoundaryData(wave::ElasticWave{2}, radius, θs, fieldtype)
+
+A convenience function to predict the boundary data of 'sim' according to the solution 'wave'.    
+"""
+function BoundaryData(boundarycondition::BoundaryCondition, radius::AbstractFloat, θs::AbstractVector{T}, wave::ElasticWave{2}) where T <: AbstractFloat
+
+    xs = [
+        radial_to_cartesian_coordinates([radius,θ]) 
+    for θ in θs];
+    
+    fs = [field(wave, x, boundarycondition.fieldtype) for x in xs];
+    fs = hcat(fs...) |> transpose |> collect
+
+    return BoundaryData(boundarycondition; θs = θs, fields = fs)
+end
 
 function nondimensionalise!(boundarydata::BoundaryData{BoundaryCondition{TractionType}}, sim::BearingSimulation)
 
