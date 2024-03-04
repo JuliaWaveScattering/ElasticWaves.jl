@@ -59,7 +59,7 @@ function modal_coefficients!(sim::BearingSimulation{ModalMethod})
 
     T = typeof(ω)
 
-    basis_order = sim.basis_order
+    basis_order = sim.method.basis_order
 
     coefficients = [
         zeros(Complex{T}, 4)
@@ -115,9 +115,12 @@ function modal_coefficients!(sim::BearingSimulation{ModalMethod})
             
         coefficients = coefficients[inds,:]
         mode_errors = mode_errors[inds]
+
+        basis_order = m
     end       
     
     @reset method.mode_errors = mode_errors
+    @reset method.basis_order = basis_order
     sim.method = method
 
     return coefficients
@@ -138,7 +141,7 @@ function modal_coefficients!(sim::BearingSimulation{PriorMethod})
     boundarybasis1 = deepcopy(sim.boundarybasis1)
     boundarybasis2 = deepcopy(sim.boundarybasis2)
 
-    basis_order = sim.basis_order
+    basis_order = method.modal_method.basis_order
 
     ## The forward problem
         mode_errors = zeros(T, 2basis_order + 1)
@@ -185,21 +188,22 @@ function modal_coefficients!(sim::BearingSimulation{PriorMethod})
                    @reset b.fourier_modes = b.fourier_modes[inds,:]
                 end
                 b
-            end
-            boundarybasis1 = BoundaryBasis(basis1)
+            end;
+            boundarybasis1 = BoundaryBasis(basis1);
             
             basis2 = map(boundarybasis2.basis) do b
                 if !isempty(b.fourier_modes)
                    @reset b.fourier_modes = b.fourier_modes[inds,:]
                 end
                 b
-            end
-            boundarybasis2 = BoundaryBasis(basis2)
+            end;
+            boundarybasis2 = BoundaryBasis(basis2);
             
             basis_order = m
         end
         
         @reset method.modal_method.mode_errors = mode_errors
+        @reset method.modal_method.basis_order = basis_order
 
         M_forward = BlockDiagonal(Ms)
 
@@ -346,13 +350,13 @@ function prior_and_bias(basis_order::Int, boundarydata1::BoundaryData{BC1,T}, bo
             @error "The basis boundarybasis1 was empty and there was no boundary data provided that matched the type of boundary condition given in boundarybasis1.basis[1].boundarytype. This means it is impossible to solve the forward problem."
         end
 
-        l = boundarydatas[i].fourier_modes |> length
+        l = size(boundarydatas[i].fourier_modes,1)
 
         if l > 2basis_order + 1
 
             data_basis_order = Int((l - 1) / 2)
-            inds = (-2basis_order:2basis_order) .+ (data_basis_order+1)
-            @reset boundarydatas[i].fourier_modes = boundarydatas[i].fourier_modes[inds]
+            inds = (-basis_order:basis_order) .+ (data_basis_order+1)
+            @reset boundarydatas[i].fourier_modes = boundarydatas[i].fourier_modes[inds,:]
 
         elseif size(boundarydatas[i].fields,1) > 2basis_order + 1
             
@@ -376,13 +380,13 @@ function prior_and_bias(basis_order::Int, boundarydata1::BoundaryData{BC1,T}, bo
             @error "The basis boundarybasis2 was empty and there was no boundary data provided that matched the type of boundary condition given in boundarybasis2.basis[1].boundarytype. This means it is impossible to solve the forward problem."
         end
 
-        l = boundarydatas[i].fourier_modes |> length
+        l = size(boundarydatas[i].fourier_modes,1)
 
         if l > 2basis_order + 1
 
             data_basis_order = Int((l - 1) / 2)
-            inds = (-2basis_order:2basis_order) .+ (data_basis_order+1)
-            @reset boundarydatas[i].fourier_modes = boundarydatas[i].fourier_modes[inds]
+            inds = (-basis_order:basis_order) .+ (data_basis_order+1)
+            @reset boundarydatas[i].fourier_modes = boundarydatas[i].fourier_modes[inds,:]
 
         elseif size(boundarydatas[i].fields,1) >= 2basis_order + 1
             

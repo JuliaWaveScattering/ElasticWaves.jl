@@ -145,21 +145,12 @@ end
     # using 2basis_order + 2 guarantees that we can exactly represent the above with Fourier modes with basis_order number of modes
 
     # choose a basis for the pressure and shear on the inner boundary
-    fp1s = [
-        rand(length(θs)) .- 0.5 + (rand(length(θs)) .- 0.5) .* im
-    for i = 1:max_numberofbasis]; 
-        
-    fs1s = [
+    random_basis() = [
         rand(length(θs)) .- 0.5 + (rand(length(θs)) .- 0.5) .* im
     for i = 1:max_numberofbasis]; 
 
-    fp2s = [
-        rand(length(θs)) .- 0.5 + (rand(length(θs)) .- 0.5) .* im
-    for i = 1:max_numberofbasis]; 
-        
-    fs2s = [
-        rand(length(θs)) .- 0.5 + (rand(length(θs)) .- 0.5) .* im
-    for i = 1:max_numberofbasis]; 
+    fp1s = random_basis(); fs1s = random_basis();
+    fp2s = random_basis(); fs2s = random_basis();
     
 ## The forward problem
 
@@ -187,13 +178,39 @@ end
         # the method specifies to use only stable modes.
         modal_method = ModalMethod(tol = 1e-9, only_stable_modes = true)
 
-        sims = map(eachindex(ωs)) do i
+        forward_sims = map(eachindex(ωs)) do i
             BearingSimulation(ωs[i], bearing, boundarydata1s[i], boundarydata2s[i]; 
                 method = modal_method,
                 nondimensionalise = true
             )
-        end
-        waves = ElasticWave.(sims);
+        end;
+        forward_waves = ElasticWave.(forward_sims);
+
+
+    # the lowest 3 frequencies have substantial errors below, as the problem become ill-posed for low basis_order and therefore does not completely describe the data given.
+    forward_boundary_error = map(eachindex(ωs)) do i
+        bds = boundary_data(forward_sims[i], forward_waves[i]);
+        error1 = norm(boundarydata1s[i].fields - bds[1].fields) / norm(boundarydata1s[i].fields);
+        error2 = norm(boundarydata2s[i].fields - bds[2].fields) / norm(boundarydata2s[i].fields);
+
+        max(error1,error2)
+    end
+
+    # if we eliminate the basis_orders that the forward problem could not solve for, then the recovery is well below the specified tolerance (method.tol) as it should be
+    forward_boundary_error = map(eachindex(ωs)) do i
+        bd1 = fields_to_fouriermodes(boundarydata1s[i], forward_waves[i].method.basis_order)
+        bd1 = fouriermodes_to_fields(bd1);
+        
+        bd2 = fields_to_fouriermodes(boundarydata2s[i], forward_waves[i].method.basis_order)
+        bd2 = fouriermodes_to_fields(bd2);
+
+        bds = boundary_data(forward_sims[i], forward_waves[i]);
+
+        error1 = norm(bd1.fields - bds[1].fields) / norm(bd1.fields)
+        error2 = norm(bd2.fields - bds[2].fields) / norm(bd2.fields)
+        max(error1,error2)
+    end
+    @test maximum(forward_boundary_error) < modal_method.tol
 
 ## The inverse problem
         bc1_inv = DisplacementBoundary(outer=true)
@@ -207,20 +224,20 @@ end
         for i in eachindex(ωs)]
 
         boundarydata1_inverses = [ 
-            BoundaryData(bc1_inv, bearing.outer_radius, θs_inv[i], waves[i])
+            BoundaryData(bc1_inv, bearing.outer_radius, θs_inv[i], forward_waves[i])
         for i in eachindex(ωs)];
 
         boundarydata2_inverses = [ 
-            BoundaryData(bc2_inv, bearing.outer_radius, θs_inv[i], waves[i])
+            BoundaryData(bc2_inv, bearing.outer_radius, θs_inv[i], forward_waves[i])
         for i in eachindex(ωs)];
 
     # will use a fine grid to demonstrate and explain some issues.    
         boundarydata1_fine_inverses = [ 
-            BoundaryData(bc1_inv, bearing.outer_radius, θs, waves[i])
+            BoundaryData(bc1_inv, bearing.outer_radius, θs, forward_waves[i])
         for i in eachindex(ωs)];
 
         boundarydata2_fine_inverses = [ 
-            BoundaryData(bc2_inv, bearing.outer_radius, θs, waves[i])
+            BoundaryData(bc2_inv, bearing.outer_radius, θs, forward_waves[i])
         for i in eachindex(ωs)];
 
     # Create a boundary basis for the inverse problem for the inner boundaries
@@ -244,25 +261,82 @@ end
     # - method 2 : with prior for one boundary condition
     # - method 3 : with prior for two boundary conditions
 
+    # To test the methods we need the true data from the forward modals. Better to use data from the forward waves, rather than the data given to the forward problem, as discussed before the forward problem was not able to resolve all the modes of the data.
+    forward_inner_data = [
+        boundary_data(forward_sims[i], forward_waves[i])
+    for i in eachindex(ωs)];
+
 ## Method 1
     # when using very limited data, this method performs poorly. It requires fine data to get fine predictions
     
-    # using coarse boundary data
-    sims = map(eachindex(ωs)) do i
-        BearingSimulation(ωs[i], modal_method, bearing, boundarydata1_inverses[i], boundarydata2_inverses[i];
-            nondimensionalise = true
-        )
-    end;
-    inverse_waves = ElasticWave.(sims);
-    
+    # using coarse boundary data boundarydata1_inverses for the modal method will lead to bad results, as there is just not enough data to calculate even the modes that were accurately resovled by the forward problem
+        # sims = map(eachindex(ωs)) do i
+        #     BearingSimulation(ωs[i], modal_method, bearing, boundarydata1_inverses[i], boundarydata2_inverses[i];
+        #         nondimensionalise = true
+        #     )
+        # end;
+        # inverse_waves = ElasticWave.(sims);
+
+    # so instead we run the modal method with a lot of data just to demonstrate that it does work
     sims = map(eachindex(ωs)) do i
         BearingSimulation(ωs[i], modal_method, bearing, boundarydata1_fine_inverses[i], boundarydata2_fine_inverses[i];
             nondimensionalise = true
         )
     end;
     inverse_waves = ElasticWave.(sims);
+    
+    predicted_inner_data = [
+        boundary_data(forward_sims[i], inverse_waves[i])
+    for i in eachindex(ωs)];
 
-    # method = PriorMethod(tol = modal_method.tol, modal_method = modal_method)
+    inner_boundary_errors = map(eachindex(ωs)) do i
+        error1 = norm(forward_inner_data[i][1].fields - predicted_inner_data[i][1].fields) / norm(forward_inner_data[i][1].fields)
+        error2 = norm(forward_inner_data[i][2].fields - predicted_inner_data[i][2].fields) / norm(forward_inner_data[i][2].fields)
+        max(error1,error2)
+    end
+
+    @test maximum(inner_boundary_errors) < 2e-8
+
+
+## Method 2
+
+    method = PriorMethod(tol = modal_method.tol, modal_method = modal_method)
+
+    # here we use only coarse boundary data to see if the prior can improve the result. However, we note that a prior on only one boundary condition is not enough, you need either two priors, or a prior for one boundary condition and fine boundary data for the other boundary condition
+    sims = map(eachindex(ωs)) do i
+        BearingSimulation(ωs[i], method, bearing, 
+            boundarydata1_inverses[i], 
+            boundarydata2_fine_inverses[i];
+            boundarybasis1 = boundarybasis1_inverses[i]
+        )
+    end;
+    inverse_waves = ElasticWave.(sims);
+
+    
+    inner_boundary_errors = map(eachindex(ωs)) do i
+        predict_bds = boundary_data(forward_sims[i], inverse_waves[i])
+
+        error1 = norm(forward_inner_data[i][1].fields - predict_bds[1].fields) / norm(forward_inner_data[i][1].fields)
+        error2 = norm(forward_inner_data[i][2].fields - predict_bds[2].fields) / norm(forward_inner_data[i][2].fields)
+        max(error1,error2)
+    end
+
+    inner_boundary_errors = map(eachindex(ωs)) do i
+        order = inverse_waves[i].method.modal_method.basis_order
+
+        bd1 = fields_to_fouriermodes(forward_inner_data[i][1], order)
+        bd1 = fouriermodes_to_fields(bd1);
+        
+        bd2 = fields_to_fouriermodes(forward_inner_data[i][2], order)
+        bd2 = fouriermodes_to_fields(bd2);
+
+        predict_bds = boundary_data(forward_sims[i], inverse_waves[i])
+
+        error1 = norm(bd1.fields - predict_bds[1].fields) / norm(bd1.fields)
+        error2 = norm(bd2.fields - predict_bds[2].fields) / norm(bd2.fields)
+        max(error1,error2)
+    end
+
 
     # inverse_sim = BearingSimulation(ω, method, bearing, bd1_inverse, bd2_inverse;
     #     boundarybasis1 = boundarybasis1,
