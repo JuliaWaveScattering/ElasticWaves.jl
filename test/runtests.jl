@@ -23,4 +23,5 @@ include("source_scattering_test.jl")
     include("inverse_problems_test.jl")
 
     # include("boundary_basis.jl")
+    include("boundary_basis_example.jl")
     include("boundary_basis_test.jl")
