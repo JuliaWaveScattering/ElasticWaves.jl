@@ -4,10 +4,15 @@
     bearing = RollerBearing(medium = medium, inner_radius=1.0, outer_radius = 1.5)
     dr = bearing.outer_radius - bearing.inner_radius
 
-    numberofsimulations = 6;
 
+    numberofsimulations = 3;
+    
     # the higher the frequency, the worse the result. 
     ωs = LinRange(0.2,40,numberofsimulations) |> collect
+
+    # originally stress tested for 40 simulations and very broad frequency ranges. But this is too heavy to run for every CI
+    # numberofsimulations = 40; 
+    # ωs = LinRange(0.2,200,numberofsimulations) |> collect
 
     # the lower frequencies have less basis_order so can recover less information. For this reason we increase the numberofbasis with the frequency
     max_numberofbasis = 5
@@ -128,10 +133,10 @@
         end;
 
         boundarybasis2_inverses = map(eachindex(ωs)) do i
-            bd1s = [
-                BoundaryData(bc2_forward, θs = θs, fields = hcat(fp1s[j],fs1s[j]))
+            bd2s = [
+                BoundaryData(bc2_forward, θs = θs, fields = hcat(fp2s[j],fs2s[j]))
             for j in 1:numberofsensors[i]];
-            BoundaryBasis(bd1s)
+            BoundaryBasis(bd2s)
         end;
 
 ## Inverse prior methods 
@@ -247,12 +252,35 @@
 
     @test maximum(inner_boundary_errors) < 1e-10
 
+    # Here we just swap which boundary uses a basis and which uses just boundary data just for completeness
+    
+    sims = map(eachindex(ωs)) do i
+        modal_method = ModalMethod(tol = 1e-11, only_stable_modes = true, basis_order = forward_waves[i].method.basis_order)
+        method = PriorMethod(tol = modal_method.tol, modal_method = modal_method)
+
+        BearingSimulation(ωs[i], method, bearing, 
+            boundarydata1_fine_inverses[i], 
+            boundarydata2_inverses[i];
+            boundarybasis2 = boundarybasis2_inverses[i]
+        )
+    end;
+    inverse_waves = ElasticWave.(sims);
+
+    inner_boundary_errors = map(eachindex(ωs)) do i
+        predict_bds = boundary_data(forward_sims[i], inverse_waves[i])
+
+        error1 = norm(forward_inner_data[i][1].fields - predict_bds[1].fields) / norm(forward_inner_data[i][1].fields)
+        error2 = norm(forward_inner_data[i][2].fields - predict_bds[2].fields) / norm(forward_inner_data[i][2].fields)
+        max(error1,error2)
+    end
+
+    @test maximum(inner_boundary_errors) < 1e-10
+
 
 ## Method 3
 
     sims = map(eachindex(ωs)) do i
-        # modal_method = ModalMethod(tol = 1e-11, only_stable_modes = true)
-        modal_method = ModalMethod(tol = 1e-11, only_stable_modes = true, basis_order = forward_waves[i].method.basis_order)
+        modal_method = ModalMethod(tol = 1e-11, only_stable_modes = true)
         method = PriorMethod(tol = modal_method.tol, modal_method = modal_method)
 
         BearingSimulation(ωs[i], method, bearing, 
@@ -260,46 +288,39 @@
             boundarydata2_inverses[i];
             boundarybasis1 = boundarybasis1_inverses[i],
             boundarybasis2 = boundarybasis2_inverses[i],
+            nondimensionalise = true
         )
     end;
     inverse_waves = ElasticWave.(sims);
 
-    map(eachindex(ωs)) do i
-        (ωs[i], forward_waves[i].method.basis_order)
+    # did the prior method solve the boundary data accuratey? Yes, the boundary errors are ting and the condition numbers are reasonable
+    map(inverse_waves) do wave
+        (wave.method.boundary_error, wave.method.condition_number)
+    end    
+
+    # the boundary data should match exactly the forward problem, as the basis_order used will be the same, as the modal part of the Prior method is exactly the forward modal problem
+    inner_boundary_errors = map(eachindex(ωs)) do i
+        predict_bds = boundary_data(forward_sims[i], inverse_waves[i])
+
+        error1 = norm(forward_inner_data[i][1].fields - predict_bds[1].fields) / norm(forward_inner_data[i][1].fields)
+        error2 = norm(forward_inner_data[i][2].fields - predict_bds[2].fields) / norm(forward_inner_data[i][2].fields)
+        max(error1,error2)
     end
 
-    # inverse_sim = BearingSimulation(ω, method, bearing, bd1_inverse, bd2_inverse;
-    #     boundarybasis1 = boundarybasis1,
-    #     nondimensionalise = true
-    # );
-
-    # inverse_wave = ElasticWave(inverse_sim);
-
-# ## Test how well we recover the inner traction
-#     x_inner = [
-#         radial_to_cartesian_coordinates([bearing.inner_radius,θ]) 
-#     for θ in θs]
+    @test maximum(inner_boundary_errors) < 5e-11
     
-#     field1_inner = [
-#         field(inverse_wave, x, bc1_forward.fieldtype) 
-#     for x in x_inner]
-#     field1_inner = hcat(field1_inner...) |> transpose |> collect
+    # just like the forward problem, only the higher frequencies resolve the original boundary data accurately, as these had basis_order = 20, which was enough to represent the random data
+    original_inner_boundary_errors = map(eachindex(ωs)) do i
+        predict_bds = boundary_data(forward_sims[i], inverse_waves[i])
 
+        error1 = norm(boundarydata1s[i].fields - predict_bds[1].fields) / norm(boundarydata1s[i].fields)
+        error2 = norm(boundarydata2s[i].fields - predict_bds[2].fields) / norm(boundarydata2s[i].fields)
 
-#     # even excluding some modes the recovery is very good with just one sensor
-#     # this is because the higher order modes (in this case) contribute very little to the field
-#     @test norm(field1_inner - bd1_for.fields) / norm(bd1_for.fields) < 1e-8
-    
-#     @test norm(wave.potentials[1].coefficients - inverse_wave.potentials[1].coefficients) / norm(wave.potentials[1].coefficients) < 2e-12
+        max(error1,error2)
+    end
 
-#     @test norm(wave.potentials[2].coefficients - inverse_wave.potentials[2].coefficients) / norm(wave.potentials[2].coefficients) < 2e-12
-
-#     modes1 = field_modes(wave, bearing.inner_radius, bc1_forward.fieldtype);
-#     inverse_modes1 = field_modes(inverse_wave, bearing.inner_radius, bc1_forward.fieldtype);
-
-#     @test norm(modes1 - inverse_modes1) / norm(modes1) < 2e-12
+    @test original_inner_boundary_errors[end] < 5e-11
 end
-
 
 # inner_boundary_errors = map(eachindex(ωs)) do i
 #     # order = inverse_waves[i].method.modal_method.basis_order

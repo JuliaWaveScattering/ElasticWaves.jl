@@ -145,7 +145,7 @@ end
 function BearingSimulation(ω::T, method::M, bearing::RollerBearing{T}, 
         boundarydata1::BoundaryData{BC1,T},
         boundarydata2::BoundaryData{BC2,T};
-        nondimensionalise::Bool = false,
+        nondimensionalise::Bool = true,
         boundarybasis1::BoundaryBasis{BCB1,T}  = BoundaryBasis([BoundaryData(boundarydata1.boundarytype)]),
         boundarybasis2::BoundaryBasis{BCB2,T}  = BoundaryBasis([BoundaryData(boundarydata2.boundarytype)])
     ) where {T, M <: SolutionMethod, BC1 <: BoundaryCondition, BC2 <: BoundaryCondition, BCB1 <: BoundaryCondition, BCB2 <: BoundaryCondition}

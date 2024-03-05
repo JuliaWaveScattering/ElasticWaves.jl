@@ -21,16 +21,16 @@ end
 function ElasticWave(sim::BearingSimulation)
 
     # using the bearing properties before nondimensionalise
-    bearing = sim.bearing
-    simcopy = deepcopy(sim)
+    bearing = sim.bearing;
+    simcopy = deepcopy(sim);
 
     if simcopy.nondimensionalise
         nondimensionalise!(simcopy)
-    end
+    end;
 
-    ω = simcopy.ω
+    ω = simcopy.ω;
 
-    coefficients = modal_coefficients!(simcopy)
+    coefficients = modal_coefficients!(simcopy);
 
     method = simcopy.method
 
@@ -68,7 +68,7 @@ function modal_coefficients!(sim::BearingSimulation{ModalMethod})
     mode_errors = zeros(T, 2basis_order + 1)
 
     for m1 in 0:basis_order
-        for m = [-m1,m1]
+        for m = [-m1,m1]            
             A = boundarycondition_system(ω, bearing, sim.boundarydata1.boundarytype, sim.boundarydata2.boundarytype, m)
             b = [
                 sim.boundarydata1.fourier_modes[m+basis_order+1,:];
@@ -158,7 +158,7 @@ function modal_coefficients!(sim::BearingSimulation{PriorMethod})
             
             error = max(mode_errors[m1 + basis_order + 1], mode_errors[-m1 + basis_order + 1])
 
-            if error > method.tol
+            if error > method.modal_method.tol
                 @warn "The relative error for the boundary conditions was $(error) for (ω,basis_order) = $((ω,m1))"
                 if method.modal_method.only_stable_modes
                     mode_errors[m1 + basis_order + 1] = zero(T)
