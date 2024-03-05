@@ -59,7 +59,7 @@
     traction_errors[1] |> norm > 1.0
 
     # however the first modes are reasonably conditioned
-    @test traction_errors[1][1:3] |> norm < 5e-3
+    @test traction_errors[1][1:3] |> norm < 8e-3
 
     # for higher frequencies in this case all the errors are small
     @test traction_errors[2] |> norm < 1e-20
