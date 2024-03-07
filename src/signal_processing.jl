@@ -1,4 +1,5 @@
 function fields_to_fouriermodes(boundarydata::BoundaryData, basis_order::Int = round(floor(length(boundarydata.θs)/2 - 1/2)) |> Int)
+    
     modes = fields_to_fouriermodes(boundarydata.θs, boundarydata.fields, basis_order)
     
     return BoundaryData(boundarydata.boundarytype;
@@ -20,6 +21,10 @@ end
 
 
 function fields_to_fouriermodes(θs::AbstractVector, fields::AbstractArray, basis_order::Int)
+
+    if 2basis_order + 1 > length(θs)
+        error("Can not calculate up to basis_order = $basis_order of the fourier modes from only $(length(θs)) field points. Either descrease basis_order or increase the number of points in fields")
+    end
 
     exps = [
         exp(im * θ * m)

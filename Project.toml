@@ -4,6 +4,8 @@ authors = ["Art Gower <arturgower@gmail.com>", "Jess Kent <rkent2@sheffield.ac.u
 version = "0.1.0"
 
 [deps]
+Accessors = "7d9f7c33-5ae7-4f3b-8dc6-eff91059b697"
+BlockArrays = "8e7c35d0-a365-5155-bbbb-fb81a777f24e"
 BlockDiagonals = "0a1fb500-61f7-11e9-3c65-f5ef3456f9f0"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 MultipleScattering = "80a8ab25-5750-5d93-a6d7-4adc97cdd5fb"
@@ -11,6 +13,7 @@ SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [compat]
+Accessors = "^0.1"
 BlockDiagonals = "^0.1.42"
 MultipleScattering = "^0.1.19"
 SpecialFunctions = "^0.7, ^0.8, ^0.9, 0.10, 1, 2"

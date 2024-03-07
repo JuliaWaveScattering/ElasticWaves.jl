@@ -18,17 +18,6 @@ function Elastic(Dim::Integer; ρ::T = 0.0, cp::Union{T,Complex{T}} = 0.0, cs::U
      Elastic{Dim,T}(ρ,Complex{T}(cp),Complex{T}(cs))
 end
 
-## field types
-"""
-    FieldType
-
-A type used to specify what type of physical field, such as traction or displacement.
-"""
-abstract type FieldType end
-
-struct DisplacementType <: FieldType end
-struct TractionType <: FieldType end
-
 ## wave types
 
 """
@@ -66,15 +55,15 @@ A type to store an elastic wave expanded in some modal basis. The only basis use
 
 For Dim = 4 the field `potentials` are, in order, the φ pressure, Φ shear,  and χ shear, where Φ and χ are the Debye potentials such that the displacement is given by: `u = ∇φ + ∇x∇x(Φ .* r) + ∇x∇x∇x(χ .* r) ./ kS`, where `kS` is the shear wavenumber and `r` is a vector pointing in the radial direction, that is `r = (x,y,z)` in Cartesian coordinates.
 """
-struct ElasticWave{Dim,T}
+struct ElasticWave{Dim,M,T}
     ω::T
     medium::Elastic{Dim,T}
     potentials::Vector{H} where H <:HelmholtzPotential{Dim,T}
-    mode_errors::Vector{T}
+    method::M
 
-    function ElasticWave(ω::T, medium::Elastic{Dim,T}, potentials::Vector{H};
+    function ElasticWave(ω::T, medium::Elastic{Dim,T}, potentials::Vector{H}, method::M = ModalMethod();
             mode_errors = zeros(basisorder_to_basislength(Acoustic{T,Dim}, potentials[1].basis_order))
-        ) where {Dim,T,H <: HelmholtzPotential{Dim,T}}
+        ) where {Dim,T,H <: HelmholtzPotential{Dim,T}, M<:SolutionMethod}
 
         orders = [p.basis_order for p in potentials]
 
@@ -82,11 +71,13 @@ struct ElasticWave{Dim,T}
             @error "The basis_order for all the potentials is expected to be the same."
         end
 
-        if length(mode_errors) != basisorder_to_basislength(Acoustic{T,Dim}, potentials[1].basis_order)
-            @error "The length of mode_errors should be the same as the number of modes."
+        if M == ModalMethod 
+            if length(method.mode_errors) != basisorder_to_basislength(Acoustic{T,Dim}, potentials[1].basis_order)
+                @warn "The length of mode_errors is expected to be the same as the number of modes."
+            end    
         end
 
-        new{Dim,T}(ω, medium, potentials, mode_errors)
+        new{Dim,M,T}(ω, medium, potentials, method)
     end
 end
 

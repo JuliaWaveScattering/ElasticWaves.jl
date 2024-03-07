@@ -22,5 +22,6 @@ include("source_scattering_test.jl")
     # tests that the boundary conditions are formed correctly, and uniqueness
     include("inverse_problems_test.jl")
 
-# include("boundary_basis.jl")
-include("boundary_basis_test.jl")
+    # include("boundary_basis.jl")
+    include("boundary_basis_example.jl")
+    include("boundary_basis_test.jl")
