@@ -7,15 +7,15 @@ using LinearAlgebra
 
 #This code do the same of the Zrollers_contact but we extract only one frequency.
 
-basis_order = 10;
-numberofsensors = 11
+basis_order = 11;
+numberofsensors = 2
 basis_length = 2*basis_order + 1
 
 #Friction coefficient
 
 μ=0.5
 #μ=1
-θs = LinRange(0, 2pi, 20*basis_length + 1)[1:end-1]
+θs = LinRange(0, 2pi, 20*basis_length + 2)[1:end-1]
 #θs = LinRange(0, 2pi, 401)[1:end-1] 
 #θ2s = LinRange(0, 2pi, 4*basis_length + 1)[1:end-1]
 θ2s = LinRange(0, 2pi, 2000)[1:end-1] 
@@ -28,13 +28,13 @@ basis_length = 2*basis_order + 1
 #Properties of the bearing
 
 steel = Elastic(2; ρ = 7800.0, cp = 5000.0, cs = 3500.0)
-bearing = RollerBearing(medium=steel, inner_radius=1.0, outer_radius = 2.0, number_of_rollers=1.0)
+bearing = RollerBearing(medium=steel, inner_radius=1.0, outer_radius = 2.0, number_of_rollers=11)
 
 Z=bearing.number_of_rollers
 
 #Angular velocity of the bearings
 
-Ω=10
+Ω=1000.0
 
 #frequencies
 n_order=basis_order
@@ -59,12 +59,15 @@ bc2_forward = TractionBoundary(outer=true)
 bc1_inverse = DisplacementBoundary(outer=true)
 bc2_inverse = TractionBoundary(outer=true)
 
-fouter= 0*exp.(-20.0 .* (θs .- pi).^2) + θs .* 0im
+fouter= 0*fourier_coef_p
 
 bd1_forward =  BoundaryData(bc1_forward, θs=θs, fourier_modes=hcat(fourier_coef_p,fourier_coef_s)) 
 bd2_forward = BoundaryData(bc2_forward,θs=θs, fourier_modes=hcat(fouter,fouter))
 
-sim = BearingSimulation(ωs[i], bearing, bd1_forward, bd2_forward; basis_order = basis_order)
+modal_method=ModalMethod(tol=1e-6,only_stable_modes=true)
+
+sim = BearingSimulation(ωs[i], bearing, bd1_forward, bd2_forward; method=modal_method)
+
 
 
 wave = ElasticWave(sim)
@@ -134,7 +137,7 @@ bd1_inverse = BoundaryData(
     fields = displacement_outer
 )
 
-bd1_inverse_modes=fields_to_fouriermodes(bd1_inverse, basis_order)
+bd1_inverse_modes=fields_to_fouriermodes(bd1_inverse)
 bd1_inverse_fields=fouriermodes_to_fields(bd1_inverse_modes)
 norm(bd1_inverse.fields-bd1_inverse_fields.fields)
 
@@ -146,14 +149,15 @@ bd2_inverse= BoundaryData(
     fields = traction_outer
 )
 
-bd2_inverse_modes=fields_to_fouriermodes(bd2_inverse, basis_order)
-bd2_inverse_fields=fouriermodes_to_fields(bd2_inverse_modes)
-norm(bd2_inverse.fields-bd2_inverse_fields.fields)
+#bd2_inverse_modes=fields_to_fouriermodes(bd2_inverse, basis_order)
+#bd2_inverse_fields=fouriermodes_to_fields(bd2_inverse_modes)
+#norm(bd2_inverse.fields-bd2_inverse_fields.fields)
 
 #bd2_inverse=fields_to_fouriermodes(bd2_inverse, basis_order)
 
-inverse_sim = BearingSimulation(ωs[i], bearing, bd1_inverse, bd2_inverse, basis_order=basis_order)    
- res = field(wave, bearing, TractionType(); res = 70)
+modal_method_inv=ModalMethod(tol=1e-6,only_stable_modes=false)
+
+inverse_sim = BearingSimulation(ωs[i], bearing, bd1_inverse, bd2_inverse, method=modal_method_inv)    
 
 inv_wave=ElasticWave(inverse_sim)
 
@@ -206,9 +210,13 @@ f0=0.0*Fp
 bd1= BoundaryData(bc1_forward, θs=θs, fourier_modes=hcat(Fp,f0)) 
 bd2= BoundaryData(bc1_forward, θs=θs, fourier_modes=hcat(f0,Fs)) 
 
+bd3= BoundaryData(bc2_forward, θs=θs, fourier_modes=hcat(f0,f0)) 
+bd4= BoundaryData(bc2_forward, θs=θs, fourier_modes=hcat(f0,f0)) 
+
 
 
 boundarybasis=  BoundaryBasis( [ bd1 , bd2] )   
+boundarybasis2=BoundaryBasis([bd3,bd4])
 
 #Generate boundary data
 
@@ -218,7 +226,8 @@ bd1_inverse = BoundaryData(
     fields = displacement_outer
 )
 
-bd1_inverse=fields_to_fouriermodes(bd1_inverse,n_order)
+#bd1_inverse=fields_to_fouriermodes(bd1_inverse,n_order*Z)
+
 
 #bd1_inverse=fields_to_fouriermodes(bd1_inverse, basis_order)
 
@@ -229,9 +238,13 @@ bd2_inverse= BoundaryData(
     fields = traction_outer
 )
 
-#bd2_inverse=fields_to_fouriermodes(bd2_inverse, basis_order)
+#bd2_inverse=fields_to_fouriermodes(bd2_inverse, sim.basis_order)
 
-inverse_sim = BearingSimulation(ωs[i], bearing, bd1_inverse, bd2_inverse, boundarybasis1=boundarybasis,basis_order=n_order)    
+prior_method=PriorMethod(tol=modal_method.tol, modal_method=modal_method)
+
+inverse_sim = BearingSimulation(ωs[i], bearing, bd1_inverse, bd2_inverse
+, boundarybasis1=boundarybasis,boundarybasis2=boundarybasis2 
+, method=prior_method,nondimensionalise=true)    
 # res = field(wave, bearing, TractionType(); res = 70)
 
 inv_wave=ElasticWave(inverse_sim)
