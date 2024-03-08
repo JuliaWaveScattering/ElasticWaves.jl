@@ -7,6 +7,7 @@ struct RollerBearing{T <: AbstractFloat}
     "vector of angles delimiting gaps in the outer radius"
     outer_gaps::Vector{T}
     number_of_rollers::Int
+    rollers_inside::Boole
 end
 
 function RollerBearing(; medium::Elastic{2,T},
@@ -14,7 +15,8 @@ function RollerBearing(; medium::Elastic{2,T},
         outer_radius::Union{T,Complex{T}} = 0.0,
         inner_gaps::Vector{T} = typeof(medium).parameters[2][],
         outer_gaps::Vector{T} = typeof(medium).parameters[2][],
-        number_of_rollers::Int = 1
+        number_of_rollers::Int = 1,
+        rollers_inside = true
     ) where T <: AbstractFloat
     if isodd(length(inner_gaps)) && isodd(length(outer_gaps))
         @error "both inner_gaps and outer_gaps need to be an even number of angles"
@@ -22,7 +24,7 @@ function RollerBearing(; medium::Elastic{2,T},
 
     println("Note that the traction on the inner boundary (τn,τt) is interpreted to be the vector τ = - τn * er - τt * eθ.")
 
-    RollerBearing{T}(medium, inner_radius, inner_gaps, outer_radius, outer_gaps, number_of_rollers)
+    RollerBearing{T}(medium, inner_radius, inner_gaps, outer_radius, outer_gaps, number_of_rollers,rollers_inside)
 end
 
 
