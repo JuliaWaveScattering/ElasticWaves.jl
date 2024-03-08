@@ -12,7 +12,6 @@ struct Elastic{Dim,T} <: PhysicalMedium{Dim,Dim}
     cs::Complex{T} # Phase velocity of shear wave
 end
 
-
 # Constructor which supplies the dimension without explicitly mentioning type
 function Elastic(Dim::Integer; ρ::T = 0.0, cp::Union{T,Complex{T}} = 0.0, cs::Union{T,Complex{T}} = 0.0) where {T<:Number}
      Elastic{Dim,T}(ρ,Complex{T}(cp),Complex{T}(cs))

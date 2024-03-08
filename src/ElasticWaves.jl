@@ -17,6 +17,8 @@ export BoundaryData, BoundaryBasis, BearingSimulation, setup, nondimensionalise,
 export isempty, boundary_data
 export point_contact_boundary_data, LoadingProfile
 
+# loading-profile.jl
+
 # fields.jl
 export field
 
@@ -51,6 +53,7 @@ include("elasticity.jl")
 include("source.jl")
 
 include("bearing.jl")
+include("loading-profile.jl")
 include("fields.jl")
 include("signal_processing.jl")
 
