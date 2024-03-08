@@ -84,8 +84,6 @@ struct BoundaryData{BC <: BoundaryCondition, T} <: AbstractBoundaryData{BC}
     fourier_modes::Matrix{Complex{T}}
 end
 
-
-
 function BoundaryData(boundarytype::BC;
         θs::AbstractVector{T} = Float64[],
         fields::Matrix = reshape(Complex{Float64}[],0,2),
@@ -102,31 +100,6 @@ function BoundaryData(boundarytype::BC;
 
     return BoundaryData{BC,T}(boundarytype,θs,fields,fourier_modes)
 end
-
-struct LoadingProfile{BC <: BoundaryCondition, T} <: AbstractBoundaryData{BC}
-    boundarytype::BC
-    θs::Vector{T}
-    fields::Matrix{Complex{T}}
-    fourier_modes::Matrix{Complex{T}}
-end
-
-function LoadingProfile(boundarytype::BC;
-    θs::AbstractVector{T} = Float64[],
-    fields::Matrix = reshape(Complex{Float64}[],0,2),
-    fourier_modes::Matrix = reshape(Complex{Float64}[],0,2)
-) where {BC <: BoundaryCondition, T}
-
-if !isempty(fourier_modes) && size(fourier_modes,2) != 2
-    @error "the fourier_modes should have only two columns"
-end
-
-if !isempty(fields) && size(fields,2) != 2
-    @error "the fields should have only two columns"
-end
-
-return BoundaryData{BC,T}(boundarytype,θs,fields,fourier_modes)
-end
-
 
 struct BoundaryBasis{BC <: BoundaryCondition, T}
     basis::Vector{BoundaryData{BC,T}}
@@ -224,6 +197,35 @@ function BoundaryData(boundarycondition::BoundaryCondition, radius::AbstractFloa
     fs = hcat(fs...) |> transpose |> collect
 
     return BoundaryData(boundarycondition; θs = θs, fields = fs)
+end
+
+
+function BoundaryData(loading_profile::BoundaryData, bearing::RollerBearing, frequency_order::Int)
+
+    Z = bearing.number_of_rollers
+
+    if isempty(loading_profile.fourier_modes)
+        basis_order = Int(floor(length(loading_profile.θs)/2.0 - 1/2.0))
+        loading_profile = fields_to_fouriermodes(loading_profile, basis_order)
+    end    
+        
+    fourier_modes = loading_profile.fourier_modes 
+    
+    basis_order = basislength_to_basisorder(PhysicalMedium{2,1}, size(fourier_modes,1))
+    fourier_order = 2*(basis_order + Z*frequency_order) + 1 
+
+    bd_fourier_modes = zeros(ComplexF64,fourier_order,2) 
+    bd_fourier_modes[2*Z*frequency_order+1:end,:] = (Z/(2pi)) .* fourier_modes
+
+    fields = fouriermodes_to_fields(loading_profile.θs, fourier_modes)
+
+    bd =  BoundaryData(loading_profile.boundarytype; 
+        θs = loading_profile.θs, 
+        fields = fields,
+        fourier_modes = bd_fourier_modes
+    )
+
+    return bd
 end
 
 function nondimensionalise!(boundarydata::BoundaryData{BoundaryCondition{TractionType}}, sim::BearingSimulation)
@@ -435,11 +437,10 @@ function setup(sim::BearingSimulation{PriorMethod})
     return sim
 end
 
-function point_contact_boundary_data( θs::Vector{T}, bearing::RollerBearing, bc ::BoundaryCondition{TractionType}
-    , basis_order ::Int) where{T}
+function point_contact_boundary_data(θs::Vector{T}, bearing::RollerBearing, bc ::BoundaryCondition{TractionType}, basis_order::Int, friction_coefficient = 1.0) where{T}
 
     Z =bearing.number_of_rollers
-    μ=bearing.medium.friction_coefficient
+    # μ=bearing.medium.friction_coefficient
     n_order=basis_order
 
     size=2*n_order*Z+1 
@@ -455,48 +456,4 @@ function point_contact_boundary_data( θs::Vector{T}, bearing::RollerBearing, bc
 
     return bd
     
-end
-
-
-# boundary_data(sim, loading_profile::BoundaryData{BC})
-
-function BoundaryData(loading_profile::BoundaryData{BC}, bearing::RollerBearing,
-      frequency_order:: Int) where{T, BC <: BoundaryCondition{TractionType}}
-
-    bc=loading_profile.boundarytype
-    θs = loading_profile.θs
-    load = loading_profile.fields
-    
-    # if length(θs)!=length(load)
-    #     error("the load and θs must have the same size")
-    # end
-
-    Z = bearing.number_of_rollers
-    
-    #basis_order = basislength_to_basisorder(PhysicalMedium{2,1}, size(loading_profile.fourier_modes,1))
-
-
-    fouriermodesp=fields_to_fouriermodes(θs,load[:,1], basis_order)
-    fouriermodess=fields_to_fouriermodes(θs,load[:,2], basis_order)
-    
-    
-    fouriermodesp=(Z/(2pi)).*fouriermodesp
-    fouriermodess=(Z/(2pi)).*fouriermodess
-    m=frequency_order
-
-    
-
-    size=2*(basis_order+Z*m)+1 
-
-    fourier_coef_p=zeros(ComplexF64,size) 
-    fourier_coef_s=zeros(ComplexF64,size) 
-
-    fourier_coef_p[2*Z*m+1:end]= fouriermodesp
-    fourier_coef_s[2*Z*m+1:end]= fouriermodess
-    
-    bd =  BoundaryData(bc, θs=θs, fourier_modes=hcat(fourier_coef_p,fourier_coef_s))
-
-    return bd
-    
-
 end

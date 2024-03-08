@@ -10,13 +10,12 @@ struct Elastic{Dim,T} <: PhysicalMedium{Dim,Dim}
     ρ::T # Density (use \greekletter+tab to get the greek letter!)
     cp::Complex{T} # Phase velocity of pressure wave
     cs::Complex{T} # Phase velocity of shear wave
-    friction_coefficient::T
 end
 
 
 # Constructor which supplies the dimension without explicitly mentioning type
-function Elastic(Dim::Integer; ρ::T = 0.0, cp::Union{T,Complex{T}} = 0.0, cs::Union{T,Complex{T}} = 0.0, friction_coefficient::T=0.0) where {T<:Number}
-     Elastic{Dim,T}(ρ,Complex{T}(cp),Complex{T}(cs),friction_coefficient)
+function Elastic(Dim::Integer; ρ::T = 0.0, cp::Union{T,Complex{T}} = 0.0, cs::Union{T,Complex{T}} = 0.0) where {T<:Number}
+     Elastic{Dim,T}(ρ,Complex{T}(cp),Complex{T}(cs))
 end
 
 ## wave types

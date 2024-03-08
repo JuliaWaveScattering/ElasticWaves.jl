@@ -22,9 +22,10 @@ basis_length = 2*basis_order + 1
 
 #Properties of the bearing
 
-steel = Elastic(2; ρ = 7800.0, cp = 5000.0, cs = 3500.0,friction_coefficient=0.5)
+steel = Elastic(2; ρ = 7800.0, cp = 5000.0, cs = 3500.0)
 bearing = RollerBearing(medium=steel, inner_radius=1.0, outer_radius = 2.0, number_of_rollers=11, angular_speed=1000.0)
-μ=bearing.medium.friction_coefficient
+# μ=bearing.medium.friction_coefficient
+μ = 0.5
 Ω=bearing.angular_speed
 
 Z=bearing.number_of_rollers
