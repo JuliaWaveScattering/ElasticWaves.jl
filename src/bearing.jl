@@ -7,7 +7,7 @@ struct RollerBearing{T <: AbstractFloat}
     "vector of angles delimiting gaps in the outer radius"
     outer_gaps::Vector{T}
     number_of_rollers::Int
-    rollers_inside::Boole
+    rollers_inside::Bool
     angular_speed::Float64
 end
 
@@ -461,9 +461,8 @@ end
 # boundary_data(sim, loading_profile::BoundaryData{BC})
 
 function BoundaryData(loading_profile::BoundaryData{BC}, bearing::RollerBearing,
-      basis_order ::Int, frequency_order:: Int) where{T, BC <: BoundaryCondition{TractionType}}
+      frequency_order:: Int) where{T, BC <: BoundaryCondition{TractionType}}
 
-    
     bc=loading_profile.boundarytype
     θs = loading_profile.θs
     load = loading_profile.fields
