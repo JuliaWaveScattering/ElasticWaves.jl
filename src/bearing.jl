@@ -7,6 +7,7 @@ struct RollerBearing{T <: AbstractFloat}
     "vector of angles delimiting gaps in the outer radius"
     outer_gaps::Vector{T}
     number_of_rollers::Int
+    angular_speed::Float64
 end
 
 function RollerBearing(; medium::Elastic{2,T},
@@ -14,7 +15,8 @@ function RollerBearing(; medium::Elastic{2,T},
         outer_radius::Union{T,Complex{T}} = 0.0,
         inner_gaps::Vector{T} = typeof(medium).parameters[2][],
         outer_gaps::Vector{T} = typeof(medium).parameters[2][],
-        number_of_rollers::Int = 1
+        number_of_rollers::Int = 1,
+        angular_speed=1.0
     ) where T <: AbstractFloat
     if isodd(length(inner_gaps)) && isodd(length(outer_gaps))
         @error "both inner_gaps and outer_gaps need to be an even number of angles"
@@ -22,7 +24,7 @@ function RollerBearing(; medium::Elastic{2,T},
 
     println("Note that the traction on the inner boundary (τn,τt) is interpreted to be the vector τ = - τn * er - τt * eθ.")
 
-    RollerBearing{T}(medium, inner_radius, inner_gaps, outer_radius, outer_gaps, number_of_rollers)
+    RollerBearing{T}(medium, inner_radius, inner_gaps, outer_radius, outer_gaps, number_of_rollers,angular_speed)
 end
 
 
@@ -54,6 +56,7 @@ function TractionBoundary(; inner::Bool = false, outer::Bool = false)
     return BoundaryCondition{TractionType}(TractionType(),inner,outer)
 end
 
+abstract type AbstractBoundaryData{BC <: BoundaryCondition} end   
 
 """
     BoundaryData{BC <: BoundaryCondition, T}
@@ -72,12 +75,14 @@ fields = exps * fourier_modes
 
 If the `fourier_modes` were specified, then they will be used directly. If the `fourier_modes` were not give, then `fields` will be used to calculate the `fourier_modes`: `fourier_modes = exps \\ fields`.
 """
-struct BoundaryData{BC <: BoundaryCondition, T}
+struct BoundaryData{BC <: BoundaryCondition, T} <: AbstractBoundaryData{BC}
     boundarytype::BC
     θs::Vector{T}
     fields::Matrix{Complex{T}}
     fourier_modes::Matrix{Complex{T}}
 end
+
+
 
 function BoundaryData(boundarytype::BC;
         θs::AbstractVector{T} = Float64[],
@@ -95,6 +100,31 @@ function BoundaryData(boundarytype::BC;
 
     return BoundaryData{BC,T}(boundarytype,θs,fields,fourier_modes)
 end
+
+struct LoadingProfile{BC <: BoundaryCondition, T} <: AbstractBoundaryData{BC}
+    boundarytype::BC
+    θs::Vector{T}
+    fields::Matrix{Complex{T}}
+    fourier_modes::Matrix{Complex{T}}
+end
+
+function LoadingProfile(boundarytype::BC;
+    θs::AbstractVector{T} = Float64[],
+    fields::Matrix = reshape(Complex{Float64}[],0,2),
+    fourier_modes::Matrix = reshape(Complex{Float64}[],0,2)
+) where {BC <: BoundaryCondition, T}
+
+if !isempty(fourier_modes) && size(fourier_modes,2) != 2
+    @error "the fourier_modes should have only two columns"
+end
+
+if !isempty(fields) && size(fields,2) != 2
+    @error "the fields should have only two columns"
+end
+
+return BoundaryData{BC,T}(boundarytype,θs,fields,fourier_modes)
+end
+
 
 struct BoundaryBasis{BC <: BoundaryCondition, T}
     basis::Vector{BoundaryData{BC,T}}
@@ -401,4 +431,71 @@ function setup(sim::BearingSimulation{PriorMethod})
     end    
 
     return sim
+end
+
+function point_contact_boundary_data( θs::Vector{T}, bearing::RollerBearing, bc ::BoundaryCondition{TractionType}
+    , basis_order ::Int) where{T}
+
+    Z =bearing.number_of_rollers
+    μ=bearing.medium.friction_coefficient
+    n_order=basis_order
+
+    size=2*n_order*Z+1 
+
+    fourier_coef_p=zeros(size)
+
+    for n in -n_order:n_order
+         fourier_coef_p[Int(n_order*Z)+1+Int(n*Z)]=Z/2pi
+    end
+
+    fourier_coef_s=μ.*fourier_coef_p 
+    bd =  BoundaryData(bc, θs=θs, fourier_modes=hcat(fourier_coef_p,fourier_coef_s))
+
+    return bd
+    
+end
+
+
+# boundary_data(sim, loading_profile::BoundaryData{BC})
+
+function BoundaryData(loading_profile::BoundaryData{BC}, bearing::RollerBearing,
+      basis_order ::Int, frequency_order:: Int) where{T, BC <: BoundaryCondition{TractionType}}
+
+    
+    bc=loading_profile.boundarytype
+    θs = loading_profile.θs
+    load = loading_profile.fields
+    
+    # if length(θs)!=length(load)
+    #     error("the load and θs must have the same size")
+    # end
+
+    Z = bearing.number_of_rollers
+    
+    #basis_order = basislength_to_basisorder(PhysicalMedium{2,1}, size(loading_profile.fourier_modes,1))
+
+
+    fouriermodesp=fields_to_fouriermodes(θs,load[:,1], basis_order)
+    fouriermodess=fields_to_fouriermodes(θs,load[:,2], basis_order)
+    
+    
+    fouriermodesp=(Z/(2pi)).*fouriermodesp
+    fouriermodess=(Z/(2pi)).*fouriermodess
+    m=frequency_order
+
+    
+
+    size=2*(basis_order+Z*m)+1 
+
+    fourier_coef_p=zeros(ComplexF64,size) 
+    fourier_coef_s=zeros(ComplexF64,size) 
+
+    fourier_coef_p[2*Z*m+1:end]= fouriermodesp
+    fourier_coef_s[2*Z*m+1:end]= fouriermodess
+    
+    bd =  BoundaryData(bc, θs=θs, fourier_modes=hcat(fourier_coef_p,fourier_coef_s))
+
+    return bd
+    
+
 end
