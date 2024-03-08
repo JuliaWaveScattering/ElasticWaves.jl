@@ -15,6 +15,7 @@ export plane_z_shear_source
 export RollerBearing, BoundaryCondition, DisplacementBoundary, TractionBoundary
 export BoundaryData, BoundaryBasis, BearingSimulation, setup, nondimensionalise, nondimensionalise!
 export isempty, boundary_data
+export point_contact_boundary_data, LoadingProfile
 
 # fields.jl
 export field
