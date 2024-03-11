@@ -134,7 +134,7 @@ plot(bearing, 0.0)
     ts = ω_to_t(ωs)
     time_result = frequency_to_time(all_results; t_vec = ts)
 
-    maxc = 0.3 .* maximum(norm.(field(time_result)))
+    maxc = 0.14 .* maximum(norm.(field(time_result)))
     minc = - maxc
 
     t = ts[4]
