@@ -9,7 +9,7 @@ medium = Elastic(2; ρ = 2.0, cp = 1.0 - 0.0im, cs = 0.8 - 0.0im)
 Ω = 0.02 # the angular speed is normally much smaller than the wavespeeds. But having lower wave speeds makes for nice pictures.
 
 bearing = RollerBearing(medium = medium, 
-    inner_radius = 1.2, outer_radius = 2.0, 
+    inner_radius = 1.5, outer_radius = 2.0, 
     angular_speed = Ω,  
     rollers_inside = true
 )
@@ -22,7 +22,7 @@ plot(bearing, 0.0)
     total_time = 2pi / bearing.angular_speed
 
     # to get the number of frames per cycle:
-    frames = 60
+    frames = 80
     dt = total_time / frames
 
     # from dt we can calculate what's the maximum frequency we need, and then the range of natural frequencies we should use
@@ -128,17 +128,18 @@ plot(bearing, 0.0)
     all_results = FrequencySimulationResult(hcat(fields...), results[1].x, ωs);
 
     gr(size = (350,300))
-    i = 10;
-    plot(all_results, ωs[i];
+    # i = 10;
+    plot(all_results, ωs[end];
         seriestype=:heatmap
         , field_apply = f -> real(f[1])
     )
 
 ## Plot a time video
     ts = ω_to_t(ωs)
+    ts = LinRange(0,ts[end],43)
     time_result = frequency_to_time(all_results; t_vec = ts)
 
-    maxc = 0.02 .* maximum(norm.(field(time_result)))
+    maxc = 0.16 .* maximum(norm.(field(time_result)))
     minc = - maxc
 
     t = ts[4]
