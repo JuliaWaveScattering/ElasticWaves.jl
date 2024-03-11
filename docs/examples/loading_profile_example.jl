@@ -4,9 +4,9 @@ using Test, Statistics, LinearAlgebra, MultipleScattering
 using Plots 
 
 # the higher the frequency, the worse the result. This is already a high frequency.
-medium = Elastic(2; ρ = 2.0, cp = 2.0 - 0.01im, cs = 1.0 - 0.02im)
+medium = Elastic(2; ρ = 2.0, cp = 1.0 - 0.0im, cs = 0.8 - 0.0im)
 
-Ω = 0.8 # the angular speed should be much smaller than the wavesppeds, otherwise the figure does not make sense
+Ω = 0.02 # the angular speed is normally much smaller than the wavespeeds. But having lower wave speeds makes for nice pictures.
 
 bearing = RollerBearing(medium = medium, 
     inner_radius = 1.2, outer_radius = 2.0, 
@@ -16,14 +16,13 @@ bearing = RollerBearing(medium = medium,
 
 plot(bearing, 0.0)
 
-
 # Calculate the frequencies to be used for the time video
 
     # we want enough resolution in time to see the rollers going around. 
     total_time = 2pi / bearing.angular_speed
 
     # to get the number of frames per cycle:
-    frames = 200
+    frames = 60
     dt = total_time / frames
 
     # from dt we can calculate what's the maximum frequency we need, and then the range of natural frequencies we should use
@@ -37,7 +36,7 @@ plot(bearing, 0.0)
 
 
 ## Do one example
-    ω = ωms[end]
+    ω = ωms[end-2]
 
     dr = bearing.outer_radius - bearing.inner_radius
     kp = (ω / medium.cp)
@@ -48,7 +47,7 @@ plot(bearing, 0.0)
 
     # loading profile
     θo = 3pi/2;
-    fp_loading = 0.3 .- exp.(-1.0 .* (loading_θs .- θo).^2) + loading_θs .* 0im; 
+    fp_loading =  .- exp.(-1.0 .* (loading_θs .- θo).^2) + loading_θs .* 0im; 
     # fp_loading = -0.3 .+ exp.(-1.0 .* (loading_θs .- θo).^2) + loading_θs .* 0im; 
     fs_loading = 0.4 .* fp_loading;
 
@@ -73,12 +72,13 @@ plot(bearing, 0.0)
 
     wave = ElasticWave(forward_sim);
 
-    result = field(wave.potentials[1], bearing; res = 100)
+    result = field(wave.potentials[1], bearing; res = 200)
 
     field_apply = real
     maxc = 0.5 .* maximum(field_apply.(field(result)))
     minc = min(0.0,field_apply(- maxc))
 
+    gr(size = (310,300))
     plot(result,ω;
         seriestype = :heatmap,
         # legend = :true,
@@ -86,9 +86,12 @@ plot(bearing, 0.0)
         # c = :lajolla,
         field_apply = field_apply,
         clims = (minc, maxc),
-        leg = false
+        leg = false,
+        title = "",
+        frame = :none
     )
     plot!(bearing)
+    # savefig("docs/images//bearing-diffraction.png")
 
 ## Calculate results for all frequencies
 
@@ -118,13 +121,14 @@ plot(bearing, 0.0)
 
         potential = HelmholtzPotential{2}(wave.potentials[1].wavespeed, wave.potentials[1].wavenumber, scale .* coes)
 
-        res = field(potential, bearing; res = 100)
+        res = field(potential, bearing; res = 120)
     end
 
     fields = [[f[1] for f in field(r)] for r in results];
     all_results = FrequencySimulationResult(hcat(fields...), results[1].x, ωs);
 
-    i = 3;
+    gr(size = (350,300))
+    i = 10;
     plot(all_results, ωs[i];
         seriestype=:heatmap
         , field_apply = f -> real(f[1])
@@ -134,7 +138,7 @@ plot(bearing, 0.0)
     ts = ω_to_t(ωs)
     time_result = frequency_to_time(all_results; t_vec = ts)
 
-    maxc = 0.14 .* maximum(norm.(field(time_result)))
+    maxc = 0.02 .* maximum(norm.(field(time_result)))
     minc = - maxc
 
     t = ts[4]
@@ -152,4 +156,6 @@ plot(bearing, 0.0)
         plot!(frame = :none, title="", xguide ="",yguide ="")
     end
     
-    gif(anim,"docs/images/bearings-time.gif", fps = 8)
+    gif(anim,"docs/images/bearings-time-2.gif", fps = 4)
+    # gif(anim,"docs/images/bearings-time.gif", fps = 4)
+    # gif(anim,"docs/images/bearings-time-slow.gif", fps = 4)
