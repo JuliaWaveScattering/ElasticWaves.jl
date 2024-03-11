@@ -4,13 +4,22 @@ function natural_frequencies(bearing::RollerBearing, frequency_order::Int)
     Ω = bearing.angular_speed
     Z = bearing.number_of_rollers
 
-    ωs = (-frequency_order:frequency_order) .* (Z * Ω)
+    ωs = (0:frequency_order) .* (Z * Ω)
 
     return ωs
 end    
 
-function BoundaryData(loading_profile::BoundaryData, bearing::RollerBearing, frequency_order::Int)
 
+"""
+    BoundaryData(ω::AbstractFloat, bearing::RollerBearing, loading_profile::BoundaryData)
+
+    Return BoundaryData for bearing when assume point contact of the roller bearings and using the loading_profile (what load the bearings hold).
+
+    The frequency of the loading profile data provided is assumed to be ω - ω_m, where m = round(ω / (Z * Ω)). This is a bit opaque, so in the future we need to rewrite this to make it clearer.
+"""    
+function BoundaryData(ω::Number, bearing::RollerBearing, loading_profile::BoundaryData)
+
+    Ω = bearing.angular_speed
     Z = bearing.number_of_rollers
 
     if isempty(loading_profile.fourier_modes)
@@ -21,6 +30,10 @@ function BoundaryData(loading_profile::BoundaryData, bearing::RollerBearing, fre
     fourier_modes = loading_profile.fourier_modes 
     
     basis_order = basislength_to_basisorder(PhysicalMedium{2,1}, size(fourier_modes,1))
+
+    # the natural wavenumber of the bearing ω_m that is closest to the given frequency ω is ω_m = frequency_order * Z * Ω
+    frequency_order = Int(round(ω / (Z * Ω)))
+
     fourier_order = 2*(basis_order + Z*frequency_order) + 1 
 
     bd_fourier_modes = zeros(ComplexF64,fourier_order,2) 

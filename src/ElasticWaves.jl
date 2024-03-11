@@ -15,7 +15,7 @@ export plane_z_shear_source
 export RollerBearing, BoundaryCondition, DisplacementBoundary, TractionBoundary
 export BoundaryData, BoundaryBasis, BearingSimulation, setup, nondimensionalise, nondimensionalise!
 export isempty, boundary_data
-export point_contact_boundary_data, LoadingProfile
+export point_contact_boundary_data, natural_frequencies
 
 # loading-profile.jl
 
@@ -48,6 +48,10 @@ using LinearAlgebra
 using StaticArrays: SVector
 using BlockArrays, BlockDiagonals
 
+
+# for ploting recipes
+using RecipesBase
+
 include("types.jl")
 include("elasticity.jl")
 include("source.jl")
@@ -63,5 +67,7 @@ include("spherical/t-matrix.jl")
 include("cylindrical/utils.jl")
 include("cylindrical/elastic_wave.jl")
 include("cylindrical/fields.jl")
+
+include("plot.jl")
 
 end # module

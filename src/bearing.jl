@@ -8,6 +8,8 @@ struct RollerBearing{T <: AbstractFloat}
     outer_gaps::Vector{T}
     number_of_rollers::Int
     rollers_inside::Bool
+    roller_radius::Float64
+    roller_separation::Float64
     angular_speed::Float64
 end
 
@@ -16,17 +18,30 @@ function RollerBearing(; medium::Elastic{2,T},
         outer_radius::Union{T,Complex{T}} = 0.0,
         inner_gaps::Vector{T} = typeof(medium).parameters[2][],
         outer_gaps::Vector{T} = typeof(medium).parameters[2][],
-        number_of_rollers::Int = 1,
-        rollers_inside = true,
-        angular_speed=1.0
+        roller_radius::T = inner_radius / typeof(inner_radius)(4.0),
+        number_of_rollers::Int = 8,
+        rollers_inside::Bool = true,
+        roller_separation::T = 2pi * (rollers_inside ? (inner_radius - roller_radius) : (outer_radius + roller_radius)) / number_of_rollers - 2 * roller_radius, 
+        angular_speed::T = 1.0
     ) where T <: AbstractFloat
+
     if isodd(length(inner_gaps)) && isodd(length(outer_gaps))
         @error "both inner_gaps and outer_gaps need to be an even number of angles"
     end
 
     println("Note that the traction on the inner boundary (τn,τt) is interpreted to be the vector τ = - τn * er - τt * eθ.")
 
-    RollerBearing{T}(medium, inner_radius, inner_gaps, outer_radius, outer_gaps, number_of_rollers,rollers_inside,angular_speed)
+    # we assume the rollers are in contact with the raceway, but have a neglible indentation into the raceway. In which case we should have that 
+    
+    # the radius of the circle passing through the centre of the rollers
+    R =  rollers_inside ? (inner_radius - roller_radius) : (outer_radius + roller_radius)
+    d = 2 * roller_radius
+
+    if !(2pi * R ≈ number_of_rollers * (d + roller_separation))
+        error(" the number of rollers, and separation distance, do not match the geometry of the raceway.")
+    end    
+
+    RollerBearing{T}(medium, inner_radius, inner_gaps, outer_radius, outer_gaps, number_of_rollers,rollers_inside, roller_radius, roller_separation, angular_speed)
 end
 
 
