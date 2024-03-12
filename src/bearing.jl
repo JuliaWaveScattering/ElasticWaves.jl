@@ -116,10 +116,10 @@ function BoundaryData(boundarytype::BC;
     return BoundaryData{BC,T}(boundarytype,θs,fields,fourier_modes)
 end
 
-struct BoundaryBasis{BC <: BoundaryCondition, T}
-    basis::Vector{BoundaryData{BC,T}}
+struct BoundaryBasis{BD <: AbstractBoundaryData}
+    basis::Vector{BD}
 
-    function BoundaryBasis(basis::Vector{BoundaryData{BC,T}}) where {BC <: BoundaryCondition, T}
+    function BoundaryBasis(basis::Vector{BD}) where {BD <: AbstractBoundaryData}
         field_lengths = [size(b.fields, 1) for b in basis]
         fourier_mode_lengths = [size(b.fourier_modes, 1) for b in basis]
 
@@ -129,7 +129,7 @@ struct BoundaryBasis{BC <: BoundaryCondition, T}
             error("The length of the fields and fourier_modes of each BoundaryData in a BoundaryBasis need to be equal")
         end    
 
-    return new{BC,T}(basis)
+    return new{BD}(basis)
     end    
 end
 
@@ -151,26 +151,26 @@ isempty(bb::BoundaryBasis) = all([isempty(bd) for bd in bb.basis])
 # """
 # EmptyBoundaryBasis(bd::BoundaryData) =  BoundaryBasis(bd[])
 
-mutable struct BearingSimulation{M <: SolutionMethod, BC1 <: BoundaryCondition, BC2 <: BoundaryCondition, BCB1 <: BoundaryCondition, BCB2 <: BoundaryCondition, T}
+mutable struct BearingSimulation{M <: SolutionMethod, BC1 <: BoundaryCondition, BC2 <: BoundaryCondition, BD1 <: BoundaryData, BD2 <: BoundaryData, T}
     ω::T
     method::M
     nondimensionalise::Bool 
     bearing::RollerBearing{T}
     boundarydata1::BoundaryData{BC1,T}
     boundarydata2::BoundaryData{BC2,T}
-    boundarybasis1::BoundaryBasis{BCB1,T}
-    boundarybasis2::BoundaryBasis{BCB2,T}  
+    boundarybasis1::BoundaryBasis{BD1}
+    boundarybasis2::BoundaryBasis{BD2}
 end
 
 function BearingSimulation(ω::T, method::M, bearing::RollerBearing{T}, 
         boundarydata1::BoundaryData{BC1,T},
         boundarydata2::BoundaryData{BC2,T};
         nondimensionalise::Bool = true,
-        boundarybasis1::BoundaryBasis{BCB1,T}  = BoundaryBasis([BoundaryData(boundarydata1.boundarytype)]),
-        boundarybasis2::BoundaryBasis{BCB2,T}  = BoundaryBasis([BoundaryData(boundarydata2.boundarytype)])
-    ) where {T, M <: SolutionMethod, BC1 <: BoundaryCondition, BC2 <: BoundaryCondition, BCB1 <: BoundaryCondition, BCB2 <: BoundaryCondition}
+        boundarybasis1::BoundaryBasis{BD1}  = BoundaryBasis([BoundaryData(boundarydata1.boundarytype)]),
+        boundarybasis2::BoundaryBasis{BD2}  = BoundaryBasis([BoundaryData(boundarydata2.boundarytype)])
+    ) where {T, M <: SolutionMethod, BC1 <: BoundaryCondition, BC2 <: BoundaryCondition, BD1 <: BoundaryData, BD2 <: BoundaryData,}
 
-    sim = BearingSimulation{M,BC1,BC2,BCB1,BCB2,T}(ω, method, nondimensionalise, bearing, boundarydata1, boundarydata2, boundarybasis1, boundarybasis2)
+    sim = BearingSimulation{M,BC1,BC2,BD1,BD2,T}(ω, method, nondimensionalise, bearing, boundarydata1, boundarydata2, boundarybasis1, boundarybasis2)
 
     return setup(sim)
 end
@@ -196,6 +196,7 @@ function boundary_data(sim::BearingSimulation, wave::ElasticWave{2})
 
     return [bd1, bd2]
 end
+
 
 """
     BoundaryData(wave::ElasticWave{2}, radius, θs, fieldtype)
@@ -246,15 +247,16 @@ function nondimensionalise(bearing::RollerBearing, sim::BearingSimulation)
     return bearing
 end
 
+
 function nondimensionalise!(sim::BearingSimulation)
 
     # nondimensionalise boundary data
     nondimensionalise!(sim.boundarydata1, sim)
     nondimensionalise!(sim.boundarydata2, sim)
     
-    # nondimensionalise boundary basis
-    sim.boundarybasis1.basis[:] = [nondimensionalise!(bd, sim) for bd in sim.boundarybasis1.basis]
-    sim.boundarybasis2.basis[:] = [nondimensionalise!(bd, sim) for bd in sim.boundarybasis2.basis]
+    # just normalise each of elements of the basis as their size does not matter
+    normalize!(sim.boundarybasis1)
+    normalize!(sim.boundarybasis2)
 
     # nondimensionalise bearing
     sim.bearing = nondimensionalise(sim.bearing,sim)

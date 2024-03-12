@@ -46,10 +46,19 @@ plot(bearing, 0.0)
     loading_θs = LinRange(0.0, 2pi, 2loading_basis_order+2)[1:end-1]
 
     # loading profile
+    # θo = 3pi/2;
+    # fp_loading =  .- exp.(-1.0 .* (loading_θs .- θo).^2) + loading_θs .* 0im; 
+    # # fp_loading = -0.3 .+ exp.(-1.0 .* (loading_θs .- θo).^2) + loading_θs .* 0im; 
+    # fs_loading = 0.4 .* fp_loading;
+
     θo = 3pi/2;
-    fp_loading =  .- exp.(-1.0 .* (loading_θs .- θo).^2) + loading_θs .* 0im; 
+    fp_loading = 0.3 .* exp.(-2. .* (sin.(loading_θs) .- sin(θo)).^2) + loading_θs .* 0im; 
     # fp_loading = -0.3 .+ exp.(-1.0 .* (loading_θs .- θo).^2) + loading_θs .* 0im; 
-    fs_loading = 0.4 .* fp_loading;
+    fs_loading = 0.1 .* fp_loading;
+
+    # add a crack!
+    θo = pi;
+    fp_loading =  fp_loading .- exp.(-20 .* ((loading_θs) .- (θo)).^2) + loading_θs .* 0im; 
 
 
     plot(loading_θs, real.(fp_loading))
@@ -57,7 +66,7 @@ plot(bearing, 0.0)
     bc1_forward = TractionBoundary(inner=true)
     bc2_forward = TractionBoundary(outer=true)
 
-    loading_profile = BoundaryData(bc1_forward, θs=loading_θs, fields = hcat(fp_loading,fs_loading))
+    loading_profile = BoundaryData(bc1_forward, θs = loading_θs, fields = hcat(fp_loading,fs_loading))
 
     basis_order = 15;
     θs = LinRange(0.0, 2pi, 2basis_order+2)[1:end-1]
@@ -139,7 +148,8 @@ plot(bearing, 0.0)
     ts = LinRange(0,ts[end],43)
     time_result = frequency_to_time(all_results; t_vec = ts)
 
-    maxc = 0.16 .* maximum(norm.(field(time_result)))
+    # maxc = 0.16 .* maximum(norm.(field(time_result)))
+    maxc = 0.18 .* maximum(norm.(field(time_result)))
     minc = - maxc
 
     t = ts[4]
@@ -153,10 +163,11 @@ plot(bearing, 0.0)
             clim = (minc, maxc),
             leg = false,
         )
+        scatter!([bearing.inner_radius * cos(θo)], [bearing.inner_radius * sin(θo)])
         plot!(bearing, t)
         plot!(frame = :none, title="", xguide ="",yguide ="")
     end
     
-    gif(anim,"docs/images/bearings-time-2.gif", fps = 4)
+    gif(anim,"docs/images/bearings-time-crack.gif", fps = 4)
     # gif(anim,"docs/images/bearings-time.gif", fps = 4)
     # gif(anim,"docs/images/bearings-time-slow.gif", fps = 4)

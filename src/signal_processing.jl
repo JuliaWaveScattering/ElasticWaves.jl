@@ -1,22 +1,19 @@
-function fields_to_fouriermodes(boundarydata::BoundaryData, basis_order::Int = round(floor(length(boundarydata.θs)/2 - 1/2)) |> Int)
+function fields_to_fouriermodes(boundarydata::AbstractBoundaryData, basis_order::Int = round(floor(length(boundarydata.θs)/2 - 1/2)) |> Int)
     
     modes = fields_to_fouriermodes(boundarydata.θs, boundarydata.fields, basis_order)
     
-    return BoundaryData(boundarydata.boundarytype;
-        fourier_modes = modes,
-        fields = boundarydata.fields,
-        θs = boundarydata.θs
-    )
+    # creates a copy of boundarydata
+    @reset boundarydata.fourier_modes = modes
+    
+    return boundarydata
 end
 
-function fouriermodes_to_fields(boundarydata::BoundaryData)
+function fouriermodes_to_fields(boundarydata::AbstractBoundaryData)
     fields = fouriermodes_to_fields(boundarydata.θs, boundarydata.fourier_modes)
+    
+    @reset boundarydata.fields = fields
 
-    return BoundaryData(boundarydata.boundarytype;
-        fourier_modes = boundarydata.fourier_modes,
-        fields = fields,
-        θs = boundarydata.θs
-    )
+    return boundarydata
 end
 
 
@@ -42,4 +39,29 @@ function fouriermodes_to_fields(θs::AbstractVector, fouriermodes::AbstractArray
     for θ in θs, m = -basis_order:basis_order];
 
     fields = exps * fouriermodes
+end
+
+import LinearAlgebra: normalize!
+
+function normalize!(bb::BoundaryBasis)
+    for bd in bb.basis
+
+        # calculate normalising factor
+        n = if !isempty(bd.fields)
+
+            # approximate the integral norm of the fields
+            fs = (bd.fields[1:end-1,:] + circshift(bd.fields,-1)[1:end-1,:]) ./ 2
+            dθs = circshift(bd.θs,-1)[1:end-1] - bd.θs[1:end-1]
+            sum(abs2.(fs) .* dθs)
+        elseif !isempty(bd.fourier_modes)
+            2pi * norm(bd.fourier_modes)^2 
+        else 
+            return bb   
+        end    
+
+        bd.fourier_modes[:] = bd.fourier_modes ./ n
+        bd.fields[:] = bd.fields ./ n
+    end
+
+    return bb
 end

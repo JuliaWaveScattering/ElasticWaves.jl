@@ -25,7 +25,7 @@ function BoundaryData(ω::Number, bearing::RollerBearing, loading_profile::Bound
     if isempty(loading_profile.fourier_modes)
         basis_order = Int(floor(length(loading_profile.θs)/2.0 - 1/2.0))
         loading_profile = fields_to_fouriermodes(loading_profile, basis_order)
-    end    
+    end
         
     fourier_modes = loading_profile.fourier_modes 
     
