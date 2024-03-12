@@ -28,7 +28,6 @@ function BoundaryData(ω::Number, bearing::RollerBearing, loading_profile::Bound
     end
         
     fourier_modes = loading_profile.fourier_modes 
-    
     basis_order = basislength_to_basisorder(PhysicalMedium{2,1}, size(fourier_modes,1))
 
     # the natural wavenumber of the bearing ω_m that is closest to the given frequency ω is ω_m = frequency_order * Z * Ω

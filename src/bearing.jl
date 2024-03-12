@@ -366,7 +366,7 @@ function setup(sim::BearingSimulation{PriorMethod})
         mode_lengths = unique(mode_lengths[inds])
 
         if length(mode_lengths) == 2
-            warn("The number of Fourier modes for the data need to be the same but were different.")
+            @warn "The number of Fourier modes for the data is not the same, so will use  the smaller number of modes."
             mode_lengths = minimum(mode_lengths)
         end
         
@@ -412,7 +412,7 @@ function setup(sim::BearingSimulation{PriorMethod})
             println("The Fourier modes for boundarydata1 are empty, they will be calculated from the fields provided")
 
             @reset sim.boundarydata1 = fields_to_fouriermodes(sim.boundarydata1, basis_order)
-        end    
+        end
     end
 
     if isempty(sim.boundarybasis2)
