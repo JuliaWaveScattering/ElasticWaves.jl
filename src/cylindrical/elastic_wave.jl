@@ -80,9 +80,13 @@ function modal_coefficients!(sim::BearingSimulation{ModalMethod})
             δ = method.regularisation_parameter
             x = [A; sqrt(δ) * I] \ [b; zeros(size(A)[2])]
 
-            relative_error = norm(A*x - b) / norm(b);
             relative_error_x = cond(A) * eps(T) 
-            error = max(relative_error,relative_error_x)
+            
+            error = if norm(b) > 0
+                relative_error = norm(A*x - b) / norm(b);
+                max(relative_error,relative_error_x)
+            else relative_error_x
+            end        
 
             coefficients[m + basis_order + 1] = x
             mode_errors[m + basis_order + 1] = error

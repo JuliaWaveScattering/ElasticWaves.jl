@@ -112,8 +112,31 @@ function BoundaryData(boundarytype::BC;
     if !isempty(fields) && size(fields,2) != 2
         @error "the fields should have only two columns"
     end
+    
+    if !isempty(fields) && size(fields,1) != length(θs)
+        @error "the fields should have the same length as θs"
+    end
 
     return BoundaryData{BC,T}(boundarytype,θs,fields,fourier_modes)
+end
+
+
+
+"""
+    BoundaryData(wave::ElasticWave{2}, radius, θs, fieldtype)
+
+A convenience function to predict the boundary data of 'sim' according to the solution 'wave'.    
+"""
+function BoundaryData(boundarycondition::BoundaryCondition, radius::AbstractFloat, θs::AbstractVector{T}, wave::ElasticWave{2}) where T <: AbstractFloat
+
+    xs = [
+        radial_to_cartesian_coordinates([radius,θ]) 
+    for θ in θs];
+    
+    fs = [field(wave, x, boundarycondition.fieldtype) for x in xs];
+    fs = hcat(fs...) |> transpose |> collect
+
+    return BoundaryData(boundarycondition; θs = θs, fields = fs)
 end
 
 struct BoundaryBasis{BD <: AbstractBoundaryData}
@@ -197,25 +220,6 @@ function boundary_data(sim::BearingSimulation, wave::ElasticWave{2})
     return [bd1, bd2]
 end
 
-
-"""
-    BoundaryData(wave::ElasticWave{2}, radius, θs, fieldtype)
-
-A convenience function to predict the boundary data of 'sim' according to the solution 'wave'.    
-"""
-function BoundaryData(boundarycondition::BoundaryCondition, radius::AbstractFloat, θs::AbstractVector{T}, wave::ElasticWave{2}) where T <: AbstractFloat
-
-    xs = [
-        radial_to_cartesian_coordinates([radius,θ]) 
-    for θ in θs];
-    
-    fs = [field(wave, x, boundarycondition.fieldtype) for x in xs];
-    fs = hcat(fs...) |> transpose |> collect
-
-    return BoundaryData(boundarycondition; θs = θs, fields = fs)
-end
-
-
 function nondimensionalise!(boundarydata::BoundaryData{BoundaryCondition{TractionType}}, sim::BearingSimulation)
 
     λ2μ = sim.bearing.medium.ρ * sim.bearing.medium.cp^2
@@ -285,38 +289,44 @@ function setup(sim::BearingSimulation{ModalMethod})
     boundarydata1 = sim.boundarydata1
     boundarydata2 = sim.boundarydata2
 
+    get_order(modes) = isempty(modes) ? - 1 : basislength_to_basisorder(PhysicalMedium{2,1},size(modes,1))
+
+    # if basis_order not given, then determine the largest possible from the data
     if basis_order == -1
-        if isempty(boundarydata1.fourier_modes)
-            if isempty(boundarydata2.fourier_modes)
-                println("As the keyword basis_order was not specified (and the fourier_modes of the boundary conditions were not provided), the basis_order will be chosen to match the number of points θs given in the boundary data.")
 
-                # lower the basis_order if there are not enough data points to estimate it
-                m1 = Int(floor(length(boundarydata1.θs)/2.0 - 1/2.0))
-                m2 = Int(floor(length(boundarydata2.θs)/2.0 - 1/2.0))
+        orders = [
+            max(get_order(bd.fourier_modes), get_order(bd.fields)) 
+        for bd in [boundarydata1, boundarydata2]]
 
-                basis_order = min(m1, m2)
-
-            else basis_order = basislength_to_basisorder(PhysicalMedium{2,1},size(boundarydata2.fourier_modes,1))
-            end
-
-        else basis_order = basislength_to_basisorder(PhysicalMedium{2,1},size(boundarydata1.fourier_modes,1))
-        end
+        basis_order = minimum(orders)    
 
         @reset sim.method.basis_order = basis_order
     end
 
    # we need the fourier modes of the boundary data
-    if isempty(boundarydata1.fourier_modes)
-        println("The Fourier modes for boundarydata1 are empty, they will be calculated from the fields provided")
+    if isempty(boundarydata1.fourier_modes) ||  (get_order(boundarydata1.fields) > get_order(boundarydata1.fourier_modes) && get_order(boundarydata1.fourier_modes) < basis_order )
+        println("The Fourier modes for boundarydata1 are empty, or the fields have more data. The Fourier modes will be calculated from the fields provided.")
 
         boundarydata1 = fields_to_fouriermodes(boundarydata1, basis_order)
     end
 
-    if isempty(boundarydata2.fourier_modes)
-        println("The Fourier modes for boundarydata2 are empty, they will be calculated from the fields provided")
+    if isempty(boundarydata2.fourier_modes) || (get_order(boundarydata2.fields) > get_order(boundarydata2.fourier_modes) && get_order(boundarydata2.fourier_modes) < basis_order )
+        println("The Fourier modes for boundarydata2 are empty, or the fields have more data. The Fourier modes will be calculated from the fields provided.")
 
         boundarydata2 = fields_to_fouriermodes(boundarydata2, basis_order)
     end
+
+    basis_order1 = get_order(boundarydata1.fourier_modes)
+    if basis_order1 > basis_order
+        inds = (basis_order1 + 1) .+ (-basis_order:basis_order)
+        @reset boundarydata1.fourier_modes = boundarydata1.fourier_modes[inds,:]
+    end
+
+    basis_order2 = get_order(boundarydata2.fourier_modes)
+    if basis_order2 > basis_order
+        inds = basis_order2 + 1 + (-basis_order:basis_order)
+        @reset boundarydata2.fourier_modes = boundarydata2.fourier_modes[inds,:]
+    end    
 
     if size(boundarydata1.fourier_modes,1) != size(boundarydata2.fourier_modes,1)
         error("number of fourier_modes in boundarydata1 and boundarydata2 needs to be the same")

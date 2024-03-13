@@ -5,7 +5,7 @@
 # the higher the frequency, the worse the result. This is already a high frequency.
 medium = Elastic(2; ρ = 2.0, cp = 1.0 - 0.0im, cs = 0.8 - 0.0im)
 
-Ω = 0.02 # the angular speed is normally much smaller than the wavespeeds. But having lower wave speeds makes for nice pictures.
+Ω = 2pi * 15 / 60 # large wind turbines rotate at about 15 rpm
 
 bearing = RollerBearing(medium = medium, 
     inner_radius = 1.5, outer_radius = 2.0, 
@@ -13,7 +13,7 @@ bearing = RollerBearing(medium = medium,
     rollers_inside = true
 )
 
-frequency_order = 4
+frequency_order = 3
 
 ωms = natural_frequencies(bearing, frequency_order) |> collect
 
@@ -25,10 +25,10 @@ kp * dr
 
 # create the true loading profile, then solve the forward problem to create dat for tthe inverse problem
 
-    loading_resolution = 40;
+    loading_resolution = 50;
     loading_θs = LinRange(0.0, 2pi, 2*loading_resolution+2)[1:end-1]
 
-    # θo = 3pi/2;
+    θo = 3pi/2;
     # fp_loading = 0.2 .- exp.(-0.4 .* (sin.(loading_θs) .- sin(θo)).^2) + loading_θs .* 0im; 
     # fs_loading = 0.1 .* fp_loading;
     fp_loading = 0.0 .+ 0.3 .* cos.(loading_θs) .- 0.1 .* cos.(2 .* loading_θs);
@@ -46,23 +46,32 @@ kp * dr
     )
 
     bd1_for = BoundaryData(ω, bearing, loading_profile)
+
+    basis_order = Int((size(bd1_for.fourier_modes,1) - 1) / 2)
+    forward_θs = LinRange(0.0, 2pi, 2*basis_order+2)[1:end-1]
+
     bd2_for = BoundaryData(bc2_forward, 
-        θs = loading_θs, 
-        fields = [zeros(Complex{Float64}, length(loading_θs)) zeros(Complex{Float64}, length(loading_θs))]
+        θs = forward_θs, 
+        fields = [zeros(Complex{Float64}, 2basis_order + 1) zeros(Complex{Float64}, 2basis_order + 1)]
     )
 
-    modal_method = ModalMethod(tol = 1e-9, only_stable_modes = true)
-    forward_sim = BearingSimulation(ω, bearing, bd1_for, bd2_for; 
-        method = modal_method,
-        nondimensionalise = true);
+    modal_method = ModalMethod(tol = 1e-6, only_stable_modes = true)
+    forward_sim = BearingSimulation(ω, modal_method, bearing, bd1_for, bd2_for);
 
     wave = ElasticWave(forward_sim);
+
+    # We should check whether the solution has converged. That is, if the coefficients are getting very small as the fourier mode increase
+    l = length(wave.potentials[1].coefficients[1,:])/2 - 1/2
+    plot(-l:l,abs.(wave.potentials[1].coefficients[1,:]), xlims = (20,30))
+
+    # Need the frequency mode below to measure the mode 0 of the loading
+    frequency_order * bearing.number_of_rollers
 
 # Get the boundary data for the inverse problem from the forward problem
     bc1_inverse = DisplacementBoundary(outer=true)
     bc2_inverse = TractionBoundary(outer=true)
 
-    numberofsensors = 3
+    numberofsensors = 4
 
     θs_inv = LinRange(0, 2pi, numberofsensors + 1)[1:end-1]
 
@@ -73,6 +82,15 @@ kp * dr
     bd2_inverse = bd2_for
 
 # Create a fourier basis for the loading, and then create a boundary basis from this
+
+    mZ = frequency_order * bearing.number_of_rollers
+    inds = -wave.method.basis_order:wave.method.basis_order
+    min_loading_order = minimum(abs.(inds .- mZ))
+    max_loading_order = wave.method.basis_order .- mZ
+
+    l = (size(loading_profile.fourier_modes,1) - 1)/2
+    loading_profile = fields_to_fouriermodes(loading_profile)
+    plot(-l:l,abs.(loading_profile.fourier_modes), xlims = (-10.,10))
 
     loading_basis_order = 2;
     loading_datas = map(0:loading_basis_order) do n
@@ -95,4 +113,14 @@ kp * dr
    inverse_sim = BearingSimulation(ω, method, bearing, bd1_inverse, bd2_inverse;
        boundarybasis1 = boundarybasis1,
    );
+
+   inverse_wave = ElasticWave(inverse_sim);
+
+   bd1_inner, bd2_outer = boundary_data(forward_sim, inverse_wave);
+
+   using Plots 
+   plot(real.(bd1_inner.fields))
+   plot(real.(bd2_outer.fields))
+
+   bd1_inner.fields - bd1_for.fields
 end

@@ -38,7 +38,7 @@ function BoundaryData(ω::Number, bearing::RollerBearing, loading_profile::Bound
     bd_fourier_modes = zeros(ComplexF64,fourier_order,2) 
     bd_fourier_modes[2*Z*frequency_order+1:end,:] = (Z/(2pi)) .* fourier_modes
 
-    fields = fouriermodes_to_fields(loading_profile.θs, fourier_modes)
+    fields = fouriermodes_to_fields(loading_profile.θs, bd_fourier_modes)
 
     bd =  BoundaryData(loading_profile.boundarytype; 
         θs = loading_profile.θs, 
