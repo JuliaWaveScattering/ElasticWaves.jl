@@ -119,8 +119,11 @@ kp * dr
    bd1_inner, bd2_outer = boundary_data(forward_sim, inverse_wave);
 
    using Plots 
-   plot(real.(bd1_inner.fields))
+   plot(loading_θs, 2pi / Z .* abs.(bd1_inner.fields[:,1]), label = "predicted loading")
+   plot!(loading_θs, abs.(fp_loading), linestyle = :dash, label = "true loading")
+   
+
    plot(real.(bd2_outer.fields))
 
-   bd1_inner.fields - bd1_for.fields
+   norm(bd1_inner.fields - bd1_for.fields) / norm(bd1_for.fields)
 end
