@@ -83,8 +83,8 @@ Ms = [
 
 A = Ms[m]
 b =[ [
-    sims[i].boundarydata1.fourier_modes[m+basis_order+1,:];
-    sims[i].boundarydata2.fourier_modes[m+basis_order+1,:] ] for m in -basis_order:basis_order
+    sims[i].boundarydata1.coefficients[m+basis_order+1,:];
+    sims[i].boundarydata2.coefficients[m+basis_order+1,:] ] for m in -basis_order:basis_order
 ]
 
 x = A \ b[m]

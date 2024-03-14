@@ -23,7 +23,7 @@ struct ModalMethod <: SolutionMethod
     # to use Tikhonov regularization give a non-zero parameter
     regularisation_parameter::Float64
     only_stable_modes::Bool
-    modes::Vectoy{Int}
+    modes::Vector{Int}
     mode_errors::Vector{Float64}
 end
 struct GapMethod <: BearingMethod end

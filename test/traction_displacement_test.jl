@@ -8,12 +8,12 @@
 
     pcoes = (rand(2,2basis_order + 1) .- 0.5) + (rand(2,2basis_order + 1) .- 0.5) .* im
     pcoes = [pcoes[i] * basis_scaling[i[2]] for i in CartesianIndices(pcoes)]
-    pressure = HelmholtzPotential{2}(medium.cp, ω / medium.cp, pcoes)
+    pressure = HelmholtzPotential{2}(medium.cp, ω / medium.cp, pcoes, -basis_order:basis_order)
     
     scoes = (rand(2,2basis_order + 1) .- 0.5) + (rand(2,2basis_order + 1) .- 0.5) .* im
     scoes = [scoes[i] * basis_scaling[i[2]] for i in CartesianIndices(pcoes)]
    
-    shear = HelmholtzPotential{2}(medium.cs, ω / medium.cs, scoes)
+    shear = HelmholtzPotential{2}(medium.cs, ω / medium.cs, scoes, -basis_order:basis_order)
 
     wave = ElasticWave(ω, medium, [pressure, shear])
 

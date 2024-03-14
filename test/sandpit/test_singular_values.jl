@@ -76,14 +76,14 @@ boundarybasis2=BoundaryBasis([bd3,bd4])
 
     # Create the Prior matrix P 
 N1 = length(boundarybasis1.basis)
-F1s = [b.fourier_modes for b in boundarybasis1.basis]
+F1s = [b.coefficients for b in boundarybasis1.basis]
 
 F1 = vcat((transpose.(F1s))...)
 P1s = [reshape(F1[:,m],2,N1) for m = 1:size(F1,2)]
 P1 = vcat([ [P; 0.0*P]  for P in P1s]...)
 
 N2 = length(boundarybasis2.basis)
-F2s = [b.fourier_modes for b in boundarybasis2.basis]
+F2s = [b.coefficients for b in boundarybasis2.basis]
 
 F2 = vcat((transpose.(F2s))...)
 P2s = [reshape(F2[:,m],2,N2) for m = 1:size(F2,2)]

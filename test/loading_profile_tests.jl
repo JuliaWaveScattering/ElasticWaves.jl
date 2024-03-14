@@ -47,7 +47,7 @@ kp * dr
 
     bd1_for = BoundaryData(ω, bearing, loading_profile)
 
-    basis_order = Int((size(bd1_for.fourier_modes,1) - 1) / 2)
+    basis_order = Int((size(bd1_for.coefficients,1) - 1) / 2)
     forward_θs = LinRange(0.0, 2pi, 2*basis_order+2)[1:end-1]
 
     bd2_for = BoundaryData(bc2_forward, 
@@ -88,9 +88,9 @@ kp * dr
     min_loading_order = minimum(abs.(inds .- mZ))
     max_loading_order = wave.method.basis_order .- mZ
 
-    l = (size(loading_profile.fourier_modes,1) - 1)/2
+    l = (size(loading_profile.coefficients,1) - 1)/2
     loading_profile = fields_to_fouriermodes(loading_profile)
-    plot(-l:l,abs.(loading_profile.fourier_modes), xlims = (-10.,10))
+    plot(-l:l,abs.(loading_profile.coefficients), xlims = (-10.,10))
 
     loading_basis_order = 2;
     loading_datas = map(0:loading_basis_order) do n

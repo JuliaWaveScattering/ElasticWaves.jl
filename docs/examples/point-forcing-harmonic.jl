@@ -36,7 +36,7 @@ sim = BearingSimulation(ω, bearing, bd1, bd2)
 
 # let's have a look at the modes that were calculated during the Bearing. This is the field we will actual approximate
 θs2 = LinRange(0.0,2pi,100)
-inner_field = fouriermodes_to_fields(θs2,sim.boundarydata1.fourier_modes)
+inner_field = fouriermodes_to_fields(θs2,sim.boundarydata1.coefficients)
 
 using Plots
 plot(θs2,real.(inner_field))

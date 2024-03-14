@@ -25,8 +25,8 @@ include("../../src/ElasticWaves.jl")
     # add 1% error to boundary conditions
     ε = 0.01 * maximum(abs.(forcing_modes));
 
-    bd1.fourier_modes[:,:] = bd1.fourier_modes[:,:] + ε .* rand(basis_length, 2) + ε .* rand(basis_length, 2) .* im
-    bd2.fourier_modes[:,:] = bd2.fourier_modes[:,:] + ε .* rand(basis_length, 2) + ε .* rand(basis_length, 2) .* im
+    bd1.coefficients[:,:] = bd1.coefficients[:,:] + ε .* rand(basis_length, 2) + ε .* rand(basis_length, 2) .* im
+    bd2.coefficients[:,:] = bd2.coefficients[:,:] + ε .* rand(basis_length, 2) + ε .* rand(basis_length, 2) .* im
 
     sim = BearingSimulation(ω, bearing, bd1, bd2) 
     waveδ = ElasticWave(sim)
@@ -46,7 +46,7 @@ include("../../src/ElasticWaves.jl")
 #         boundarycondition_system(ωs[i], bearing, bd1.boundarytype, bd2.boundarytype, m) * coes
 #     end
 #     f = hcat(fs...) |> transpose
-#     # maximum(abs.(f - hcat(bd1.fourier_modes,bd2.fourier_modes)))
+#     # maximum(abs.(f - hcat(bd1.coefficients,bd2.coefficients)))
 #     maximum(abs.(f - forcing_modes))
 # end
 
@@ -56,7 +56,7 @@ include("../../src/ElasticWaves.jl")
     )
 
     # gives great results when compared with the forcing modes used
-    maximum(abs.(f - hcat(bd1.fourier_modes,bd2.fourier_modes)))
+    maximum(abs.(f - hcat(bd1.coefficients,bd2.coefficients)))
 
     # gives, as it should, poorer results when compared with the original forcing 
     maximum(abs.(f - forcing_modes))
@@ -91,7 +91,7 @@ include("../../src/ElasticWaves.jl")
 
     # So why did the method seem to work better than this? Let's us the same forcing from the bearing problem 
 
-    b = hcat(bd1.fourier_modes, bd2.fourier_modes)[m + 1 + basis_order,:]
+    b = hcat(bd1.coefficients, bd2.coefficients)[m + 1 + basis_order,:]
     x = [wave.potentials[1].coefficients[:, m+basis_order+1]; wave.potentials[2].coefficients[:, m+basis_order+1]]
     
     # How is this so small? The forcing was generated randomly?? 

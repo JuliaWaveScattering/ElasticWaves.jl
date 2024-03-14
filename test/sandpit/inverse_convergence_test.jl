@@ -71,7 +71,7 @@ bd_traction_outer = BoundaryData(
 # let's have a look at the modes that were calculated during the Bearing. This is the field we will actual approximate
 
 sim = BearingSimulation(ω, bearing, bd_traction_inner, bd_traction_outer)
-inner_field = fouriermodes_to_fields(θ2s,sim.boundarydata1.fourier_modes)
+inner_field = fouriermodes_to_fields(θ2s,sim.boundarydata1.coefficients)
 
 plot(θs,real.(fp))
 plot!(θ2s,real.(inner_field[:,1]), linestyle = :dash)
@@ -112,7 +112,7 @@ bd_displacement_outer = BoundaryData(
 
 inverse_sim = BearingSimulation(ω, bearing, bd_traction_outer, bd_displacement_outer)
 
-outer_field = fouriermodes_to_fields(θ2s, inverse_sim.boundarydata2.fourier_modes)
+outer_field = fouriermodes_to_fields(θ2s, inverse_sim.boundarydata2.coefficients)
 
 plot(θs,real.(fp))
 plot!(θ2s,real.(inner_field[:,1]), linestyle = :dash)

@@ -27,13 +27,18 @@ See [`field(::HelmholtzPotential, ::AbstractVector)`](@ref) for details on how t
 struct HelmholtzPotential{Dim,T}
     wavespeed::Complex{T}
     wavenumber::Complex{T}
-    basis_order::Int
     "The first (second) row is for the besselj (hankelh1) fourier coefficients"
     coefficients::Matrix{Complex{T}}
+    modes::Vector{Int}
 
-    function HelmholtzPotential{Dim}(wavespeed::Complex{T}, wavenumber::Complex{T},  coefficients::AbstractMatrix{Complex{T}},
-            basis_order::Int = basislength_to_basisorder(Acoustic{T,Dim},size(coefficients,2))
+    function HelmholtzPotential{Dim}(wavespeed::Complex{T}, wavenumber::Complex{T},  coefficients::AbstractMatrix{Complex{T}}, modes::AbstractVector{Int} = Int[] 
         ) where {Dim,T}
+        
+        if modes |> isempty
+            order = basislength_to_basisorder(PhysicalMedium{Dim,1},size(coefficients,2))
+            modes = -order:order |> collect
+        end     
+
         if size(coefficients,1) != 2
             @error "the number of columns in coefficients has to match the basis_order given. There should also be two rows, one for besselj coefficients and another for hankelh1"
         end
@@ -42,7 +47,7 @@ struct HelmholtzPotential{Dim,T}
             @warn "It is usual to have a wavenumber with a negative imaginary part. Our convention of the Fourier transform implies that this wave is growing exponentially when propagating forward in time."
         end
 
-        new{Dim,T}(wavespeed, wavenumber, basis_order, coefficients)
+        new{Dim,T}(wavespeed, wavenumber, coefficients, modes |> collect)
     end
 end
 
@@ -61,17 +66,21 @@ struct ElasticWave{Dim,M,T}
     method::M
 
     function ElasticWave(ω::T, medium::Elastic{Dim,T}, potentials::Vector{H}, method::M = ModalMethod();
-            mode_errors = zeros(basisorder_to_basislength(Acoustic{T,Dim}, potentials[1].basis_order))
+            mode_errors = zeros(T, length(potentials.modes))
         ) where {Dim,T,H <: HelmholtzPotential{Dim,T}, M<:SolutionMethod}
 
-        orders = [p.basis_order for p in potentials]
+        modes_arr = [p.modes for p in potentials]
+        lens = length.(modes_arr)
 
-        if !(findall(orders[1] .!= orders) |> isempty)
-            @error "The basis_order for all the potentials is expected to be the same."
+        modes = intersect(modes_arr...)
+        len = length(modes)
+
+        if !(findall(lens .!= len) |> isempty)
+            @error "The modes for all the potentials is expected to be the same."
         end
 
         if M == ModalMethod 
-            if length(method.mode_errors) != basisorder_to_basislength(Acoustic{T,Dim}, potentials[1].basis_order)
+            if length(method.mode_errors) != length(potentials.modes)
                 @warn "The length of mode_errors is expected to be the same as the number of modes."
             end    
         end

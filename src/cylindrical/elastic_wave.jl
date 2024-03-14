@@ -1,19 +1,19 @@
-function boundarycondition_mode(ω::AbstractFloat, bc::BoundaryCondition, bearing::RollerBearing, basis_order::Int)
+function boundarycondition_mode(ω::AbstractFloat, bc::BoundaryCondition, bearing::RollerBearing, mode::Int)
     r = (bc.inner == true) ? bearing.inner_radius : bearing.outer_radius
     return hcat(
-        pressure_field_mode(ω, r, bearing.medium, basis_order, bc.fieldtype),
-        shear_field_mode(ω, r, bearing.medium, basis_order, bc.fieldtype)
+        pressure_field_mode(ω, r, bearing.medium, mode, bc.fieldtype),
+        shear_field_mode(ω, r, bearing.medium, mode, bc.fieldtype)
     )
 end
 
-function boundarycondition_system(ω::AbstractFloat, bearing::RollerBearing, bc1::BoundaryCondition, bc2::BoundaryCondition, basis_order::Int)
+function boundarycondition_system(ω::AbstractFloat, bearing::RollerBearing, bc1::BoundaryCondition, bc2::BoundaryCondition, mode::Int)
 
     if bc1 == bc2
         error("Both boundary conditions are the same. It is not possible to solve the system with just one type of boundary data/condition.")
     end     
 
-    first_boundary = boundarycondition_mode(ω, bc1, bearing, basis_order)
-    second_boundary = boundarycondition_mode(ω, bc2, bearing, basis_order)
+    first_boundary = boundarycondition_mode(ω, bc1, bearing, mode)
+    second_boundary = boundarycondition_mode(ω, bc2, bearing, mode)
 
     return vcat(first_boundary, second_boundary)
 end
@@ -30,7 +30,7 @@ function ElasticWave(sim::BearingSimulation)
 
     ω = simcopy.ω;
 
-    coefficients = modal_coefficients!(simcopy);
+    modes, coefficients = modal_coefficients!(simcopy);
 
     method = simcopy.method
 
@@ -45,8 +45,8 @@ function ElasticWave(sim::BearingSimulation)
     pressure_coefficients = coefficients[:,1:2] |> transpose
     shear_coefficients = coefficients[:,3:4] |> transpose
 
-    φ = HelmholtzPotential{2}(bearing.medium.cp, kP, pressure_coefficients)
-    ψ = HelmholtzPotential{2}(bearing.medium.cs, kS, shear_coefficients)
+    φ = HelmholtzPotential{2}(bearing.medium.cp, kP, pressure_coefficients, modes)
+    ψ = HelmholtzPotential{2}(bearing.medium.cs, kS, shear_coefficients, modes)
 
     return ElasticWave(ω, bearing.medium, [φ, ψ], method)
 end
@@ -59,38 +59,36 @@ function modal_coefficients!(sim::BearingSimulation{ModalMethod})
 
     T = typeof(ω)
 
-    basis_order = sim.method.basis_order
+    modes = sim.method.modes
 
-    coefficients = [
-        zeros(Complex{T}, 4)
-    for n = -basis_order:basis_order]
+    coefficients = [zeros(Complex{T}, 4) for n = modes]
 
-    mode_errors = zeros(T, 2basis_order + 1)
+    mode_errors = zeros(T, length(modes))
 
-    for m1 in 0:basis_order
-        for m = [-m1,m1]            
-            A = boundarycondition_system(ω, bearing, sim.boundarydata1.boundarytype, sim.boundarydata2.boundarytype, m)
-            b = [
-                sim.boundarydata1.fourier_modes[m+basis_order+1,:];
-                sim.boundarydata2.fourier_modes[m+basis_order+1,:]
-            ]
+    sorted_modes = sort(modes; by = abs)
 
-            # solve A*x = b with tikinov regulariser
-            # x = A \ b
-            δ = method.regularisation_parameter
-            x = [A; sqrt(δ) * I] \ [b; zeros(size(A)[2])]
+    for m in sorted_modes
+        A = boundarycondition_system(ω, bearing, sim.boundarydata1.boundarytype, sim.boundarydata2.boundarytype, m)
+        b = [
+            sim.boundarydata1.coefficients[m+basis_order+1,:];
+            sim.boundarydata2.coefficients[m+basis_order+1,:]
+        ]
 
-            relative_error_x = cond(A) * eps(T) 
-            
-            error = if norm(b) > 0
-                relative_error = norm(A*x - b) / norm(b);
-                max(relative_error,relative_error_x)
-            else relative_error_x
-            end        
+        # solve A*x = b with tikinov regulariser
+        # x = A \ b
+        δ = method.regularisation_parameter
+        x = [A; sqrt(δ) * I] \ [b; zeros(size(A)[2])]
 
-            coefficients[m + basis_order + 1] = x
-            mode_errors[m + basis_order + 1] = error
-        end
+        relative_error_x = cond(A) * eps(T) 
+        
+        error = if norm(b) > 0
+            relative_error = norm(A*x - b) / norm(b);
+            max(relative_error,relative_error_x)
+        else relative_error_x
+        end        
+
+        coefficients[m + basis_order + 1] = x
+        mode_errors[m + basis_order + 1] = error
 
         error = max(mode_errors[m1 + basis_order + 1], mode_errors[-m1 + basis_order + 1])
 
@@ -127,7 +125,7 @@ function modal_coefficients!(sim::BearingSimulation{ModalMethod})
     @reset method.basis_order = basis_order
     sim.method = method
 
-    return coefficients
+    return modes, coefficients
 end
 
 
@@ -188,16 +186,16 @@ function modal_coefficients!(sim::BearingSimulation{PriorMethod})
 
             # need to change all the boundarybasis modes if they exist
             basis1 = map(boundarybasis1.basis) do b
-                if !isempty(b.fourier_modes)
-                   @reset b.fourier_modes = b.fourier_modes[inds,:]
+                if !isempty(b.coefficients)
+                   @reset b.coefficients = b.coefficients[inds,:]
                 end
                 b
             end;
             boundarybasis1 = BoundaryBasis(basis1);
             
             basis2 = map(boundarybasis2.basis) do b
-                if !isempty(b.fourier_modes)
-                   @reset b.fourier_modes = b.fourier_modes[inds,:]
+                if !isempty(b.coefficients)
+                   @reset b.coefficients = b.coefficients[inds,:]
                 end
                 b
             end;
@@ -321,14 +319,14 @@ function prior_and_bias(basis_order::Int, boundarydata1::BoundaryData{BC1,T}, bo
 
 # Create the Prior matrix P 
     N1 = length(boundarybasis1.basis)
-    F1s = [b.fourier_modes for b in boundarybasis1.basis]
+    F1s = [b.coefficients for b in boundarybasis1.basis]
 
     F1 = vcat((transpose.(F1s))...)
     P1s = [reshape(F1[:,m],2,N1) for m = 1:size(F1,2)]
     P1 = convert(Array{Complex{T}},vcat([ [P; 0.0*P]  for P in P1s]...))
 
     N2 = length(boundarybasis2.basis)
-    F2s = [b.fourier_modes for b in boundarybasis2.basis]
+    F2s = [b.coefficients for b in boundarybasis2.basis]
 
     F2 = vcat((transpose.(F2s))...)
     P2s = [reshape(F2[:,m],2,N2) for m = 1:size(F2,2)]
@@ -354,13 +352,13 @@ function prior_and_bias(basis_order::Int, boundarydata1::BoundaryData{BC1,T}, bo
             @error "The basis boundarybasis1 was empty and there was no boundary data provided that matched the type of boundary condition given in boundarybasis1.basis[1].boundarytype. This means it is impossible to solve the forward problem."
         end
 
-        l = size(boundarydatas[i].fourier_modes,1)
+        l = size(boundarydatas[i].coefficients,1)
 
         if l > 2basis_order + 1
 
             data_basis_order = Int((l - 1) / 2)
             inds = (-basis_order:basis_order) .+ (data_basis_order+1)
-            @reset boundarydatas[i].fourier_modes = boundarydatas[i].fourier_modes[inds,:]
+            @reset boundarydatas[i].coefficients = boundarydatas[i].coefficients[inds,:]
 
         elseif size(boundarydatas[i].fields,1) > 2basis_order + 1
             
@@ -368,8 +366,8 @@ function prior_and_bias(basis_order::Int, boundarydata1::BoundaryData{BC1,T}, bo
         end   
 
         hcat(
-            boundarydatas[i].fourier_modes[:,1], 
-            boundarydatas[i].fourier_modes[:,2], 
+            boundarydatas[i].coefficients[:,1], 
+            boundarydatas[i].coefficients[:,2], 
             zs, 
             zs
         ) |> transpose
@@ -384,13 +382,13 @@ function prior_and_bias(basis_order::Int, boundarydata1::BoundaryData{BC1,T}, bo
             @error "The basis boundarybasis2 was empty and there was no boundary data provided that matched the type of boundary condition given in boundarybasis2.basis[1].boundarytype. This means it is impossible to solve the forward problem."
         end
 
-        l = size(boundarydatas[i].fourier_modes,1)
+        l = size(boundarydatas[i].coefficients,1)
 
         if l > 2basis_order + 1
 
             data_basis_order = Int((l - 1) / 2)
             inds = (-basis_order:basis_order) .+ (data_basis_order+1)
-            @reset boundarydatas[i].fourier_modes = boundarydatas[i].fourier_modes[inds,:]
+            @reset boundarydatas[i].coefficients = boundarydatas[i].coefficients[inds,:]
 
         elseif size(boundarydatas[i].fields,1) >= 2basis_order + 1
             
@@ -399,8 +397,8 @@ function prior_and_bias(basis_order::Int, boundarydata1::BoundaryData{BC1,T}, bo
         
         transpose(b) + hcat(
             zs, zs, 
-            boundarydatas[i].fourier_modes[:,1], 
-            boundarydatas[i].fourier_modes[:,2]
+            boundarydatas[i].coefficients[:,1], 
+            boundarydatas[i].coefficients[:,2]
         ) |> transpose
     else b    
     end

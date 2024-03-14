@@ -168,7 +168,7 @@ end
     sim = BearingSimulation(ω, bearing, bd1, bd2; method = method)
 
     # let's have a look at the modes that were calculated for this BearingSimulation. This is the field we will actual approximate
-    inner_field = fouriermodes_to_fields(θs,sim.boundarydata1.fourier_modes)
+    inner_field = fouriermodes_to_fields(θs,sim.boundarydata1.coefficients)
 
     @test norm(inner_field[:,1] - fp) < 1e-10
 

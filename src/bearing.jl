@@ -82,7 +82,6 @@ Gives all the information on one boundery of a `RollerBearing`. You can specify 
 
 The relationship between the `fields` and the `coefficients` is given by ``f_{j}(\\theta) = \\sum_m \\text{mode}_{mj} e^{i \\theta m}``, where ``f`` represents the `fields`. To calculate the `fields` from the `coefficients` we can use:
 ```julia
-basis_order = (size(coefficients,1) - 1) / 2
 exps = [
     exp(im * θ * m)
 for θ in θs, m = modes];
@@ -300,42 +299,49 @@ function setup(sim::BearingSimulation{ModalMethod})
     # if the modes not given, then determine the modes from the data
     if isempty(modes)
 
-        modes_vec = [
-            (isempty(bd.modes) ? -get_order(bd.fields):get_order(bd.fields) : bd.modes)
-        for bd in [boundarydata1, boundarydata2]]
+        bd_to_modes(bd) = isempty(bd.modes) ? (-get_order(bd.fields):get_order(bd.fields)) : bd.modes
 
-        modes = intersect(orders)    
+        modes_vec = bd_to_modes.([boundarydata1, boundarydata2])
 
-        @reset sim.method.basis_order = basis_order
+        modes = intersect(modes_vec) |> collect
+
+        @reset sim.method.modes = modes
     end
 
    # we need the fourier modes of the boundary data
-    if isempty(boundarydata1.coefficients) ||  (get_order(boundarydata1.fields) > get_order(boundarydata1.coefficients) && get_order(boundarydata1.coefficients) < basis_order )
-        println("The Fourier modes for boundarydata1 are empty, or the fields have more data. The Fourier modes will be calculated from the fields provided.")
+    if isempty(boundarydata1.coefficients) 
+        # || (get_order(boundarydata1.fields) > get_order(boundarydata1.coefficients) && get_order(boundarydata1.coefficients) < basis_order )
+        # println("The Fourier modes for boundarydata1 are empty, or the fields have more data. The Fourier modes will be calculated from the fields provided.")
+        println("The Fourier coefficients for boundarydata1 are empty. The Fourier coefficients will be calculated from the fields provided.")
 
-        boundarydata1 = fields_to_fouriermodes(boundarydata1, basis_order)
+        boundarydata1 = fields_to_fouriermodes(boundarydata1, modes)
+    elseif modes != boundarydata1.modes 
+        
+        if setdiff(modes,boundarydata1.modes) |> isempty
+            inds = [findfirst(m .== boundarydata1.modes) for m in modes]
+            @reset boundarydata1.modes = modes
+            @reset boundarydata1.coefficients = boundarydata1.coefficients[inds,:]
+
+        else error("There are not enough Fourier coefficients given in boundarydata1")
+        end        
     end
 
-    if isempty(boundarydata2.coefficients) || (get_order(boundarydata2.fields) > get_order(boundarydata2.coefficients) && get_order(boundarydata2.coefficients) < basis_order )
-        println("The Fourier modes for boundarydata2 are empty, or the fields have more data. The Fourier modes will be calculated from the fields provided.")
+    if isempty(boundarydata2.coefficients) 
+        # || (get_order(boundarydata2.fields) > get_order(boundarydata2.coefficients) && get_order(boundarydata2.coefficients) < basis_order )
+        # println("The Fourier modes for boundarydata2 are empty, or the fields have more data. The Fourier modes will be calculated from the fields provided.")
+        println("The Fourier coefficients for boundarydata2 are empty. The Fourier coefficients will be calculated from the fields provided.")
 
-        boundarydata2 = fields_to_fouriermodes(boundarydata2, basis_order)
-    end
+        boundarydata2 = fields_to_fouriermodes(boundarydata2, modes)
+    
+    elseif modes != boundarydata2.modes 
+        
+        if setdiff(modes,boundarydata2.modes) |> isempty
+            inds = [findfirst(m .== boundarydata2.modes) for m in modes]
+            @reset boundarydata2.modes = modes
+            @reset boundarydata2.coefficients = boundarydata2.coefficients[inds,:]
 
-    basis_order1 = get_order(boundarydata1.coefficients)
-    if basis_order1 > basis_order
-        inds = (basis_order1 + 1) .+ (-basis_order:basis_order)
-        @reset boundarydata1.coefficients = boundarydata1.coefficients[inds,:]
-    end
-
-    basis_order2 = get_order(boundarydata2.coefficients)
-    if basis_order2 > basis_order
-        inds = basis_order2 + 1 + (-basis_order:basis_order)
-        @reset boundarydata2.coefficients = boundarydata2.coefficients[inds,:]
-    end    
-
-    if size(boundarydata1.coefficients,1) != size(boundarydata2.coefficients,1)
-        error("number of coefficients in boundarydata1 and boundarydata2 needs to be the same")
+        else error("There are not enough Fourier coefficients given in boundarydata2")
+        end        
     end
 
     @reset sim.boundarydata1 = boundarydata1
