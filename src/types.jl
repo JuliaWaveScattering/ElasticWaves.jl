@@ -23,7 +23,7 @@ struct ModalMethod <: SolutionMethod
     # to use Tikhonov regularization give a non-zero parameter
     regularisation_parameter::Float64
     only_stable_modes::Bool
-    basis_order::Int
+    modes::Vectoy{Int}
     mode_errors::Vector{Float64}
 end
 struct GapMethod <: BearingMethod end
@@ -41,22 +41,22 @@ function ModalMethod(;
         tol::Float64 = eps(Float64)^(1/2), 
         regularisation_parameter::Float64 = zero(Float64),
         only_stable_modes = true,
-        basis_order = -1,
-        mode_errors = Float64[]
+        modes::Vector{Int} = Int[],
+        mode_errors::Vector = Float64[]
     )
 
     if !only_stable_modes 
         @warn "only_stable_modes was set to false. This means that potentially ill-posed (or unstable) modes will attempt to be solved, which could lead to non-sense solutions." 
     end
 
-    ModalMethod(tol, regularisation_parameter, only_stable_modes, basis_order, mode_errors)
+    ModalMethod(tol, regularisation_parameter, only_stable_modes, modes, mode_errors)
 end
 
 function PriorMethod(; 
         tol::Float64 = eps(Float64)^(1/2), 
         regularisation_parameter::Float64 = zero(Float64),
-        basis_order::Int = -1,
-        modal_method = ModalMethod(tol = tol, basis_order = basis_order),
+        modes::Vector{Int} = Int[],
+        modal_method = ModalMethod(tol = tol, modes = modes),
         condition_number = -one(Float64),
         boundary_error = -one(Float64),
 

@@ -28,7 +28,7 @@ struct HelmholtzPotential{Dim,T}
     wavespeed::Complex{T}
     wavenumber::Complex{T}
     basis_order::Int
-    "The first (second) row is for the besselj (hankelh1) fourier modes"
+    "The first (second) row is for the besselj (hankelh1) fourier coefficients"
     coefficients::Matrix{Complex{T}}
 
     function HelmholtzPotential{Dim}(wavespeed::Complex{T}, wavenumber::Complex{T},  coefficients::AbstractMatrix{Complex{T}},

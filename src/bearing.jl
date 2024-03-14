@@ -78,46 +78,52 @@ abstract type AbstractBoundaryData{BC <: BoundaryCondition} end
 """
     BoundaryData{BC <: BoundaryCondition, T}
 
-Gives all the information on one boundery of a `RollerBearing`. You can specify the forcing either be giving the `fourier_modes`, or by specifying the `fields`. The `fields` represent either the displacement or traction when varying the polar angle `θs`.
+Gives all the information on one boundery of a `RollerBearing`. You can specify the forcing either be giving the `coefficients`, or by specifying the `fields`. The `fields` represent either the displacement or traction when varying the polar angle `θs`.
 
-The relationship between the `fields` and the `fourier_modes` is given by ``f_{j}(\\theta) = \\sum_m \\text{mode}_{mj} e^{i \\theta m}``, where ``f`` represents the `fields`. To calculate the `fields` from the `fourier_modes` we can use:
+The relationship between the `fields` and the `coefficients` is given by ``f_{j}(\\theta) = \\sum_m \\text{mode}_{mj} e^{i \\theta m}``, where ``f`` represents the `fields`. To calculate the `fields` from the `coefficients` we can use:
 ```julia
-basis_order = (size(fourier_modes,1) - 1) / 2
+basis_order = (size(coefficients,1) - 1) / 2
 exps = [
     exp(im * θ * m)
-for θ in θs, m = -basis_order:basis_order];
+for θ in θs, m = modes];
 
-fields = exps * fourier_modes
+fields = exps * coefficients
 ```
 
-If the `fourier_modes` were specified, then they will be used directly. If the `fourier_modes` were not give, then `fields` will be used to calculate the `fourier_modes`: `fourier_modes = exps \\ fields`.
+If the `coefficients` were specified, then they will be used directly. If the `coefficients` were not given, then `fields` will be used to calculate the `coefficients`: `coefficients = exps \\ fields`.
 """
 struct BoundaryData{BC <: BoundaryCondition, T} <: AbstractBoundaryData{BC}
     boundarytype::BC
     θs::Vector{T}
     fields::Matrix{Complex{T}}
-    fourier_modes::Matrix{Complex{T}}
+    coefficients::Matrix{Complex{T}}
+    modes::Vector{Int}
 end
 
 function BoundaryData(boundarytype::BC;
         θs::AbstractVector{T} = Float64[],
         fields::Matrix = reshape(Complex{Float64}[],0,2),
-        fourier_modes::Matrix = reshape(Complex{Float64}[],0,2)
+        coefficients::Matrix = reshape(Complex{Float64}[],0,2),
+        modes::Vector{Int} = Int[]
     ) where {BC <: BoundaryCondition, T}
 
-    if !isempty(fourier_modes) && size(fourier_modes,2) != 2
-        @error "the fourier_modes should have only two columns"
+    if !isempty(coefficients) && size(coefficients,2) != 2
+        @error "the coefficients should have only two columns"
     end
 
     if !isempty(fields) && size(fields,2) != 2
         @error "the fields should have only two columns"
     end
     
+    if !isempty(coefficients) && size(coefficients,1) != length(modes)
+        @error "the fields should have the same length as θs"
+    end
+
     if !isempty(fields) && size(fields,1) != length(θs)
         @error "the fields should have the same length as θs"
     end
 
-    return BoundaryData{BC,T}(boundarytype,θs,fields,fourier_modes)
+    return BoundaryData{BC,T}(boundarytype,θs,fields,coefficients)
 end
 
 
@@ -144,12 +150,12 @@ struct BoundaryBasis{BD <: AbstractBoundaryData}
 
     function BoundaryBasis(basis::Vector{BD}) where {BD <: AbstractBoundaryData}
         field_lengths = [size(b.fields, 1) for b in basis]
-        fourier_mode_lengths = [size(b.fourier_modes, 1) for b in basis]
+        fourier_mode_lengths = [size(b.coefficients, 1) for b in basis]
 
         allsame(x) = all(y -> y == first(x), x)
 
         if !allsame(fourier_mode_lengths) || !allsame(field_lengths)
-            error("The length of the fields and fourier_modes of each BoundaryData in a BoundaryBasis need to be equal")
+            error("The length of the fields and coefficients of each BoundaryData in a BoundaryBasis need to be equal")
         end    
 
     return new{BD}(basis)
@@ -157,7 +163,7 @@ struct BoundaryBasis{BD <: AbstractBoundaryData}
 end
 
 import Base: isempty
-isempty(bd::BoundaryData) = all([isempty(bd.fields),isempty(bd.fourier_modes)])  
+isempty(bd::BoundaryData) = all([isempty(bd.fields),isempty(bd.coefficients)])  
 isempty(bb::BoundaryBasis) = all([isempty(bd) for bd in bb.basis])  
     
 # """
@@ -224,7 +230,7 @@ function nondimensionalise!(boundarydata::BoundaryData{BoundaryCondition{Tractio
 
     λ2μ = sim.bearing.medium.ρ * sim.bearing.medium.cp^2
     boundarydata.fields[:] = boundarydata.fields ./ λ2μ
-    boundarydata.fourier_modes[:] = boundarydata.fourier_modes ./ λ2μ
+    boundarydata.coefficients[:] = boundarydata.coefficients ./ λ2μ
 
     return boundarydata
 end
@@ -233,7 +239,7 @@ function nondimensionalise!(boundarydata::BoundaryData{BoundaryCondition{Displac
 
     kp = sim.ω / sim.bearing.medium.cp;
     boundarydata.fields[:] = boundarydata.fields .* kp
-    boundarydata.fourier_modes[:] = boundarydata.fourier_modes .* kp
+    boundarydata.coefficients[:] = boundarydata.coefficients .* kp
 
     return boundarydata
 end
@@ -285,51 +291,51 @@ end
 
 function setup(sim::BearingSimulation{ModalMethod})
     
-    basis_order = sim.method.basis_order
+    modes = sim.method.modes
     boundarydata1 = sim.boundarydata1
     boundarydata2 = sim.boundarydata2
 
-    get_order(modes) = isempty(modes) ? - 1 : basislength_to_basisorder(PhysicalMedium{2,1},size(modes,1))
+    get_order(coefficients) = isempty(coefficients) ? - 1 : basislength_to_basisorder(PhysicalMedium{2,1}, size(coefficients,1))
 
-    # if basis_order not given, then determine the largest possible from the data
-    if basis_order == -1
+    # if the modes not given, then determine the modes from the data
+    if isempty(modes)
 
-        orders = [
-            max(get_order(bd.fourier_modes), get_order(bd.fields)) 
+        modes_vec = [
+            (isempty(bd.modes) ? -get_order(bd.fields):get_order(bd.fields) : bd.modes)
         for bd in [boundarydata1, boundarydata2]]
 
-        basis_order = minimum(orders)    
+        modes = intersect(orders)    
 
         @reset sim.method.basis_order = basis_order
     end
 
    # we need the fourier modes of the boundary data
-    if isempty(boundarydata1.fourier_modes) ||  (get_order(boundarydata1.fields) > get_order(boundarydata1.fourier_modes) && get_order(boundarydata1.fourier_modes) < basis_order )
+    if isempty(boundarydata1.coefficients) ||  (get_order(boundarydata1.fields) > get_order(boundarydata1.coefficients) && get_order(boundarydata1.coefficients) < basis_order )
         println("The Fourier modes for boundarydata1 are empty, or the fields have more data. The Fourier modes will be calculated from the fields provided.")
 
         boundarydata1 = fields_to_fouriermodes(boundarydata1, basis_order)
     end
 
-    if isempty(boundarydata2.fourier_modes) || (get_order(boundarydata2.fields) > get_order(boundarydata2.fourier_modes) && get_order(boundarydata2.fourier_modes) < basis_order )
+    if isempty(boundarydata2.coefficients) || (get_order(boundarydata2.fields) > get_order(boundarydata2.coefficients) && get_order(boundarydata2.coefficients) < basis_order )
         println("The Fourier modes for boundarydata2 are empty, or the fields have more data. The Fourier modes will be calculated from the fields provided.")
 
         boundarydata2 = fields_to_fouriermodes(boundarydata2, basis_order)
     end
 
-    basis_order1 = get_order(boundarydata1.fourier_modes)
+    basis_order1 = get_order(boundarydata1.coefficients)
     if basis_order1 > basis_order
         inds = (basis_order1 + 1) .+ (-basis_order:basis_order)
-        @reset boundarydata1.fourier_modes = boundarydata1.fourier_modes[inds,:]
+        @reset boundarydata1.coefficients = boundarydata1.coefficients[inds,:]
     end
 
-    basis_order2 = get_order(boundarydata2.fourier_modes)
+    basis_order2 = get_order(boundarydata2.coefficients)
     if basis_order2 > basis_order
         inds = basis_order2 + 1 + (-basis_order:basis_order)
-        @reset boundarydata2.fourier_modes = boundarydata2.fourier_modes[inds,:]
+        @reset boundarydata2.coefficients = boundarydata2.coefficients[inds,:]
     end    
 
-    if size(boundarydata1.fourier_modes,1) != size(boundarydata2.fourier_modes,1)
-        error("number of fourier_modes in boundarydata1 and boundarydata2 needs to be the same")
+    if size(boundarydata1.coefficients,1) != size(boundarydata2.coefficients,1)
+        error("number of coefficients in boundarydata1 and boundarydata2 needs to be the same")
     end
 
     @reset sim.boundarydata1 = boundarydata1
@@ -349,7 +355,7 @@ function setup(sim::BearingSimulation{PriorMethod})
     # we need the fields of the boundary data for the PriorMethod
     if isempty(sim.boundarydata1.fields) && isempty(sim.boundarydata2.fields)
 
-        error("The fields of boundarydata1 or boundarydata2 are empty. We expect that the fields are given for the PriorMethod because as the number of fourier_modes can be far greater than the length of the fields. Meaning it is not possible to calculate the fourier_modes of the boundary data directly")
+        error("The fields of boundarydata1 or boundarydata2 are empty. We expect that the fields are given for the PriorMethod because as the number of coefficients can be far greater than the length of the fields. Meaning it is not possible to calculate the coefficients of the boundary data directly")
     end
 
     if basis_order == -1
@@ -370,7 +376,7 @@ function setup(sim::BearingSimulation{PriorMethod})
         end
 
         # if both boundarybasis1 and boundarybasis2 are given need to use the same number of modes
-        mode_lengths = [size(bd.fourier_modes,1) for bd in [data1, data2]]
+        mode_lengths = [size(bd.coefficients,1) for bd in [data1, data2]]
 
         inds = findall(mode_lengths .> 0)
         mode_lengths = unique(mode_lengths[inds])
@@ -385,7 +391,7 @@ function setup(sim::BearingSimulation{PriorMethod})
             inds = findall(field_lengths .> 0)
             field_lengths = field_lengths[inds]
 
-            # need to use the smallest field length to calculate the fourier_modes of both boundarybasis'
+            # need to use the smallest field length to calculate the coefficients of both boundarybasis'
             field_length = minimum(field_lengths)
             basis_order = Int(floor((field_length - 1)/2 ))
 
@@ -396,9 +402,9 @@ function setup(sim::BearingSimulation{PriorMethod})
     end
 
 
-    # We need the fourier_modes for the boundarybasis
+    # We need the coefficients for the boundarybasis
     basis_vec = map(sim.boundarybasis1.basis) do b
-        if isempty(b.fourier_modes)
+        if isempty(b.coefficients)
             isempty(b.fields) ? b : fields_to_fouriermodes(b,basis_order)
         else
             b
@@ -407,7 +413,7 @@ function setup(sim::BearingSimulation{PriorMethod})
     @reset sim.boundarybasis1 = BoundaryBasis(basis_vec)
 
     basis_vec = map(sim.boundarybasis2.basis) do b
-        if isempty(b.fourier_modes)
+        if isempty(b.coefficients)
             isempty(b.fields) ? b : fields_to_fouriermodes(b,basis_order)
         else
             b
@@ -415,10 +421,10 @@ function setup(sim::BearingSimulation{PriorMethod})
     end
     @reset sim.boundarybasis2 = BoundaryBasis(basis_vec)
 
-    # We need the fourier_modes for boundarydata if a basis is not provided
+    # We need the coefficients for boundarydata if a basis is not provided
     if isempty(sim.boundarybasis1)
 
-        if isempty(sim.boundarydata1.fourier_modes)
+        if isempty(sim.boundarydata1.coefficients)
             println("The Fourier modes for boundarydata1 are empty, they will be calculated from the fields provided")
 
             @reset sim.boundarydata1 = fields_to_fouriermodes(sim.boundarydata1, basis_order)
@@ -426,7 +432,7 @@ function setup(sim::BearingSimulation{PriorMethod})
     end
 
     if isempty(sim.boundarybasis2)
-        if isempty(sim.boundarydata2.fourier_modes)
+        if isempty(sim.boundarydata2.coefficients)
             println("The Fourier modes for boundarydata2 are empty, they will be calculated from the fields provided")
 
             @reset sim.boundarydata2 = fields_to_fouriermodes(sim.boundarydata2, basis_order)
