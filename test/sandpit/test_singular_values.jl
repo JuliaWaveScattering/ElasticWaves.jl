@@ -63,13 +63,13 @@ plot!(ωs,svdvals_min[:,6])
 
 forcing_modes = rand(basis_length,4) + rand(basis_length,4) .* im
 
-bd1= BoundaryData(TractionBoundary(inner = true); fourier_modes = hcat(forcing_modes[:,1],0*forcing_modes[:,1]))
-bd2= BoundaryData(TractionBoundary(inner = true); fourier_modes = hcat(0*forcing_modes[:,2],forcing_modes[:,2]))
+bd1= BoundaryData(TractionBoundary(inner = true); coefficients =  hcat(forcing_modes[:,1],0*forcing_modes[:,1]))
+bd2= BoundaryData(TractionBoundary(inner = true); coefficients =  hcat(0*forcing_modes[:,2],forcing_modes[:,2]))
 
 boundarybasis1=BoundaryBasis([bd1,bd2])
 
-bd3= BoundaryData(TractionBoundary(outer  = true); fourier_modes = hcat(forcing_modes[:,3],0*forcing_modes[:,3]))
-bd4= BoundaryData(TractionBoundary(outer  = true); fourier_modes = hcat(0*forcing_modes[:,4],forcing_modes[:,4]))
+bd3= BoundaryData(TractionBoundary(outer  = true); coefficients =  hcat(forcing_modes[:,3],0*forcing_modes[:,3]))
+bd4= BoundaryData(TractionBoundary(outer  = true); coefficients =  hcat(0*forcing_modes[:,4],forcing_modes[:,4]))
 
 boundarybasis2=BoundaryBasis([bd3,bd4])
     

@@ -61,8 +61,8 @@ bc2_inverse = TractionBoundary(outer=true)
 
 fouter= 0*fourier_coef_p
 
-bd1_forward =  BoundaryData(bc1_forward, θs=θs, fourier_modes=hcat(fourier_coef_p,fourier_coef_s)) 
-bd2_forward = BoundaryData(bc2_forward,θs=θs, fourier_modes=hcat(fouter,fouter))
+bd1_forward =  BoundaryData(bc1_forward, θs=θs, coefficients = hcat(fourier_coef_p,fourier_coef_s)) 
+bd2_forward = BoundaryData(bc2_forward,θs=θs, coefficients = hcat(fouter,fouter))
 
 modal_method=ModalMethod(tol=1e-6,only_stable_modes=true)
 
@@ -207,11 +207,11 @@ f0=0.0*Fp
 
 
 
-bd1= BoundaryData(bc1_forward, θs=θs, fourier_modes=hcat(Fp,f0)) 
-bd2= BoundaryData(bc1_forward, θs=θs, fourier_modes=hcat(f0,Fs)) 
+bd1= BoundaryData(bc1_forward, θs=θs, coefficients = hcat(Fp,f0)) 
+bd2= BoundaryData(bc1_forward, θs=θs, coefficients = hcat(f0,Fs)) 
 
-bd3= BoundaryData(bc2_forward, θs=θs, fourier_modes=hcat(f0,f0)) 
-bd4= BoundaryData(bc2_forward, θs=θs, fourier_modes=hcat(f0,f0)) 
+bd3= BoundaryData(bc2_forward, θs=θs, coefficients = hcat(f0,f0)) 
+bd4= BoundaryData(bc2_forward, θs=θs, coefficients = hcat(f0,f0)) 
 
 
 

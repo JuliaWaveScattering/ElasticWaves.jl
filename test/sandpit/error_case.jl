@@ -41,8 +41,8 @@ basis_length= 2*basis_order+1
 
 forcing_modes = rand(basis_length,4) + rand(basis_length,4) .* im
 
-bd1 = BoundaryData(TractionBoundary(inner=true); fourier_modes=forcing_modes[:, 1:2])
-bd2 = BoundaryData(TractionBoundary(outer=true); fourier_modes=forcing_modes[:, 3:4])
+bd1 = BoundaryData(TractionBoundary(inner=true); coefficients = forcing_modes[:, 1:2])
+bd2 = BoundaryData(TractionBoundary(outer=true); coefficients = forcing_modes[:, 3:4])
 
 sims = [BearingSimulation(ω, bearing, bd1, bd2) for ω in ωs];
 waves = [ElasticWave(s) for s in sims];

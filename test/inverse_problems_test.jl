@@ -18,8 +18,8 @@
     # first the forward problem
     forcing_modes = rand(basis_length,4) + rand(basis_length,4) .* im
 
-    bd1 = BoundaryData(TractionBoundary(inner = true); fourier_modes = forcing_modes[:,1:2])
-    bd2 = BoundaryData(TractionBoundary(outer = true); fourier_modes = forcing_modes[:,3:4])
+    bd1 = BoundaryData(TractionBoundary(inner = true); coefficients =  forcing_modes[:,1:2])
+    bd2 = BoundaryData(TractionBoundary(outer = true); coefficients =  forcing_modes[:,3:4])
     
     # Will use only the Fourier modes that were calculated correctly by adding the option: only_stable_modes = true
     method = ModalMethod(tol = 1e-3, only_stable_modes = true)
@@ -31,13 +31,13 @@
     # setup a problem with only boundary information on the outer boundary.
     bd1s = map(waves) do wave
         BoundaryData(TractionBoundary(outer = true);
-            fourier_modes = field_modes(wave, bearing.outer_radius, TractionType())
+            coefficients =  field_modes(wave, bearing.outer_radius, TractionType())
         )
     end
 
     bd2s = map(waves) do wave
         BoundaryData(DisplacementBoundary(outer = true); 
-            fourier_modes = field_modes(wave, bearing.outer_radius, DisplacementType())
+            coefficients =  field_modes(wave, bearing.outer_radius, DisplacementType())
         )
     end
 
@@ -71,13 +71,13 @@
     # setup a problem with only boundary information on the outer boundary.
     bd1s = map(waves) do wave
         BoundaryData(TractionBoundary(outer = true);
-            fourier_modes = field_modes(wave, bearing.outer_radius, TractionType())
+            coefficients =  field_modes(wave, bearing.outer_radius, TractionType())
         )
     end
 
     bd2s = map(waves) do wave
         BoundaryData(DisplacementBoundary(outer = true); 
-            fourier_modes = field_modes(wave, bearing.outer_radius, DisplacementType())
+            coefficients =  field_modes(wave, bearing.outer_radius, DisplacementType())
         )
     end
 

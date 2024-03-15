@@ -99,7 +99,7 @@ kp * dr
         fs[loading_basis_order + 1 - n] = fs[loading_basis_order + 1 - n] + 0.5
 
         # The representation of the loading itself
-        loading = BoundaryData(bc1_forward, fourier_modes = [fs 0.0 .* fs])
+        loading = BoundaryData(bc1_forward, coefficients =  [fs 0.0 .* fs])
 
         # the boundary data after considering that the forcing is produced through the contact of the bearings
         BoundaryData(ω, bearing, loading)

@@ -82,10 +82,10 @@
 
     # if we eliminate the basis_orders that the forward problem could not solve for, then the recovery is well below the specified tolerance (method.tol) as it should be
     forward_boundary_error = map(eachindex(ωs)) do i
-        bd1 = fields_to_fouriermodes(boundarydata1s[i], forward_waves[i].method.basis_order)
+        bd1 = fields_to_fouriermodes(boundarydata1s[i], forward_waves[i].method.modes)
         bd1 = fouriermodes_to_fields(bd1);
         
-        bd2 = fields_to_fouriermodes(boundarydata2s[i], forward_waves[i].method.basis_order)
+        bd2 = fields_to_fouriermodes(boundarydata2s[i], forward_waves[i].method.modes)
         bd2 = fouriermodes_to_fields(bd2);
 
         bds = boundary_data(forward_sims[i], forward_waves[i]);
@@ -181,9 +181,7 @@
 
     @test maximum(inner_boundary_errors) < 2e-8
 
-
 ## Method 2
-
     # here we use coarse boundary data for the boundary with the prior. For the other boundary we need to use fine boundary data, otherwise the prior method is not even an improvement on the ModalMethod
     modal_method = ModalMethod(tol = 1e-11, only_stable_modes = true)
     method = PriorMethod(tol = modal_method.tol, modal_method = modal_method)
@@ -293,7 +291,7 @@
     end;
     inverse_waves = ElasticWave.(sims);
 
-    # did the prior method solve the boundary data accuratey? Yes, the boundary errors are ting and the condition numbers are reasonable
+    # did the prior method solve the boundary data accuratey? Yes, the boundary errors are tiny and the condition numbers are reasonable
     map(inverse_waves) do wave
         (wave.method.boundary_error, wave.method.condition_number)
     end    

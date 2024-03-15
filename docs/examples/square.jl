@@ -39,8 +39,8 @@ bc2_inverse = TractionBoundary(outer=true)
 
 fouter= 0*fourier_modes_p
 
-bd1_forward =  BoundaryData(bc1_forward, θs=θs, fourier_modes=hcat(fourier_modes_p,fourier_modes_s)) 
-bd2_forward=BoundaryData(bc2_forward,θs=θs, fourier_modes=hcat(fouter,fouter))
+bd1_forward =  BoundaryData(bc1_forward, θs=θs, coefficients = hcat(fourier_modes_p,fourier_modes_s)) 
+bd2_forward=BoundaryData(bc2_forward,θs=θs, coefficients = hcat(fouter,fouter))
 
 i=2
 
@@ -172,8 +172,8 @@ f0=0.0*Fp
 
 
 
-bd1= BoundaryData(bc1_forward, θs=θs, fourier_modes=hcat(Fp,f0)) 
-bd2= BoundaryData(bc1_forward, θs=θs, fourier_modes=hcat(f0,Fs)) 
+bd1= BoundaryData(bc1_forward, θs=θs, coefficients = hcat(Fp,f0)) 
+bd2= BoundaryData(bc1_forward, θs=θs, coefficients = hcat(f0,Fs)) 
 
 
 

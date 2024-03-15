@@ -72,7 +72,7 @@ plot(bearing, 0.0)
     θs = LinRange(0.0, 2pi, 2basis_order+2)[1:end-1]
 
     bd1_for = BoundaryData(ω, bearing, loading_profile)
-    bd2_for = BoundaryData(bc2_forward, θs=θs, fourier_modes = 0.0 .* bd1_for.coefficients)
+    bd2_for = BoundaryData(bc2_forward, θs=θs, coefficients =  0.0 .* bd1_for.coefficients)
 
     modal_method = ModalMethod(tol = 1e-9, only_stable_modes = true)
     forward_sim = BearingSimulation(ω, bearing, bd1_for, bd2_for; 
@@ -112,7 +112,7 @@ plot(bearing, 0.0)
         
         # θs = LinRange(0.0, 2pi, 2basis_order+2)[1:end-1]
 
-        bd2_for = BoundaryData(bc2_forward, fourier_modes = 0.0 .* bd1_for.coefficients)
+        bd2_for = BoundaryData(bc2_forward, coefficients =  0.0 .* bd1_for.coefficients)
 
         sim = BearingSimulation(ω, bearing, bd1_for, bd2_for; 
             method = modal_method,

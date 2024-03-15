@@ -39,7 +39,7 @@ export fouriermodes_to_fields, fields_to_fouriermodes, normalize!
 export estimate_basisorder # soon to be removed
 
 # cylindrical/elastic_wave.jl
-export boundarycondition_mode, boundarycondition_system, modal_coefficients! 
+export boundarycondition_mode, boundarycondition_system, modes_coefficients! 
 
 using MultipleScattering
 using SpecialFunctions

@@ -9,7 +9,7 @@ function fields_to_fouriermodes(boundarydata::AbstractBoundaryData, modes::Abstr
     
     # creates a copy of boundarydata
     @reset boundarydata.coefficients = coefficients
-    @reset boundarydata.modes = modes
+    @reset boundarydata.modes = modes |> collect
     
     return boundarydata
 end

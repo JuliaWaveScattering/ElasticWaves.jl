@@ -66,7 +66,7 @@ struct ElasticWave{Dim,M,T}
     method::M
 
     function ElasticWave(ω::T, medium::Elastic{Dim,T}, potentials::Vector{H}, method::M = ModalMethod();
-            mode_errors = zeros(T, length(potentials.modes))
+            mode_errors = zeros(T, length(potentials[1].modes))
         ) where {Dim,T,H <: HelmholtzPotential{Dim,T}, M<:SolutionMethod}
 
         modes_arr = [p.modes for p in potentials]
@@ -80,7 +80,7 @@ struct ElasticWave{Dim,M,T}
         end
 
         if M == ModalMethod 
-            if length(method.mode_errors) != length(potentials.modes)
+            if length(method.mode_errors) != length(potentials[1].modes)
                 @warn "The length of mode_errors is expected to be the same as the number of modes."
             end    
         end

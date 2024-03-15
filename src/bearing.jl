@@ -103,26 +103,33 @@ function BoundaryData(boundarytype::BC;
         θs::AbstractVector{T} = Float64[],
         fields::Matrix = reshape(Complex{Float64}[],0,2),
         coefficients::Matrix = reshape(Complex{Float64}[],0,2),
-        modes::Vector{Int} = Int[]
+        modes::AbstractVector{Int} = Int[]
     ) where {BC <: BoundaryCondition, T}
 
-    if !isempty(coefficients) && size(coefficients,2) != 2
-        @error "the coefficients should have only two columns"
+    if !isempty(coefficients)
+        if size(coefficients,2) != 2  
+            @error "the coefficients should have only two columns" 
+        end
+
+        if isempty(modes)
+            order = basislength_to_basisorder(PhysicalMedium{2,1},size(coefficients,1))
+            modes = -order:order
+
+        elseif size(coefficients,1) != length(modes)
+            @error "the Fourier coefficients should have the same length as modes"
+        end    
+    end    
+
+    if !isempty(fields) 
+        if size(fields,2) != 2
+            @error "the fields should have only two columns"
+        end
+        if size(fields,1) != length(θs)
+            @error "the fields should have the same length as θs"
+        end    
     end
 
-    if !isempty(fields) && size(fields,2) != 2
-        @error "the fields should have only two columns"
-    end
-    
-    if !isempty(coefficients) && size(coefficients,1) != length(modes)
-        @error "the fields should have the same length as θs"
-    end
-
-    if !isempty(fields) && size(fields,1) != length(θs)
-        @error "the fields should have the same length as θs"
-    end
-
-    return BoundaryData{BC,T}(boundarytype,θs,fields,coefficients)
+    return BoundaryData{BC,T}(boundarytype,θs,fields,coefficients,modes |> collect)
 end
 
 
@@ -303,7 +310,7 @@ function setup(sim::BearingSimulation{ModalMethod})
 
         modes_vec = bd_to_modes.([boundarydata1, boundarydata2])
 
-        modes = intersect(modes_vec) |> collect
+        modes = intersect(modes_vec...) |> collect
 
         @reset sim.method.modes = modes
     end
@@ -313,8 +320,8 @@ function setup(sim::BearingSimulation{ModalMethod})
         # || (get_order(boundarydata1.fields) > get_order(boundarydata1.coefficients) && get_order(boundarydata1.coefficients) < basis_order )
         # println("The Fourier modes for boundarydata1 are empty, or the fields have more data. The Fourier modes will be calculated from the fields provided.")
         println("The Fourier coefficients for boundarydata1 are empty. The Fourier coefficients will be calculated from the fields provided.")
-
         boundarydata1 = fields_to_fouriermodes(boundarydata1, modes)
+        
     elseif modes != boundarydata1.modes 
         
         if setdiff(modes,boundarydata1.modes) |> isempty
@@ -330,7 +337,6 @@ function setup(sim::BearingSimulation{ModalMethod})
         # || (get_order(boundarydata2.fields) > get_order(boundarydata2.coefficients) && get_order(boundarydata2.coefficients) < basis_order )
         # println("The Fourier modes for boundarydata2 are empty, or the fields have more data. The Fourier modes will be calculated from the fields provided.")
         println("The Fourier coefficients for boundarydata2 are empty. The Fourier coefficients will be calculated from the fields provided.")
-
         boundarydata2 = fields_to_fouriermodes(boundarydata2, modes)
     
     elseif modes != boundarydata2.modes 
@@ -352,7 +358,7 @@ end
 
 function setup(sim::BearingSimulation{PriorMethod})
 
-    basis_order = sim.method.modal_method.basis_order;
+    modes = sim.method.modal_method.modes;
 
     if isempty(sim.boundarybasis1) && isempty(sim.boundarybasis2)
         error("The PriorMethod requires a boundary basis either for the first boundary (keyword 'boundary_basis1') or the second boundary (keyword 'boundary_basis2') ")
@@ -364,8 +370,8 @@ function setup(sim::BearingSimulation{PriorMethod})
         error("The fields of boundarydata1 or boundarydata2 are empty. We expect that the fields are given for the PriorMethod because as the number of coefficients can be far greater than the length of the fields. Meaning it is not possible to calculate the coefficients of the boundary data directly")
     end
 
-    if basis_order == -1
-        println("No basis_order was specified. Will use the largest order according to the data provided (boundarybasis1, boundarybasis2, and poentially the boundarydata1 or boundarydata2)")
+    if modes |> isempty
+        println("No modes was specified. Will use the largest number of modes according to the data provided (boundarybasis1, boundarybasis2, boundarydata1, and boundarydata2)")
 
         # need the Fourier modes for two boundaries. This can be provided either by one BoundaryBasis and one BoundaryData (most common), or by two BoundaryBasis. We determine the scenario first:
 
@@ -381,37 +387,21 @@ function setup(sim::BearingSimulation{PriorMethod})
             sim.boundarybasis2.basis[1]
         end
 
-        # if both boundarybasis1 and boundarybasis2 are given need to use the same number of modes
-        mode_lengths = [size(bd.coefficients,1) for bd in [data1, data2]]
+        get_order(coefficients) = isempty(coefficients) ? - 1 : basislength_to_basisorder(PhysicalMedium{2,1}, size(coefficients,1))
+        bd_to_modes(bd) = isempty(bd.modes) ? (-get_order(bd.fields):get_order(bd.fields)) : bd.modes
 
-        inds = findall(mode_lengths .> 0)
-        mode_lengths = unique(mode_lengths[inds])
-
-        if length(mode_lengths) == 2
-            @warn "The number of Fourier modes for the data is not the same, so will use  the smaller number of modes."
-            mode_lengths = minimum(mode_lengths)
-        end
+        modes_vec = bd_to_modes.([data1, data2])
+        modes = intersect(modes_vec...) |> collect
         
-        if isempty(mode_lengths)
-            field_lengths = [size(bd.fields,1) for bd in [data1, data2]]
-            inds = findall(field_lengths .> 0)
-            field_lengths = field_lengths[inds]
+        if isempty(modes) error("The modes was not specified and the data does not any modes in common") end
 
-            # need to use the smallest field length to calculate the coefficients of both boundarybasis'
-            field_length = minimum(field_lengths)
-            basis_order = Int(floor((field_length - 1)/2 ))
-
-        else basis_order = basislength_to_basisorder(PhysicalMedium{2,1},mode_lengths[1])
-        end
-
-        @reset sim.method.modal_method.basis_order = basis_order
+        @reset sim.method.modal_method.modes = modes
     end
-
 
     # We need the coefficients for the boundarybasis
     basis_vec = map(sim.boundarybasis1.basis) do b
         if isempty(b.coefficients)
-            isempty(b.fields) ? b : fields_to_fouriermodes(b,basis_order)
+            isempty(b.fields) ? b : fields_to_fouriermodes(b,modes)
         else
             b
         end
@@ -420,7 +410,7 @@ function setup(sim::BearingSimulation{PriorMethod})
 
     basis_vec = map(sim.boundarybasis2.basis) do b
         if isempty(b.coefficients)
-            isempty(b.fields) ? b : fields_to_fouriermodes(b,basis_order)
+            isempty(b.fields) ? b : fields_to_fouriermodes(b,modes)
         else
             b
         end
@@ -433,7 +423,7 @@ function setup(sim::BearingSimulation{PriorMethod})
         if isempty(sim.boundarydata1.coefficients)
             println("The Fourier modes for boundarydata1 are empty, they will be calculated from the fields provided")
 
-            @reset sim.boundarydata1 = fields_to_fouriermodes(sim.boundarydata1, basis_order)
+            @reset sim.boundarydata1 = fields_to_fouriermodes(sim.boundarydata1, modes)
         end
     end
 
@@ -441,7 +431,7 @@ function setup(sim::BearingSimulation{PriorMethod})
         if isempty(sim.boundarydata2.coefficients)
             println("The Fourier modes for boundarydata2 are empty, they will be calculated from the fields provided")
 
-            @reset sim.boundarydata2 = fields_to_fouriermodes(sim.boundarydata2, basis_order)
+            @reset sim.boundarydata2 = fields_to_fouriermodes(sim.boundarydata2, modes)
         end
     end    
 

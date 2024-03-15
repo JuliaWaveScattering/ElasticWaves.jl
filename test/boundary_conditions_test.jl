@@ -20,8 +20,8 @@
 # Test the traction boundary conditions are formulated correctly
     forcing_modes = rand(basis_length,4) + rand(basis_length,4) .* im
 
-    bd1 = BoundaryData(TractionBoundary(inner=true); fourier_modes=forcing_modes[:, 1:2])
-    bd2 = BoundaryData(TractionBoundary(outer=true); fourier_modes=forcing_modes[:, 3:4])
+    bd1 = BoundaryData(TractionBoundary(inner=true); coefficients = forcing_modes[:, 1:2])
+    bd2 = BoundaryData(TractionBoundary(outer=true); coefficients = forcing_modes[:, 3:4])
 
     # could regularise the lowest frequency, though it doesn't appear necessary
 
@@ -105,11 +105,11 @@
 
     bd1 = BoundaryData(
         DisplacementBoundary(inner = true);
-        fourier_modes = forcing_modes[:,1:2]
+        coefficients = forcing_modes[:,1:2]
     )
     bd2 = BoundaryData(
         DisplacementBoundary(outer = true);
-        fourier_modes = forcing_modes[:,3:4]
+        coefficients = forcing_modes[:,3:4]
     )
 
     # include ill posed modes by setting only_stable_modes = false
@@ -158,11 +158,11 @@
     forcing_modes = rand(basis_length,4) + rand(basis_length,4) .* im
     bd1 = BoundaryData(
         TractionBoundary(inner = true);
-        fourier_modes = forcing_modes[:,1:2]
+        coefficients = forcing_modes[:,1:2]
     )
     bd2 = BoundaryData(
         TractionBoundary(outer = true);
-        fourier_modes = forcing_modes[:,3:4]
+        coefficients = forcing_modes[:,3:4]
     )
 
     sim = BearingSimulation(ω, bearing, bd1, bd2; method = method)
@@ -179,11 +179,11 @@
     # setup a problem with displacement boundary conditions
     bd1 = BoundaryData(
         DisplacementBoundary(inner = true);
-        fourier_modes = field_modes(wave, bearing.inner_radius, DisplacementType())
+        coefficients = field_modes(wave, bearing.inner_radius, DisplacementType())
     )
     bd2 = BoundaryData(
         DisplacementBoundary(outer = true);
-        fourier_modes = field_modes(wave, bearing.outer_radius, DisplacementType())
+        coefficients = field_modes(wave, bearing.outer_radius, DisplacementType())
     )
 
     sim = BearingSimulation(ω, bearing, bd1, bd2; method = method)
@@ -211,7 +211,7 @@
 
     bd1 = BoundaryData(
         DisplacementBoundary(inner=true);
-        fourier_modes = field_modes(wave, bearing.inner_radius, DisplacementType()) + error
+        coefficients = field_modes(wave, bearing.inner_radius, DisplacementType()) + error
     )
 
     ε = 0.01 * maximum(abs.(field_modes(wave, bearing.outer_radius, DisplacementType())))
@@ -219,7 +219,7 @@
 
     bd2 = BoundaryData(
         DisplacementBoundary(outer=true);
-        fourier_modes = field_modes(wave, bearing.outer_radius, DisplacementType()) + error
+        coefficients = field_modes(wave, bearing.outer_radius, DisplacementType()) + error
     )
 
     method = ModalMethod(regularisation_parameter = 0.0, only_stable_modes = false)
@@ -243,11 +243,11 @@
     forcing_modes = rand(basis_length, 4) + rand(basis_length, 4) .* im
     bd1 = BoundaryData(
         TractionBoundary(inner=true);
-        fourier_modes=forcing_modes[:, 1:2]
+        coefficients=forcing_modes[:, 1:2]
     )
     bd2 = BoundaryData(
         TractionBoundary(outer=true);
-        fourier_modes=forcing_modes[:, 3:4]
+        coefficients=forcing_modes[:, 3:4]
     )
 
     method = ModalMethod(tol = 1e-1, regularisation_parameter = 1e-10, only_stable_modes = true)
@@ -261,7 +261,7 @@
 
     bd1 = BoundaryData(
         DisplacementBoundary(inner=true);
-        fourier_modes=field_modes(wave, bearing.inner_radius, DisplacementType()) + error
+        coefficients=field_modes(wave, bearing.inner_radius, DisplacementType()) + error
     );
 
     ε = 0.01 * maximum(abs.(field_modes(wave, bearing.outer_radius, DisplacementType())))
@@ -269,7 +269,7 @@
 
     bd2 = BoundaryData(
         DisplacementBoundary(outer=true);
-        fourier_modes=field_modes(wave, bearing.outer_radius, DisplacementType()) + error
+        coefficients=field_modes(wave, bearing.outer_radius, DisplacementType()) + error
     );
 
     sim = BearingSimulation(ω, bearing, bd1, bd2; method = method);

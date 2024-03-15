@@ -16,8 +16,12 @@
     λ2μ = steel.cp^2 * steel.ρ
 
 ## Forward problem with forcing on inner boundary to create a basis
-    basis_order = 30;    
-    θs = LinRange(0.0, 2pi, 2basis_order+2)[1:end-1]
+    basis_order = 30;
+
+    # modes determines which Fourier modes to consider. Could be any choice of integers
+    modes = -basis_order:basis_order    
+
+    θs = LinRange(0.0, 2pi, length(modes)+1)[1:end-1]
     # using 2basis_order + 2 guarantees that we can exactly represent the above with Fourier modes with basis_order number of modes
 
     # choose a basis for the pressure and shear on the inner boundary
@@ -47,6 +51,7 @@
         bc2_forward = TractionBoundary(outer=true)
 
         bd1_for = BoundaryData(bc1_forward, θs=θs, fields = hcat(fp1,fs1))
+        # bd1_for = fields_to_fouriermodes(bd1_for, modes)
         bd1_for = fields_to_fouriermodes(bd1_for)
     
         # a quick test that the fields and Fourier modes are exactly invertable for convenience 
@@ -54,6 +59,7 @@
         @test norm(bd_test.fields - bd1_for.fields) / norm(bd1_for.fields) < 1e-14
         
         bd2_for = BoundaryData(bc2_forward, θs=θs, fields = hcat(fp2,fs2))
+        # bd2_for = BoundaryData(bc2_forward, θs=θs, fields = hcat(fp2,fs2), modes = modes)
 
     # Solve the whole field for the forward problem        
         # the method specifies to use only stable modes.
@@ -107,7 +113,7 @@
 
 ## Test how well we recover the inner traction
     # using a convenience function
-    bd1_inner, bd2_outer = boundary_data(forward_sim, inverse_wave)
+    bd1_inner, bd2_outer = boundary_data(forward_sim, inverse_wave);
 
     # even excluding some modes the recovery is very good with just one sensor
     # this is because the higher order modes (in this case) contribute very little to the field
