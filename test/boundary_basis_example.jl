@@ -51,15 +51,13 @@
         bc2_forward = TractionBoundary(outer=true)
 
         bd1_for = BoundaryData(bc1_forward, θs=θs, fields = hcat(fp1,fs1))
-        # bd1_for = fields_to_fouriermodes(bd1_for, modes)
-        bd1_for = fields_to_fouriermodes(bd1_for)
+        bd1_for = fields_to_fouriermodes(bd1_for, modes)
     
         # a quick test that the fields and Fourier modes are exactly invertable for convenience 
         bd_test = fouriermodes_to_fields(bd1_for)
         @test norm(bd_test.fields - bd1_for.fields) / norm(bd1_for.fields) < 1e-14
         
         bd2_for = BoundaryData(bc2_forward, θs=θs, fields = hcat(fp2,fs2))
-        # bd2_for = BoundaryData(bc2_forward, θs=θs, fields = hcat(fp2,fs2), modes = modes)
 
     # Solve the whole field for the forward problem        
         # the method specifies to use only stable modes.

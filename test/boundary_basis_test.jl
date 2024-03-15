@@ -22,8 +22,9 @@
     kps .* dr
 
 ## Forward problem with forcing on inner boundary to create a basis
-    basis_order = 20;    
-    θs = LinRange(0.0, 2pi, 2basis_order+2)[1:end-1]
+    basis_order = 20;
+    modes = -basis_order:basis_order;
+    θs = LinRange(0.0, 2pi, length(modes) + 1)[1:end-1]
     # using 2basis_order + 2 guarantees that we can exactly represent the above with Fourier modes with basis_order number of modes
 
     # choose a basis for the pressure and shear on the inner boundary
@@ -226,10 +227,10 @@
         max(error1,error2)
     end
 
-    # There is no way to perfectly recover the original inner boundary data for all frequencies, as the forward problem is not perfectly solved for all frequencies. However, we can exactly recover the solution of the forward problem by solving Method 2 with the same basis_order as the forward problem
+    # There is no way to perfectly recover the original inner boundary data for all frequencies, as the forward problem is not perfectly solved for all frequencies. However, we can exactly recover the solution of the forward problem by solving Method 2 with the same modes as the forward problem
 
     sims = map(eachindex(ωs)) do i
-        modal_method = ModalMethod(tol = 1e-11, only_stable_modes = true, basis_order = forward_waves[i].method.basis_order)
+        modal_method = ModalMethod(tol = 1e-11, only_stable_modes = true, modes = forward_waves[i].method.modes)
         method = PriorMethod(tol = modal_method.tol, modal_method = modal_method)
 
         BearingSimulation(ωs[i], method, bearing, 
@@ -253,7 +254,7 @@
     # Here we just swap which boundary uses a basis and which uses just boundary data just for completeness
     
     sims = map(eachindex(ωs)) do i
-        modal_method = ModalMethod(tol = 1e-11, only_stable_modes = true, basis_order = forward_waves[i].method.basis_order)
+        modal_method = ModalMethod(tol = 1e-11, only_stable_modes = true, modes = forward_waves[i].method.modes)
         method = PriorMethod(tol = modal_method.tol, modal_method = modal_method)
 
         BearingSimulation(ωs[i], method, bearing, 

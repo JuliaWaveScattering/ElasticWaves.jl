@@ -147,8 +147,7 @@ function modes_coefficients!(sim::BearingSimulation{PriorMethod})
         is = sortperm(modes, by = abs)
 
         for i in is
-            M = boundarycondition_system(ω, bearing, sim.boundarydata1.boundarytype, sim.boundarydata2.boundarytype, modes[i])
-
+            M = boundarycondition_system(ω, bearing, boundarybasis1.basis[1].boundarytype, boundarybasis2.basis[1].boundarytype, modes[i])
             mode_errors[i] = cond(M) * eps(T)
             Ms[i] = M
 
