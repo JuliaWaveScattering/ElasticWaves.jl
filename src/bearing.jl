@@ -152,20 +152,43 @@ function BoundaryData(boundarycondition::BoundaryCondition, radius::AbstractFloa
 end
 
 struct BoundaryBasis{BD <: AbstractBoundaryData}
-    basis::Vector{BD}
+    basis::Vector{BD}   
+end
 
-    function BoundaryBasis(basis::Vector{BD}) where {BD <: AbstractBoundaryData}
-        field_lengths = [size(b.fields, 1) for b in basis]
-        fourier_mode_lengths = [size(b.coefficients, 1) for b in basis]
+function BoundaryBasis(basis::Vector{BD}) where {BD <: AbstractBoundaryData}
 
-        allsame(x) = all(y -> y == first(x), x)
+    T = basis[1].coefficients |> typeof
+    Tc = T.parameters[1]
+    
+    T = basis[1].fields |> typeof
+    Tf = T.parameters[1]
 
-        if !allsame(fourier_mode_lengths) || !allsame(field_lengths)
-            error("The length of the fields and coefficients of each BoundaryData in a BoundaryBasis need to be equal")
-        end    
+    # find all the angles and modes represented. 
+    θs = union([b.θs for b in basis]...)
+    modes = union([b.modes for b in basis]...)
 
-    return new{BD}(basis)
+    # Pad each element of the basis to cover the same angles and modes
+    basis = map(basis) do b
+        add_modes = setdiff(modes, b.modes)
+        b_modes = [add_modes; b.modes]
+        b_coes = [zeros(Tc, add_modes |> length , 2); b.coefficients]
+
+        inds = sortperm(b_modes, by = abs)
+        @reset b.modes = b_modes[inds]
+        @reset b.coefficients = b_coes[inds,:]
+
+        add_θs = setdiff(θs, b.θs)
+        b_θs = [add_θs; b.θs]
+        b_fields = [zeros(Tf, add_θs |> length , 2); b.fields]
+
+        inds = sortperm(b_θs)
+        @reset b.θs = b_θs[inds]
+        @reset b.fields = b_fields[inds,:]
+
+        b
     end    
+
+    return BoundaryBasis{BD}(basis)
 end
 
 import Base: isempty
@@ -197,7 +220,7 @@ mutable struct BearingSimulation{M <: SolutionMethod, BC1 <: BoundaryCondition, 
     boundarybasis2::BoundaryBasis{BD2}
 end
 
-function BearingSimulation(ω::T, method::M, bearing::RollerBearing{T}, 
+function BearingSimulation(ω::Real, method::M, bearing::RollerBearing{T}, 
         boundarydata1::BoundaryData{BC1,T},
         boundarydata2::BoundaryData{BC2,T};
         nondimensionalise::Bool = true,
@@ -205,7 +228,7 @@ function BearingSimulation(ω::T, method::M, bearing::RollerBearing{T},
         boundarybasis2::BoundaryBasis{BD2}  = BoundaryBasis([BoundaryData(boundarydata2.boundarytype)])
     ) where {T, M <: SolutionMethod, BC1 <: BoundaryCondition, BC2 <: BoundaryCondition, BD1 <: BoundaryData, BD2 <: BoundaryData,}
 
-    sim = BearingSimulation{M,BC1,BC2,BD1,BD2,T}(ω, method, nondimensionalise, bearing, boundarydata1, boundarydata2, boundarybasis1, boundarybasis2)
+    sim = BearingSimulation{M,BC1,BC2,BD1,BD2,T}(T(ω), method, nondimensionalise, bearing, boundarydata1, boundarydata2, boundarybasis1, boundarybasis2)
 
     return setup(sim)
 end
@@ -281,7 +304,7 @@ function nondimensionalise!(sim::BearingSimulation)
 end
 
 
-function BearingSimulation(ω::T, bearing::RollerBearing{T}, boundarydata1::BD1, boundarydata2::BD2;
+function BearingSimulation(ω::Real, bearing::RollerBearing{T}, boundarydata1::BD1, boundarydata2::BD2;
     method::M = NoBearingMethod(),
     kws...
 ) where {T, M <: SolutionMethod, BD1 <: BoundaryData, BD2 <: BoundaryData}

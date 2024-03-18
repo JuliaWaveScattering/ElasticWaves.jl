@@ -1,5 +1,4 @@
 using ElasticWaves
-
 using Test, Statistics, LinearAlgebra, MultipleScattering
 
 # need a test to check that the equations for displacement and traction were written correctly. One possible test is to check one version of the integral form of the principal of virtual work. For example, we could check that
