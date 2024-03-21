@@ -92,19 +92,19 @@ function field(wave::ElasticWave{2}, x::AbstractVector{T}, field_type::FieldType
 end
 
 
-function pressure_field_mode(ω::T, r::Union{T,Complex{T}}, medium::Elastic{2}, basis_order::Int, ::DisplacementType) where T
+function pressure_field_mode(ω::T, r::Union{T,Complex{T}}, medium::Elastic{2}, mode::Int, ::DisplacementType) where T
 
     kP = ω / medium.cp;
-    n = basis_order;
+    n = mode;
 
     bessel_modes(J::Function) = [kP/2 * (J(n-1, kP*r) - J(n+1, kP*r)), im * n * J(n, kP*r) / r]
 
     return hcat(bessel_modes(besselj), bessel_modes(hankelh1))
 end
 
-function shear_field_mode(ω::T, r::Union{T,Complex{T}}, medium::Elastic{2}, basis_order::Int, ::DisplacementType) where T
+function shear_field_mode(ω::T, r::Union{T,Complex{T}}, medium::Elastic{2}, mode::Int, ::DisplacementType) where T
 
-    n = basis_order;
+    n = mode;
     cs = medium.cs
     kS = ω / cs
 
@@ -113,10 +113,10 @@ function shear_field_mode(ω::T, r::Union{T,Complex{T}}, medium::Elastic{2}, bas
     return hcat(bessel_modes(besselj), bessel_modes(hankelh1))
 end
 
-function pressure_field_mode(ω::T, r::Union{T,Complex{T}}, medium::Elastic{2}, basis_order::Int, ::TractionType) where T
+function pressure_field_mode(ω::T, r::Union{T,Complex{T}}, medium::Elastic{2}, mode::Int, ::TractionType) where T
 
     ρ = medium.ρ
-    n = basis_order;
+    n = mode;
     cp = medium.cp; cs = medium.cs
     kP = ω / cp; kS = ω / cs
 
@@ -129,10 +129,10 @@ function pressure_field_mode(ω::T, r::Union{T,Complex{T}}, medium::Elastic{2}, 
     return hcat(bessel_modes(besselj), bessel_modes(hankelh1))
 end
 
-function shear_field_mode(ω::T, r::Union{T,Complex{T}}, medium::Elastic{2}, basis_order::Int, ::TractionType) where T
+function shear_field_mode(ω::T, r::Union{T,Complex{T}}, medium::Elastic{2}, mode::Int, ::TractionType) where T
 
     ρ = medium.ρ
-    n = basis_order;
+    n = mode;
     cp = medium.cp; cs = medium.cs
     kP = ω / cp; kS = ω / cs
 

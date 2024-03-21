@@ -27,7 +27,7 @@ kp * dr
 
 # create the true loading profile, then solve the forward problem to create dat for tthe inverse problem
 
-    loading_resolution = 60;
+    loading_resolution = 40;
     loading_θs = LinRange(0.0, 2pi, 2*loading_resolution+2)[1:end-1]
 
     θo = 3pi/2;
@@ -42,8 +42,8 @@ kp * dr
     # fp_loading = sum(amps[i] .* cos.((i-1) .* loading_θs) for i in eachindex(amps));
     # fs_loading = 0.0 .* fp_loading;
 
-    using Plots 
-    plot(loading_θs, real.(fp_loading))
+    # using Plots 
+    # plot(loading_θs, real.(fp_loading))
 
     bc1_forward = TractionBoundary(inner=true)
     bc2_forward = TractionBoundary(outer=true)
@@ -55,8 +55,8 @@ kp * dr
 
     loading_profile2 = fields_to_fouriermodes(loading_profile, -3:3)
     loading_profile2 = fouriermodes_to_fields(loading_profile2)
-    plot!(loading_θs, real.(loading_profile2.fields[:,1]), linestyle = :dash)
-    scatter(loading_profile2.modes, abs.(loading_profile2.coefficients[:,1]))
+    # plot!(loading_θs, real.(loading_profile2.fields[:,1]), linestyle = :dash)
+    # scatter(loading_profile2.modes, abs.(loading_profile2.coefficients[:,1]))
 
     bd1_for = BoundaryData(ω, bearing, loading_profile)
 
@@ -69,15 +69,15 @@ kp * dr
         fields = [zeros(Complex{Float64},  forward_θs |> length) zeros(Complex{Float64}, forward_θs |> length)]
     )
 
-    modal_method = ModalMethod(tol = 1e-6, only_stable_modes = true)
+    modal_method = ModalMethod(tol = 1e-5, only_stable_modes = true)
     forward_sim = BearingSimulation(ω, modal_method, bearing, bd1_for, bd2_for);
 
     wave = ElasticWave(forward_sim);
     maximum(wave.method.mode_errors .|> abs)
 
     # # We should check whether the solution has converged. That is, if the coefficients are getting very small as the fourier mode increase
-    scatter(wave.potentials[1].modes, abs.(wave.potentials[1].coefficients[1,:]))
-    plot!(xlims = (-30,-18))
+    # scatter(wave.potentials[1].modes, abs.(wave.potentials[1].coefficients[1,:]))
+    # plot!(xlims = (-30,-18))
 
     # Need the frequency mode below to measure the mode 0 of the loading
     frequency_order * bearing.number_of_rollers
@@ -86,8 +86,7 @@ kp * dr
     bc1_inverse = DisplacementBoundary(outer=true)
     bc2_inverse = TractionBoundary(outer=true)
 
-    numberofsensors = 3
-    numberofsensors = 18
+    numberofsensors = 7
 
     θs_inv = LinRange(0, 2pi, numberofsensors + 1)[1:end-1]
 
@@ -106,34 +105,19 @@ kp * dr
 
     # as min_mode = 0 and max_mode is very large, we can consider any loading profiles with modes = -max_modes:max_modes 
 
-    loading_basis_order = 3;
-    boundarydata = begin
+    loading_basis_order = 3;   
+    boundarydatas = map(-loading_basis_order:loading_basis_order) do n
         fp = [1.0 + 0.0im]
 
         # The representation of the loading itself
         loading_data = BoundaryData(bc1_forward, 
-            modes = [0],
+            modes = [n],
             coefficients = [fp 0.0.*fp]
         )
 
         # How loading is translated into boundary data
         BoundaryData(ω, bearing, loading_data)
     end;
-    
-    boundarydatas = map(1:loading_basis_order) do n
-        fp = [1.0 + 0.0im, 1.0 + 0.0im]
-
-        # The representation of the loading itself
-        loading_data = BoundaryData(bc1_forward, 
-            modes = [-n,n],
-            coefficients = [fp 0.0.*fp]
-        )
-
-        # How loading is translated into boundary data
-        BoundaryData(ω, bearing, loading_data)
-    end;
-
-    boundarydatas = [boundarydata; boundarydatas];
     boundarybasis1 = BoundaryBasis(boundarydatas)
 
 # solve the inverse problem with the PriorMethod
@@ -147,25 +131,25 @@ kp * dr
     inverse_wave.method.condition_number
     inverse_wave.method.boundary_error
 
-    scatter(wave.potentials[1].modes, abs.(wave.potentials[1].coefficients[1,:]), markersize = 4.0)
-    scatter!(inverse_wave.potentials[1].modes, abs.(inverse_wave.potentials[1].coefficients[1,:]), markersize = 3.0)
-    plot!(xlims = (-1 -loading_basis_order - mZ, loading_basis_order - mZ + 1))
+    # scatter(wave.potentials[1].modes, abs.(wave.potentials[1].coefficients[1,:]), markersize = 4.0)
+    # scatter!(inverse_wave.potentials[1].modes, abs.(inverse_wave.potentials[1].coefficients[1,:]), markersize = 3.0)
+    # plot!(xlims = (-1 -loading_basis_order - mZ, loading_basis_order - mZ + 1))
 
     predicted_forcing_coefficients = hcat(
         field_modes(inverse_wave, bearing.inner_radius, bd1_for.boundarytype.fieldtype),
         field_modes(inverse_wave, bearing.outer_radius, bd1_for.boundarytype.fieldtype)
     )
 
-    scatter(inverse_wave.method.modal_method.modes, abs.(predicted_forcing_coefficients[:,1]))
-    scatter!(inverse_wave.method.modal_method.modes, abs.(predicted_forcing_coefficients[:,1]))
+    # scatter(inverse_wave.method.modal_method.modes, abs.(predicted_forcing_coefficients[:,1]))
+    # scatter!(inverse_wave.method.modal_method.modes, abs.(predicted_forcing_coefficients[:,1]))
 
 
    bd1_inner, bd2_outer = boundary_data(forward_sim, inverse_wave);
 
-   plot(bd1_inner.θs, 2pi / Z .* abs.(bd1_inner.fields[:,1]), label = "predicted loading")
-   plot!(loading_θs, abs.(fp_loading), linestyle = :dash, label = "true loading")
+#    plot(bd1_inner.θs, 2pi / Z .* abs.(bd1_inner.fields[:,1]), label = "predicted loading")
+#    plot!(loading_θs, abs.(fp_loading), linestyle = :dash, label = "true loading")
    
-   plot(real.(bd2_outer.fields))
+#    plot(real.(bd2_outer.fields))
 
    norm(bd1_inner.fields - bd1_for.fields) / norm(bd1_for.fields)
 end

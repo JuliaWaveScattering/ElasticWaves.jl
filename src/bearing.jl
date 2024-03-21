@@ -305,9 +305,8 @@ end
 
 
 function BearingSimulation(ω::Real, bearing::RollerBearing{T}, boundarydata1::BD1, boundarydata2::BD2;
-    method::M = NoBearingMethod(),
-    kws...
-) where {T, M <: SolutionMethod, BD1 <: BoundaryData, BD2 <: BoundaryData}
+        method::M = NoBearingMethod(), kws...
+    ) where {T, M <: SolutionMethod, BD1 <: BoundaryData, BD2 <: BoundaryData}
 
     if typeof(method) == NoBearingMethod
         @warn "no method was chosen for this bearing simulation. Will choose the default ModalMethod which makes no assumption about the forcing or bearings"
@@ -334,6 +333,10 @@ function setup(sim::BearingSimulation{ModalMethod})
         modes_vec = bd_to_modes.([boundarydata1, boundarydata2])
 
         modes = intersect(modes_vec...) |> collect
+
+        if isempty(modes)
+            error("boundarydata1 and boundarydata2 share no modes in common. Fourier modes are required for the ModalMethod")
+        end    
 
         @reset sim.method.modes = modes
     end

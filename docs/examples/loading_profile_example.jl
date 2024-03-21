@@ -60,7 +60,6 @@ plot(bearing, 0.0)
     θo = pi;
     fp_loading =  fp_loading .- exp.(-20 .* ((loading_θs) .- (θo)).^2) + loading_θs .* 0im; 
 
-
     plot(loading_θs, real.(fp_loading))
 
     bc1_forward = TractionBoundary(inner=true)
@@ -72,7 +71,7 @@ plot(bearing, 0.0)
     θs = LinRange(0.0, 2pi, 2basis_order+2)[1:end-1]
 
     bd1_for = BoundaryData(ω, bearing, loading_profile)
-    bd2_for = BoundaryData(bc2_forward, θs=θs, coefficients =  0.0 .* bd1_for.coefficients)
+    bd2_for = BoundaryData(bc2_forward, θs=θs, modes = bd1_for.modes, coefficients =  0.0 .* bd1_for.coefficients)
 
     modal_method = ModalMethod(tol = 1e-9, only_stable_modes = true)
     forward_sim = BearingSimulation(ω, bearing, bd1_for, bd2_for; 

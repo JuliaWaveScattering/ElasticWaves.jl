@@ -34,19 +34,17 @@ function BoundaryData(ω::Number, bearing::RollerBearing, loading_profile::Bound
     # the natural wavenumber of the bearing ω_m that is closest to the given frequency ω is ω_m = frequency_order * Z * Ω
     frequency_order = Int(round(ω / (Z * Ω)))
 
-    boundary_modes = modes .- Z*frequency_order
+    boundary_modes = modes .+ Z*frequency_order
     boundary_fourier_coefficients = (Z/(2pi)) .* coefficients
 
     fields = fouriermodes_to_fields(loading_profile.θs, boundary_fourier_coefficients, boundary_modes)
 
-    bd =  BoundaryData(loading_profile.boundarytype; 
+    return BoundaryData(loading_profile.boundarytype; 
         θs = loading_profile.θs, 
         fields = fields,
         coefficients = boundary_fourier_coefficients,
         modes =  boundary_modes
     )
-
-    return bd
 end
 
 function point_contact_boundary_data(θs::Vector{T}, bearing::RollerBearing, bc ::BoundaryCondition{TractionType}, basis_order::Int, friction_coefficient = 1.0) where{T}
