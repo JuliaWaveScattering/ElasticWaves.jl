@@ -25,7 +25,7 @@ kp * dr
 
 # create the true loading profile, then solve the forward problem to create dat for tthe inverse problem
 
-    loading_resolution = 50;
+    loading_resolution = 40;
     loading_θs = LinRange(0.0, 2pi, 2*loading_resolution+2)[1:end-1]
 
     θo = 3pi/2;
@@ -84,13 +84,13 @@ kp * dr
 # Create a fourier basis for the loading, and then create a boundary basis from this
 
     mZ = frequency_order * bearing.number_of_rollers
-    inds = -wave.method.basis_order:wave.method.basis_order
+    inds = wave.method.modes
     min_loading_order = minimum(abs.(inds .- mZ))
-    max_loading_order = wave.method.basis_order .- mZ
+    max_loading_order = maximum(abs.(inds .- mZ))
 
-    l = (size(loading_profile.coefficients,1) - 1)/2
+    # l = (size(loading_profile.coefficients,1) - 1)/2
     loading_profile = fields_to_fouriermodes(loading_profile)
-    plot(-l:l,abs.(loading_profile.coefficients), xlims = (-10.,10))
+    plot(loading_profile.modes,abs.(loading_profile.coefficients), xlims = (-10.,10))
 
     loading_basis_order = 2;
     loading_datas = map(0:loading_basis_order) do n
@@ -119,6 +119,7 @@ kp * dr
    bd1_inner, bd2_outer = boundary_data(forward_sim, inverse_wave);
 
    using Plots 
+   Z = bearing.number_of_rollers
    plot(loading_θs, 2pi / Z .* abs.(bd1_inner.fields[:,1]), label = "predicted loading")
    plot!(loading_θs, abs.(fp_loading), linestyle = :dash, label = "true loading")
    
