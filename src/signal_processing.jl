@@ -6,15 +6,18 @@ end
 function fields_to_fouriermodes(boundarydata::AbstractBoundaryData, modes::AbstractVector{Int})
     
     coefficients = fields_to_fouriermodes(boundarydata.θs, boundarydata.fields, modes)
+
+    is = sortperm_modes(modes);
     
     # creates a copy of boundarydata
-    @reset boundarydata.coefficients = coefficients
-    @reset boundarydata.modes = modes |> collect
+    @reset boundarydata.coefficients = coefficients[is,:]
+    @reset boundarydata.modes = modes[is] |> collect
     
     return boundarydata
 end
 
 function fouriermodes_to_fields(boundarydata::AbstractBoundaryData)
+
     fields = fouriermodes_to_fields(boundarydata.θs, boundarydata.coefficients, boundarydata.modes)
     
     @reset boundarydata.fields = fields
@@ -40,10 +43,11 @@ function fields_to_fouriermodes(θs::AbstractVector, fields::AbstractArray, mode
     fouriermodes = exps \ fields
 end
 
-function fouriermodes_to_fields(θs::AbstractVector, fouriermodes::AbstractArray, basis_order::Int = basislength_to_basisorder(PhysicalMedium{2,1}, size(fouriermodes,1)))
+# the function below leads to unexpected errors
+# function fouriermodes_to_fields(θs::AbstractVector, fouriermodes::AbstractArray, basis_order::Int = basislength_to_basisorder(PhysicalMedium{2,1}, size(fouriermodes,1)))
 
-    fouriermodes_to_fields(θs, fouriermodes, -basis_order:basis_order)
-end
+#     fouriermodes_to_fields(θs, fouriermodes, -basis_order:basis_order)
+# end
 
 function fouriermodes_to_fields(θs::AbstractVector, fouriermodes::AbstractArray, modes::AbstractVector{Int})
 
@@ -55,6 +59,19 @@ function fouriermodes_to_fields(θs::AbstractVector, fouriermodes::AbstractArray
 end
 
 import LinearAlgebra: normalize!
+
+"""
+    sortperm_modes(modes::AbstractVector{Int})
+    
+Returns the indices `is` such that `modes[is]` is the standard ordering of the modes. Currently the lowest order modes are first.    
+"""
+function sortperm_modes(modes::AbstractVector{Int}) 
+
+    is1 = sortperm(modes)
+    is2 = sortperm(modes[is1], by = abs)
+
+    return is1[is2]
+end
 
 function normalize!(bb::BoundaryBasis)
     for bd in bb.basis

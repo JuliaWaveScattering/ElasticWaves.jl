@@ -33,7 +33,7 @@ export modal_system, t_matrix, internal_matrix
 export field_modes, displacement, traction, pressure_field_mode, shear_field_mode
 
 # signal_processing.jl
-export fouriermodes_to_fields, fields_to_fouriermodes, normalize!
+export fouriermodes_to_fields, fields_to_fouriermodes, sortperm_modes, normalize!
 
 # cylindrical/utils.jl
 export estimate_basisorder # soon to be removed

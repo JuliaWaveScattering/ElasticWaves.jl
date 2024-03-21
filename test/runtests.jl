@@ -20,7 +20,10 @@ include("source_scattering_test.jl")
 
     # tests that the boundary conditions are formed correctly, and uniqueness
     include("inverse_problems_test.jl")
-
-    # include("boundary_basis.jl")
+    
+    # tests for the PriorMethod that uses a basis for the solution
     include("boundary_basis_example.jl")
     include("boundary_basis_test.jl")
+    
+    # tests for the loading profile
+    # include("loading_profile_tests.jl")

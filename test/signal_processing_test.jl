@@ -27,13 +27,14 @@
     # add forcing with exact fourier modes
     # still invertable if basis_order is large enough to include the highest mode 17
     basis_order = 17
+    modes = -basis_order:basis_order
 
     f1 = rand() .* cos.(θs .* 3) + im .* rand() .* sin.(θs .* 14)
     f2 = rand() .* cos.(- θs .* 17) + im .* rand() .* cos.(θs .* 2)
     fields = hcat(f1,f2)
 
     coefficients = fields_to_fouriermodes(θs,fields,basis_order)
-    fields2 = fouriermodes_to_fields(θs,coefficients)
+    fields2 = fouriermodes_to_fields(θs, coefficients, modes)
 
     @test maximum(abs.(fields - fields2)) < 1e-12
 

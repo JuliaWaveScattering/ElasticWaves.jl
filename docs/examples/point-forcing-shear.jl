@@ -86,7 +86,7 @@ results = map(eachindex(ωs)) do i
     # scale the potential to match the units of stress
     scale = steel.ρ * ωs[i]^2
 
-    potential = HelmholtzPotential{2}(wave.potentials[2].wavespeed, wave.potentials[2].wavenumber, scale .* wave.potentials[2].coefficients)
+    potential = HelmholtzPotential{2}(wave.potentials[2].wavespeed, wave.potentials[2].wavenumber, scale .* wave.potentials[2].coefficients, wave.potentials[2].modes)
 
     res = field(potential, bearing; res = 120)
     # plot(res, ωs[i]; seriestype=:contour)

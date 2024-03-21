@@ -25,7 +25,24 @@ struct ModalMethod <: SolutionMethod
     only_stable_modes::Bool
     modes::Vector{Int}
     mode_errors::Vector{Float64}
+
+    function ModalMethod(tol::Float64, regularisation_parameter::Float64, only_stable_modes::Bool, modes::Vector{Int}, mode_errors::Vector{Float64})
+
+        is = sortperm_modes(modes);
+        modes = modes[is]
+
+        if !isempty(mode_errors)
+            if length(mode_errors) != length(modes)
+                @warn("both mode_errors and modes where given but have different lengths.")
+
+            else mode_errors = mode_errors[is]
+            end
+        end
+
+        new(tol, regularisation_parameter, only_stable_modes, modes, mode_errors)
+    end    
 end
+
 struct GapMethod <: BearingMethod end
 
 struct PriorMethod <: SolutionMethod
@@ -40,7 +57,7 @@ end
 function ModalMethod(; 
         tol::Float64 = eps(Float64)^(1/2), 
         regularisation_parameter::Float64 = zero(Float64),
-        only_stable_modes = true,
+        only_stable_modes::Bool = true,
         modes::Vector{Int} = Int[],
         mode_errors::Vector = Float64[]
     )

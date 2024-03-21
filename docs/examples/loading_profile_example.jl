@@ -127,7 +127,7 @@ plot(bearing, 0.0)
         coes = wave.potentials[1].coefficients;
         # coes[2,:] .= 0.0 + 0.0im
 
-        potential = HelmholtzPotential{2}(wave.potentials[1].wavespeed, wave.potentials[1].wavenumber, scale .* coes)
+        potential = HelmholtzPotential{2}(wave.potentials[1].wavespeed, wave.potentials[1].wavenumber, scale .* coes, wave.potentials[1].modes)
 
         res = field(potential, bearing; res = 120)
     end

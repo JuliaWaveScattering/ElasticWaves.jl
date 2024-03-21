@@ -91,7 +91,7 @@ function modes_coefficients!(sim::BearingSimulation{ModalMethod})
         mode_errors[i] = error
 
         if error > method.tol
-            @warn "The relative error for the boundary conditions was $(error) for (ω,mode) = $((ω,modes[i]))"
+            @warn("The relative error for the boundary conditions was $(error) for (ω,mode) = $((ω,modes[i]))")
             if method.only_stable_modes 
                 mode_errors[i] = zero(T)
                 break 
@@ -144,7 +144,8 @@ function modes_coefficients!(sim::BearingSimulation{PriorMethod})
         mode_errors = zeros(T, modes |> length)
         Ms = [zeros(Complex{T},4,4) for n = modes]
 
-        is = sortperm(modes, by = abs)
+        # this sortperm_modes below is now depricated, as all modes arrive at this point already sorted in this order. Will remove 
+        is = sortperm_modes(modes)
 
         for i in is
             M = boundarycondition_system(ω, bearing, boundarybasis1.basis[1].boundarytype, boundarybasis2.basis[1].boundarytype, modes[i])
@@ -178,6 +179,7 @@ function modes_coefficients!(sim::BearingSimulation{PriorMethod})
             basis1 = map(boundarybasis1.basis) do b
                 if !isempty(b.coefficients)
                    @reset b.coefficients = b.coefficients[inds,:]
+                   @reset b.modes = b.modes[inds]
                 end
                 b
             end;
@@ -186,6 +188,7 @@ function modes_coefficients!(sim::BearingSimulation{PriorMethod})
             basis2 = map(boundarybasis2.basis) do b
                 if !isempty(b.coefficients)
                    @reset b.coefficients = b.coefficients[inds,:]
+                   @reset b.modes = b.modes[inds]
                 end
                 b
             end;
@@ -199,7 +202,6 @@ function modes_coefficients!(sim::BearingSimulation{PriorMethod})
 
     # calculate the prior matrix and bias vector
         prior_matrix, bias_vector = prior_and_bias(modes, boundarydata1, boundarydata2, boundarybasis1, boundarybasis2) 
-
           
     # Define the linear prior matrix B and prior c
         # δ = method.regularisation_parameter

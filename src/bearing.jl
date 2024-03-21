@@ -97,6 +97,29 @@ struct BoundaryData{BC <: BoundaryCondition, T} <: AbstractBoundaryData{BC}
     fields::Matrix{Complex{T}}
     coefficients::Matrix{Complex{T}}
     modes::Vector{Int}
+
+    function BoundaryData(boundarytype::BC, θs::AbstractVector{T}, fields::Matrix{Complex{T}}, coefficients::Matrix{Complex{T}}, modes::AbstractVector{Int}) where {BC <: BoundaryCondition, T}
+
+        if !isempty(coefficients)
+            if size(coefficients,2) != 2
+                @error "the coefficients should have only two columns" 
+            end
+    
+            is = sortperm_modes(modes);
+            if modes != modes[is]
+                @warn "A non standard order for the modes has been given. The standard order is assumed to be true by many functions"
+            end    
+        end    
+    
+        if !isempty(fields) 
+            if size(fields,2) != 2
+                @error "the fields should have only two columns"
+            end
+        end
+
+        return new{BC, T}(boundarytype, θs |> collect, fields, coefficients, modes |> collect)
+    end
+
 end
 
 function BoundaryData(boundarytype::BC;
@@ -107,7 +130,7 @@ function BoundaryData(boundarytype::BC;
     ) where {BC <: BoundaryCondition, T}
 
     if !isempty(coefficients)
-        if size(coefficients,2) != 2  
+        if size(coefficients,2) != 2
             @error "the coefficients should have only two columns" 
         end
 
@@ -117,21 +140,29 @@ function BoundaryData(boundarytype::BC;
 
         elseif size(coefficients,1) != length(modes)
             @error "the Fourier coefficients should have the same length as modes"
-        end    
-    end    
+        end
 
-    if !isempty(fields) 
+        is = sortperm_modes(modes);
+        modes = modes[is];
+        coefficients = coefficients[is,:]; 
+    end   
+
+    if !isempty(fields)
+        
         if size(fields,2) != 2
             @error "the fields should have only two columns"
         end
         if size(fields,1) != length(θs)
             @error "the fields should have the same length as θs"
-        end    
+        end
+
+        is = sortperm(θs);
+        θs = θs[is];
+        fields = fields[is,:];
     end
 
-    return BoundaryData{BC,T}(boundarytype,θs,fields,coefficients,modes |> collect)
+    return BoundaryData(boundarytype,θs |> collect, fields, coefficients, modes |> collect)
 end
-
 
 
 """
@@ -152,43 +183,43 @@ function BoundaryData(boundarycondition::BoundaryCondition, radius::AbstractFloa
 end
 
 struct BoundaryBasis{BD <: AbstractBoundaryData}
-    basis::Vector{BD}   
-end
+    basis::Vector{BD}
 
-function BoundaryBasis(basis::Vector{BD}) where {BD <: AbstractBoundaryData}
+    function BoundaryBasis(basis::Vector{BD}) where {BD <: AbstractBoundaryData}
 
-    T = basis[1].coefficients |> typeof
-    Tc = T.parameters[1]
+        T = basis[1].coefficients |> typeof
+        Tc = T.parameters[1]
+        
+        T = basis[1].fields |> typeof
+        Tf = T.parameters[1]
     
-    T = basis[1].fields |> typeof
-    Tf = T.parameters[1]
-
-    # find all the angles and modes represented. 
-    θs = union([b.θs for b in basis]...)
-    modes = union([b.modes for b in basis]...)
-
-    # Pad each element of the basis to cover the same angles and modes
-    basis = map(basis) do b
-        add_modes = setdiff(modes, b.modes)
-        b_modes = [add_modes; b.modes]
-        b_coes = [zeros(Tc, add_modes |> length , 2); b.coefficients]
-
-        inds = sortperm(b_modes, by = abs)
-        @reset b.modes = b_modes[inds]
-        @reset b.coefficients = b_coes[inds,:]
-
-        add_θs = setdiff(θs, b.θs)
-        b_θs = [add_θs; b.θs]
-        b_fields = [zeros(Tf, add_θs |> length , 2); b.fields]
-
-        inds = sortperm(b_θs)
-        @reset b.θs = b_θs[inds]
-        @reset b.fields = b_fields[inds,:]
-
-        b
-    end    
-
-    return BoundaryBasis{BD}(basis)
+        # find all the angles and modes represented. 
+        θs = union([b.θs for b in basis]...)
+        modes = union([b.modes for b in basis]...)
+    
+        # Pad each element of the basis to cover the same angles and modes
+        basis_padded = map(basis) do b
+            add_modes = setdiff(modes, b.modes)
+            b_modes = [add_modes; b.modes]
+            b_coes = [zeros(Tc, add_modes |> length , 2); b.coefficients]
+    
+            inds = sortperm_modes(b_modes)
+            @reset b.modes = b_modes[inds]
+            @reset b.coefficients = b_coes[inds,:]
+    
+            add_θs = setdiff(θs, b.θs)
+            b_θs = [add_θs; b.θs]
+            b_fields = [zeros(Tf, add_θs |> length , 2); b.fields]
+    
+            inds = sortperm(b_θs)
+            @reset b.θs = b_θs[inds]
+            @reset b.fields = b_fields[inds,:]
+    
+            b
+        end    
+    
+        return new{BD}(basis_padded)
+    end
 end
 
 import Base: isempty
@@ -336,7 +367,10 @@ function setup(sim::BearingSimulation{ModalMethod})
 
         if isempty(modes)
             error("boundarydata1 and boundarydata2 share no modes in common. Fourier modes are required for the ModalMethod")
-        end    
+        end
+
+        is = sortperm_modes(modes);
+        modes = modes[is];
 
         @reset sim.method.modes = modes
     end
@@ -351,9 +385,10 @@ function setup(sim::BearingSimulation{ModalMethod})
     elseif modes != boundarydata1.modes 
         
         if setdiff(modes,boundarydata1.modes) |> isempty
-            inds = [findfirst(m .== boundarydata1.modes) for m in modes]
-            @reset boundarydata1.modes = modes
-            @reset boundarydata1.coefficients = boundarydata1.coefficients[inds,:]
+            error("the modes should be sorted the same way by construction")
+            # inds = [findfirst(m .== boundarydata1.modes) for m in modes]
+            # @reset boundarydata1.modes = modes
+            # @reset boundarydata1.coefficients = boundarydata1.coefficients[inds,:]
 
         else error("There are not enough Fourier coefficients given in boundarydata1")
         end        

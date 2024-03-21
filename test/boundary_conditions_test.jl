@@ -13,7 +13,8 @@
 
     basis_order = 10
     modes = -basis_order:basis_order
-    basis_length = basisorder_to_basislength(Acoustic{Float64,2}, basis_order)
+    # basis_length = basisorder_to_basislength(Acoustic{Float64,2}, basis_order)
+    basis_length = length(modes)
 
     @test (Vector{BoundaryCondition{TractionType}} <: Vector{BoundaryCondition}) == false
     @test Vector{BoundaryCondition{TractionType}} <: (Vector{BC} where BC <: BoundaryCondition)
@@ -44,33 +45,24 @@
 
     # check that the predicted modes of the traction 
     # note: could just use TractionType() instead of bd1.boundarytype.fieldtype and bd2.boundarytype.fieldtype
-    traction_forcing_coefficients = [
-        hcat(
-            field_modes(wave, bearing.inner_radius, bd1.boundarytype.fieldtype),
-            field_modes(wave, bearing.outer_radius, bd1.boundarytype.fieldtype)
-        )
-    for wave in waves]
-    
-    # it helps to compare the errors mode by mode from n = 0 until n = basis_order 
-    traction_errors = [
-        sum(abs2,traction_modes - forcing_coefficients, dims=2)[basis_order:2basis_order+1]
-    for traction_modes in traction_forcing_coefficients]    
+    traction_mode_errors = [
+        sum.(abs2,field_modes(wave, bearing.inner_radius, bd1.boundarytype.fieldtype) - bd1.coefficients) + 
+        sum.(abs2,field_modes(wave, bearing.outer_radius, bd2.boundarytype.fieldtype) - bd2.coefficients)
+    for wave in waves];
 
     # as the mode increase, or the frequency decreases, the problem becomes more ill-conditioned
-    traction_errors[1] |> norm > 1.0
+    traction_mode_errors[1] |> norm > 1.0
 
     # however the first modes are reasonably conditioned
-    @test traction_errors[1][1:3] |> norm < 8e-3
+    @test traction_mode_errors[1][1:3,:] |> norm < 8e-3
 
     # for higher frequencies in this case all the errors are small
-    @test traction_errors[2] |> norm < 1e-20
-    @test traction_errors[3] |> norm < 1e-20 
+    @test traction_mode_errors[2] |> norm < 1e-20
+    @test traction_mode_errors[3] |> norm < 1e-20 
 
     # now we show how to compare the fields in the boundary, instead of the fourier modes
     θs = -pi:0.1:pi; θs |> length;
-    exps = [
-        exp(im * θ * m)
-    for θ in θs, m = -basis_order:basis_order];
+    exps = [exp(im * θ * m) for θ in θs, m = modes];
 
     # the given forcing
     forcing = exps * forcing_coefficients;
@@ -120,8 +112,7 @@
     sims = [BearingSimulation(ω, bearing, bd1, bd2; method = method) for ω in ωs];
     waves = [ElasticWave(s) for s in sims];
 
-    θs = -pi:0.1:pi; θs |> length;
-    exps = [exp(im * θ * m) for θ in θs, m = -basis_order:basis_order];
+    exps = [exp(im * θ * m) for θ in θs, m = modes];
 
     forcing = exps * forcing_coefficients;
     forcing_inner = forcing[:,1:2];
@@ -173,41 +164,39 @@
     sim = BearingSimulation(ω, bearing, bd1, bd2; method = method)
     wave = ElasticWave(sim);
 
-    traction_forcing_coefficients = hcat(
-        field_modes(wave, bearing.inner_radius, TractionType()),
-        field_modes(wave, bearing.outer_radius, TractionType())
-    )
+    traction_modes_error = norm(field_modes(wave, bearing.inner_radius, TractionType()) - bd1.coefficients) 
+    traction_modes_error = traction_modes_error + norm(field_modes(wave, bearing.outer_radius, TractionType()) - bd2.coefficients)
 
     # check traction modes are correct
-    @test maximum(abs.(traction_forcing_coefficients - forcing_coefficients)) / mean(abs.(forcing_coefficients)) < 1e-10
+    @test traction_modes_error / mean(abs.(forcing_coefficients)) < 1e-10
 
     # setup a problem with displacement boundary conditions
-    bd1 = BoundaryData(
+    bd1_inverse = BoundaryData(
         DisplacementBoundary(inner = true);
         coefficients = field_modes(wave, bearing.inner_radius, DisplacementType()),
-        modes = modes
+        modes = wave.method.modes # need to give correct order of modes! So using modes = modes would be wrong here
     )
-    bd2 = BoundaryData(
+    bd2_inverse = BoundaryData(
         DisplacementBoundary(outer = true);
         coefficients = field_modes(wave, bearing.outer_radius, DisplacementType()),
-        modes = modes
+        modes = wave.method.modes
     )
 
     sim = BearingSimulation(ω, bearing, bd1, bd2; method = method)
-    wave2 = ElasticWave(sim);
+    wave_inverse = ElasticWave(sim);
 
     # we should recover the first wave
-    @test maximum(abs.(wave.potentials[2].coefficients - wave2.potentials[2].coefficients)) /  mean(abs.(wave.potentials[2].coefficients)) < 1e-10
+    @test maximum(abs.(wave.potentials[2].coefficients - wave_inverse.potentials[2].coefficients)) /  mean(abs.(wave.potentials[2].coefficients)) < 1e-10
 
-    @test maximum(abs.(wave.potentials[1].coefficients - wave2.potentials[1].coefficients)) / mean(abs.(wave.potentials[1].coefficients)) < 1e-10
+    @test maximum(abs.(wave.potentials[1].coefficients - wave_inverse.potentials[1].coefficients)) / mean(abs.(wave.potentials[1].coefficients)) < 1e-10
 
-    # check that wave2 will predict the same traction on the boundary as wave
-    traction_forcing_coefficients = hcat(
-        field_modes(wave2, bearing.inner_radius, TractionType()),
-        field_modes(wave2, bearing.outer_radius, TractionType())
-    )
 
-    @test maximum(abs.(traction_forcing_coefficients - forcing_coefficients)) / mean(abs.(forcing_coefficients)) < 1e-10
+    # check that wave_inverse will predict the same traction on the boundary as wave
+    traction_modes_error = norm(field_modes(wave_inverse, bearing.inner_radius,  bd1.boundarytype.fieldtype) - bd1.coefficients) 
+    traction_modes_error = traction_modes_error + norm(field_modes(wave_inverse, bearing.outer_radius, bd2.boundarytype.fieldtype) - bd2.coefficients)
+
+    # check traction modes are correct
+    @test traction_modes_error / mean(abs.(forcing_coefficients)) < 1e-10
 
 ## Stability check by adding Gaussian noise
 
@@ -216,32 +205,35 @@
     ε = 0.01 * maximum(abs.(field_modes(wave, bearing.inner_radius, DisplacementType())))
     error = ε .* (rand(basis_length, 2) .- 0.5) + ε .* (rand(basis_length, 2) .- 0.5) .* im
 
-    bd1 = BoundaryData(
+    bd1_inverse = BoundaryData(
         DisplacementBoundary(inner=true);
-        coefficients = field_modes(wave, bearing.inner_radius, DisplacementType()) + error
+        coefficients = field_modes(wave, bearing.inner_radius, DisplacementType()) + error,
+        modes = wave.method.modes
     )
 
     ε = 0.01 * maximum(abs.(field_modes(wave, bearing.outer_radius, DisplacementType())))
     error = ε .* (rand(basis_length, 2) .- 0.5) + ε .* (rand(basis_length, 2) .- 0.5) .* im
 
-    bd2 = BoundaryData(
+    bd2_inverse = BoundaryData(
         DisplacementBoundary(outer=true);
-        coefficients = field_modes(wave, bearing.outer_radius, DisplacementType()) + error
+        coefficients = field_modes(wave, bearing.outer_radius, DisplacementType()) + error,
+        modes = wave.method.modes
     )
-
+    
     method = ModalMethod(regularisation_parameter = 0.0, only_stable_modes = false)
-    sim = BearingSimulation(ω, bearing, bd1, bd2; method = method)
-    wave2 = ElasticWave(sim);
+    sim = BearingSimulation(ω, bearing, bd1_inverse, bd2_inverse; method = method);
+    wave_inverse = ElasticWave(sim);
 
     # the problem is unstable
-    maximum(abs.(wave.potentials[2].coefficients - wave2.potentials[2].coefficients)) / mean(abs.(wave.potentials[2].coefficients)) > 0.1
-    
-    maximum(abs.(wave.potentials[2].coefficients - wave2.potentials[2].coefficients)) / mean(abs.(wave.potentials[2].coefficients)) > 0.1
-    
+    @test maximum(abs.(wave.potentials[2].coefficients - wave_inverse.potentials[2].coefficients)) /  mean(abs.(wave.potentials[2].coefficients)) > 0.1
+
+    @test maximum(abs.(wave.potentials[1].coefficients - wave_inverse.potentials[1].coefficients)) / mean(abs.(wave.potentials[1].coefficients)) > 0.1
+  
     # the instability is because the problem is ill posed when either decreasing the frequency or increasing the basis_order. Let us keep only_stable_modes to solve this, and only solve for smaller modes
 
     basis_order = 5
-    basis_length = basisorder_to_basislength(Acoustic{Float64,2}, basis_order)
+    modes = -basis_order:basis_order;
+    basis_length = length(modes)
 
     # this is still a moderately low frequency
     kpa = (bearing.outer_radius - bearing.inner_radius ) * ω / steel.cp
@@ -250,11 +242,13 @@
     forcing_coefficients = rand(basis_length, 4) + rand(basis_length, 4) .* im
     bd1 = BoundaryData(
         TractionBoundary(inner=true);
-        coefficients=forcing_coefficients[:, 1:2]
+        coefficients = forcing_coefficients[:, 1:2],
+        modes = modes
     )
     bd2 = BoundaryData(
         TractionBoundary(outer=true);
-        coefficients=forcing_coefficients[:, 3:4]
+        coefficients = forcing_coefficients[:, 3:4],
+        modes = modes
     )
 
     method = ModalMethod(tol = 1e-1, regularisation_parameter = 1e-10, only_stable_modes = true)
@@ -266,31 +260,33 @@
     ε = 0.01 * maximum(abs.(field_modes(wave, bearing.inner_radius, DisplacementType())));
     error = ε .* (rand(basis_length, 2) .- 0.5) + ε .* (rand(basis_length, 2) .- 0.5) .* im;
 
-    bd1 = BoundaryData(
+    bd1_inverse = BoundaryData(
         DisplacementBoundary(inner=true);
-        coefficients=field_modes(wave, bearing.inner_radius, DisplacementType()) + error
+        coefficients=field_modes(wave, bearing.inner_radius, DisplacementType()) + error,
+        modes = wave.method.modes
     );
 
     ε = 0.01 * maximum(abs.(field_modes(wave, bearing.outer_radius, DisplacementType())))
     error = ε .* (rand(basis_length, 2) .- 0.5) + ε .* (rand(basis_length, 2) .- 0.5) .* im;
 
-    bd2 = BoundaryData(
+    bd2_inverse = BoundaryData(
         DisplacementBoundary(outer=true);
-        coefficients=field_modes(wave, bearing.outer_radius, DisplacementType()) + error
+        coefficients = field_modes(wave, bearing.outer_radius, DisplacementType()) + error,
+        modes = wave.method.modes
     );
 
-    sim = BearingSimulation(ω, bearing, bd1, bd2; method = method);
-    wave2 = ElasticWave(sim);
+    sim = BearingSimulation(ω, bearing, bd1_inverse, bd2_inverse; method = method);
+    wave_inverse = ElasticWave(sim);
 
     # the problem is still sensitive to errors, but a managable tolerance
-    @test maximum(abs.(wave.potentials[2].coefficients - wave2.potentials[2].coefficients)) / mean(abs.(wave.potentials[2].coefficients)) < 0.18
+    @test maximum(abs.(wave.potentials[2].coefficients - wave_inverse.potentials[2].coefficients)) / mean(abs.(wave.potentials[2].coefficients)) < 0.18
    
-    @test maximum(abs.(wave.potentials[1].coefficients - wave2.potentials[1].coefficients)) / mean(abs.(wave.potentials[1].coefficients)) < 0.18
+    @test maximum(abs.(wave.potentials[1].coefficients - wave_inverse.potentials[1].coefficients)) / mean(abs.(wave.potentials[1].coefficients)) < 0.18
 
     # but the average error is at most 5 times the noise
-    @test mean(abs.(wave.potentials[1].coefficients - wave2.potentials[1].coefficients)) / mean(abs.(wave.potentials[2].coefficients)) < 0.05
+    @test mean(abs.(wave.potentials[1].coefficients - wave_inverse.potentials[1].coefficients)) / mean(abs.(wave.potentials[2].coefficients)) < 0.05
     
-    @test mean(abs.(wave.potentials[2].coefficients - wave2.potentials[2].coefficients)) / mean(abs.(wave.potentials[2].coefficients)) < 0.05
+    @test mean(abs.(wave.potentials[2].coefficients - wave_inverse.potentials[2].coefficients)) / mean(abs.(wave.potentials[2].coefficients)) < 0.05
 end
 
 # test using non centred modes
@@ -336,24 +332,16 @@ end
 
     # check that the predicted modes of the traction 
     # note: could just use TractionType() instead of bd1.boundarytype.fieldtype and bd2.boundarytype.fieldtype
-    traction_forcing_coefficients = [
-        hcat(
-            field_modes(wave, bearing.inner_radius, bd1.boundarytype.fieldtype),
-            field_modes(wave, bearing.outer_radius, bd1.boundarytype.fieldtype)
-        )
+    traction_modes_error = [
+        norm(field_modes(wave, bearing.inner_radius,  bd1.boundarytype.fieldtype) - bd1.coefficients) + 
+        norm(field_modes(wave, bearing.outer_radius, bd2.boundarytype.fieldtype) - bd2.coefficients)
     for wave in waves]
-    
-    # compare with the data given
-    traction_errors = [
-        sum(abs2,traction_modes - forcing_coefficients, dims=2)
-    for traction_modes in traction_forcing_coefficients]   
 
     # for higher frequencies in this case all the errors are small
-    @test traction_errors[1] |> maximum < 1e-20
-    @test traction_errors[2] |> maximum < 1e-20 
+    @test traction_modes_error[1] < 1e-12
+    @test traction_modes_error[2] < 1e-12
 
-
-    # Let's repeat, but given some modes to the boundary which can not be solved
+    # Let's repeat, but give some modes to the boundary which can not be solved
 
     modes = [-8,-18,1,35,3,4,5,6] # -18 is too high for ωs[1] and 35 is too high for ωs[2]
     basis_length = length(modes)
@@ -372,27 +360,24 @@ end
     method = ModalMethod(tol = tol)
 
     sims = map(ωs) do ω
-        BearingSimulation(ω, bearing, bd1, bd2; 
-            method = method
-        ) 
-    end
+        BearingSimulation(ω, bearing, bd1, bd2; method = method) 
+    end;
 
     waves = [ElasticWave(s) for s in sims];
 
     # now as not all modes were recovered, we need to select the correct modes from the original data to compare with
     traction_errors = map(waves) do wave
-        predict_traction_modes = hcat(
-            field_modes(wave, bearing.inner_radius, bd1.boundarytype.fieldtype),
-            field_modes(wave, bearing.outer_radius, bd1.boundarytype.fieldtype)
-        )
-        inds = [findfirst(m .== modes) for m in wave.method.modes]
 
+        inds = [findfirst(bd1.modes .== m) for m in wave.method.modes]
+        err = sum(abs2,field_modes(wave, bearing.inner_radius, bd1.boundarytype.fieldtype) - bd1.coefficients[inds,:], dims=2)
+        
+        inds = [findfirst(bd2.modes .== m) for m in wave.method.modes]
+        err = err + sum(abs2,field_modes(wave, bearing.outer_radius, bd2.boundarytype.fieldtype) - bd2.coefficients[inds,:], dims=2)
 
-        sum(abs2,predict_traction_modes - forcing_coefficients[inds,:], dims=2)
+        err
     end
 
     # for higher frequencies in this case all the errors are small
     @test traction_errors[1] |> maximum < 1e-20
     @test traction_errors[2] |> maximum < 1e-20 
-
 end

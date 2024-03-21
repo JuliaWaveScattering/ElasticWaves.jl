@@ -31,10 +31,10 @@ kp * dr
     loading_θs = LinRange(0.0, 2pi, 2*loading_resolution+2)[1:end-1]
 
     θo = 3pi/2;
-    fp_loading = 0.2 .- exp.(-0.4 .* (sin.(loading_θs) .- sin(θo)).^2) + loading_θs .* 0im; 
-    fs_loading = 0.0 .* fp_loading;
-    # fp_loading = 0.0 .+ 0.3 .* cos.(loading_θs) .- 0.1 .* cos.(2 .* loading_θs);
+    # fp_loading = 0.2 .- exp.(-0.4 .* (sin.(loading_θs) .- sin(θo)).^2) + loading_θs .* 0im; 
     # fs_loading = 0.0 .* fp_loading;
+    fp_loading = 0.0 .+ 0.3 .* cos.(loading_θs) .- 0.1 .* cos.(2 .* loading_θs);
+    fs_loading = 0.0 .* fp_loading;
 
     # number_of_forcingmodes = 5;
     # amps = rand(number_of_forcingmodes)
@@ -58,7 +58,7 @@ kp * dr
     # plot!(loading_θs, real.(loading_profile2.fields[:,1]), linestyle = :dash)
     # scatter(loading_profile2.modes, abs.(loading_profile2.coefficients[:,1]))
 
-    bd1_for = BoundaryData(ω, bearing, loading_profile)
+    bd1_for = BoundaryData(ω, bearing, loading_profile);
 
     # basis_length = bd1_for.θs |> length
     # forward_θs = LinRange(0.0, 2pi, basis_length + 1)[1:end-1]
@@ -86,7 +86,7 @@ kp * dr
     bc1_inverse = DisplacementBoundary(outer=true)
     bc2_inverse = TractionBoundary(outer=true)
 
-    numberofsensors = 7
+    numberofsensors = 4
 
     θs_inv = LinRange(0, 2pi, numberofsensors + 1)[1:end-1]
 
@@ -105,8 +105,8 @@ kp * dr
 
     # as min_mode = 0 and max_mode is very large, we can consider any loading profiles with modes = -max_modes:max_modes 
 
-    loading_basis_order = 3;   
-    boundarydatas = map(-loading_basis_order:loading_basis_order) do n
+    loading_basis_order = 2;   
+    basis = map(-loading_basis_order:loading_basis_order) do n
         fp = [1.0 + 0.0im]
 
         # The representation of the loading itself
@@ -118,7 +118,7 @@ kp * dr
         # How loading is translated into boundary data
         BoundaryData(ω, bearing, loading_data)
     end;
-    boundarybasis1 = BoundaryBasis(boundarydatas)
+    boundarybasis1 = BoundaryBasis(basis);
 
 # solve the inverse problem with the PriorMethod
     method = PriorMethod(tol = modal_method.tol, modal_method = modal_method)
@@ -151,5 +151,5 @@ kp * dr
    
 #    plot(real.(bd2_outer.fields))
 
-   norm(bd1_inner.fields - bd1_for.fields) / norm(bd1_for.fields)
+   @test norm(bd1_inner.fields - bd1_for.fields) / norm(bd1_for.fields) < 1e-10
 end

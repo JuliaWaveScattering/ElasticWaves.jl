@@ -82,7 +82,7 @@
     
     # as there are two basis functions, we will need to at least two measurements. Typically each sensor, or point on the boundary, gives two measurements. So one sensor can be enough. 
         numberofsensors = Int(ceil(length(θos)/2))
-        
+
         θs_inv = LinRange(0, 2pi, numberofsensors + 1)[1:end-1]
 
         # create the data from evaluating the forward problem 
@@ -95,9 +95,9 @@
     # Create a boundary basis for the inverse problem for the inner boundary
         bd1s = [
             BoundaryData(bc1_forward, θs = θs, fields = hcat(fp1s[j],fs1s[j]))
-        for j in eachindex(fp1s)]
+        for j in eachindex(fp1s)];
 
-        boundarybasis1 = BoundaryBasis(bd1s)
+        boundarybasis1 = BoundaryBasis(bd1s);
 
     # solve the inverse problem with the PriorMethod
     method = PriorMethod(tol = modal_method.tol, modal_method = modal_method)
