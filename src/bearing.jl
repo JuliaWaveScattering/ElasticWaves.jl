@@ -164,6 +164,20 @@ function BoundaryData(boundarytype::BC;
     return BoundaryData(boundarytype,θs |> collect, fields, coefficients, modes |> collect)
 end
 
+# is_standard_order(bd::BoundaryData) = is_standard_order(bd.modes)
+
+function select_modes(bd::BoundaryData, modes::AbstractVector{Int})
+    
+    if !(setdiff(modes,bd.modes) |> isempty)
+        error("There are not enough modes in the boundarydata given to select the modes = $modes")
+    end
+    
+    inds = [findfirst(m .== bd.modes) for m in modes]
+    @reset bd.modes = modes
+    @reset bd.coefficients = bd.coefficients[inds,:]
+
+    return bd
+end
 
 """
     BoundaryData(wave::ElasticWave{2}, radius, θs, fieldtype)
@@ -383,32 +397,15 @@ function setup(sim::BearingSimulation{ModalMethod})
         boundarydata1 = fields_to_fouriermodes(boundarydata1, modes)
         
     elseif modes != boundarydata1.modes 
-        
-        if setdiff(modes,boundarydata1.modes) |> isempty
-            error("the modes should be sorted the same way by construction")
-            # inds = [findfirst(m .== boundarydata1.modes) for m in modes]
-            # @reset boundarydata1.modes = modes
-            # @reset boundarydata1.coefficients = boundarydata1.coefficients[inds,:]
-
-        else error("There are not enough Fourier coefficients given in boundarydata1")
-        end        
+        boundarydata1 = select_modes(boundarydata1, modes)
     end
 
     if isempty(boundarydata2.coefficients) 
-        # || (get_order(boundarydata2.fields) > get_order(boundarydata2.coefficients) && get_order(boundarydata2.coefficients) < basis_order )
-        # println("The Fourier modes for boundarydata2 are empty, or the fields have more data. The Fourier modes will be calculated from the fields provided.")
         println("The Fourier coefficients for boundarydata2 are empty. The Fourier coefficients will be calculated from the fields provided.")
         boundarydata2 = fields_to_fouriermodes(boundarydata2, modes)
     
     elseif modes != boundarydata2.modes 
-        
-        if setdiff(modes,boundarydata2.modes) |> isempty
-            inds = [findfirst(m .== boundarydata2.modes) for m in modes]
-            @reset boundarydata2.modes = modes
-            @reset boundarydata2.coefficients = boundarydata2.coefficients[inds,:]
-
-        else error("There are not enough Fourier coefficients given in boundarydata2")
-        end        
+        boundarydata2 = select_modes(boundarydata2, modes)
     end
 
     @reset sim.boundarydata1 = boundarydata1
@@ -453,8 +450,11 @@ function setup(sim::BearingSimulation{PriorMethod})
 
         modes_vec = bd_to_modes.([data1, data2])
         modes = intersect(modes_vec...) |> collect
-        
+
         if isempty(modes) error("The modes was not specified and the data does not any modes in common") end
+
+        # use the standard ordering
+        modes = modes[sortperm_modes(modes)]
 
         @reset sim.method.modal_method.modes = modes
     end
@@ -464,7 +464,7 @@ function setup(sim::BearingSimulation{PriorMethod})
         if isempty(b.coefficients)
             isempty(b.fields) ? b : fields_to_fouriermodes(b,modes)
         else
-            b
+            select_modes(b, modes)
         end
     end
     @reset sim.boundarybasis1 = BoundaryBasis(basis_vec)
@@ -473,7 +473,7 @@ function setup(sim::BearingSimulation{PriorMethod})
         if isempty(b.coefficients)
             isempty(b.fields) ? b : fields_to_fouriermodes(b,modes)
         else
-            b
+            select_modes(b, modes)
         end
     end
     @reset sim.boundarybasis2 = BoundaryBasis(basis_vec)

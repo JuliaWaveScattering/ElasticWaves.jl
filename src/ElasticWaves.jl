@@ -13,7 +13,7 @@ export plane_z_shear_source
 
 # bearing.jl
 export RollerBearing, BoundaryCondition, DisplacementBoundary, TractionBoundary
-export BoundaryData, BoundaryBasis, BearingSimulation, setup, nondimensionalise, nondimensionalise!
+export BoundaryData, select_modes, BoundaryBasis, BearingSimulation, setup, nondimensionalise, nondimensionalise!
 export isempty, boundary_data
 export point_contact_boundary_data, natural_frequencies
 
@@ -33,7 +33,7 @@ export modal_system, t_matrix, internal_matrix
 export field_modes, displacement, traction, pressure_field_mode, shear_field_mode
 
 # signal_processing.jl
-export fouriermodes_to_fields, fields_to_fouriermodes, sortperm_modes, normalize!
+export fouriermodes_to_fields, fields_to_fouriermodes, sortperm_modes, is_standard_order, normalize!
 
 # cylindrical/utils.jl
 export estimate_basisorder # soon to be removed

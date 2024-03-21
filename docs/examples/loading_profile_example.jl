@@ -22,7 +22,7 @@ plot(bearing, 0.0)
     total_time = 2pi / bearing.angular_speed
 
     # to get the number of frames per cycle:
-    frames = 80
+    frames = 40
     dt = total_time / frames
 
     # from dt we can calculate what's the maximum frequency we need, and then the range of natural frequencies we should use
@@ -57,8 +57,8 @@ plot(bearing, 0.0)
     fs_loading = 0.1 .* fp_loading;
 
     # add a crack!
-    θo = pi;
-    fp_loading =  fp_loading .- exp.(-20 .* ((loading_θs) .- (θo)).^2) + loading_θs .* 0im; 
+    # θo = pi;
+    # fp_loading =  fp_loading .- exp.(-20 .* ((loading_θs) .- (θo)).^2) + loading_θs .* 0im; 
 
     plot(loading_θs, real.(fp_loading))
 

@@ -72,6 +72,7 @@ function sortperm_modes(modes::AbstractVector{Int})
 
     return is1[is2]
 end
+is_standard_order(modes::AbstractVector{Int}) = (sortperm_modes(modes) == 1:length(modes))
 
 function normalize!(bb::BoundaryBasis)
     for bd in bb.basis

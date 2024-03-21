@@ -33,8 +33,8 @@ kp * dr
     θo = 3pi/2;
     # fp_loading = 0.2 .- exp.(-0.4 .* (sin.(loading_θs) .- sin(θo)).^2) + loading_θs .* 0im; 
     # fs_loading = 0.0 .* fp_loading;
-    fp_loading = 0.0 .+ 0.3 .* cos.(loading_θs) .- 0.1 .* cos.(2 .* loading_θs);
-    fs_loading = 0.0 .* fp_loading;
+    fp_loading = 0.0im .+ 0.3 .* cos.(loading_θs) .- 0.1 .* cos.(2 .* loading_θs);
+    fs_loading = 0.0im .* fp_loading;
 
     # number_of_forcingmodes = 5;
     # amps = rand(number_of_forcingmodes)
@@ -53,8 +53,8 @@ kp * dr
         fields = hcat(fp_loading,fs_loading)
     )
 
-    loading_profile2 = fields_to_fouriermodes(loading_profile, -3:3)
-    loading_profile2 = fouriermodes_to_fields(loading_profile2)
+    # loading_profile2 = fields_to_fouriermodes(loading_profile, -3:3)
+    # loading_profile2 = fouriermodes_to_fields(loading_profile2)
     # plot!(loading_θs, real.(loading_profile2.fields[:,1]), linestyle = :dash)
     # scatter(loading_profile2.modes, abs.(loading_profile2.coefficients[:,1]))
 
@@ -86,7 +86,7 @@ kp * dr
     bc1_inverse = DisplacementBoundary(outer=true)
     bc2_inverse = TractionBoundary(outer=true)
 
-    numberofsensors = 4
+    numberofsensors = 3
 
     θs_inv = LinRange(0, 2pi, numberofsensors + 1)[1:end-1]
 
@@ -131,14 +131,15 @@ kp * dr
     inverse_wave.method.condition_number
     inverse_wave.method.boundary_error
 
+    # using Plots
     # scatter(wave.potentials[1].modes, abs.(wave.potentials[1].coefficients[1,:]), markersize = 4.0)
     # scatter!(inverse_wave.potentials[1].modes, abs.(inverse_wave.potentials[1].coefficients[1,:]), markersize = 3.0)
     # plot!(xlims = (-1 -loading_basis_order - mZ, loading_basis_order - mZ + 1))
 
-    predicted_forcing_coefficients = hcat(
-        field_modes(inverse_wave, bearing.inner_radius, bd1_for.boundarytype.fieldtype),
-        field_modes(inverse_wave, bearing.outer_radius, bd1_for.boundarytype.fieldtype)
-    )
+    # predicted_forcing_coefficients = hcat(
+    #     field_modes(inverse_wave, bearing.inner_radius, bd1_for.boundarytype.fieldtype),
+    #     field_modes(inverse_wave, bearing.outer_radius, bd1_for.boundarytype.fieldtype)
+    # )
 
     # scatter(inverse_wave.method.modal_method.modes, abs.(predicted_forcing_coefficients[:,1]))
     # scatter!(inverse_wave.method.modal_method.modes, abs.(predicted_forcing_coefficients[:,1]))
