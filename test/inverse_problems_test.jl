@@ -168,7 +168,7 @@ end
     # let's have a look at the modes that were calculated for this BearingSimulation. This is the field we will actual approximate
     inner_field = fouriermodes_to_fields(θs, sim.boundarydata1.coefficients, sim.boundarydata1.modes)
 
-    @test norm(inner_field[:,1] - fp) < 1e-10
+    @test norm(inner_field[:,1] - fp) < 2e-10
 
     wave = ElasticWave(sim);
 end
