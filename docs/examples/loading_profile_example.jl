@@ -6,13 +6,16 @@ using Plots
 # the higher the frequency, the worse the result. This is already a high frequency.
 medium = Elastic(2; ρ = 2.0, cp = 1.0 - 0.0im, cs = 0.8 - 0.0im)
 
-Ω = 0.02 # the angular speed is normally much smaller than the wavespeeds. But having lower wave speeds makes for nice pictures.
+Ω = 0.1 # the angular speed is normally much smaller than the wavespeeds. But having lower wave speeds makes for nice pictures.
 
 bearing = RollerBearing(medium = medium, 
     inner_radius = 1.5, outer_radius = 2.0, 
     angular_speed = Ω,  
     rollers_inside = true
 )
+
+Ω * bearing.inner_radius
+
 
 plot(bearing, 0.0)
 
@@ -36,7 +39,7 @@ plot(bearing, 0.0)
 
 
 ## Do one example
-    ω = ωms[end-2]
+    ω = ωms[end]
 
     dr = bearing.outer_radius - bearing.inner_radius
     kp = (ω / medium.cp)
@@ -73,7 +76,7 @@ plot(bearing, 0.0)
     bd1_for = BoundaryData(ω, bearing, loading_profile)
     bd2_for = BoundaryData(bc2_forward, θs=θs, modes = bd1_for.modes, coefficients =  0.0 .* bd1_for.coefficients)
 
-    modal_method = ModalMethod(tol = 1e-9, only_stable_modes = true)
+    modal_method = ModalMethod(tol = 2e-2, regularisation_parameter = 1e-12, only_stable_modes = true)
     forward_sim = BearingSimulation(ω, bearing, bd1_for, bd2_for; 
         method = modal_method,
         nondimensionalise = true);

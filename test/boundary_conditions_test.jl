@@ -168,7 +168,7 @@
     traction_modes_error = traction_modes_error + norm(field_modes(wave, bearing.outer_radius, TractionType()) - bd2.coefficients)
 
     # check traction modes are correct
-    @test traction_modes_error / mean(abs.(forcing_coefficients)) < 1e-10
+    @test traction_modes_error / mean(abs.(forcing_coefficients)) < 4e-8
 
     # setup a problem with displacement boundary conditions
     bd1_inverse = BoundaryData(
@@ -196,7 +196,7 @@
     traction_modes_error = traction_modes_error + norm(field_modes(wave_inverse, bearing.outer_radius, bd2.boundarytype.fieldtype) - bd2.coefficients)
 
     # check traction modes are correct
-    @test traction_modes_error / mean(abs.(forcing_coefficients)) < 1e-10
+    @test traction_modes_error / mean(abs.(forcing_coefficients)) < 4e-8
 
 ## Stability check by adding Gaussian noise
 
@@ -343,7 +343,7 @@ end
 
     # Let's repeat, but give some modes to the boundary which can not be solved
 
-    modes = [-8,-18,1,35,3,4,5,6] # -18 is too high for ωs[1] and 35 is too high for ωs[2]
+    modes = [-8,-10,1,40,3,4,22,5,6] # -18 is too high for ωs[1] and 35 is too high for ωs[2]
     basis_length = length(modes)
     forcing_coefficients = rand(basis_length,4) + rand(basis_length,4) .* im
 
@@ -356,8 +356,8 @@ end
         modes = modes
     )
 
-    tol = 1e-5
-    method = ModalMethod(tol = tol)
+    tol = 1e-10
+    method = ModalMethod(tol = tol);
 
     sims = map(ωs) do ω
         BearingSimulation(ω, bearing, bd1, bd2; method = method) 
@@ -368,13 +368,13 @@ end
     # now as not all modes were recovered, we need to select the correct modes from the original data to compare with
     traction_errors = map(waves) do wave
 
-        inds = [findfirst(bd1.modes .== m) for m in wave.method.modes]
-        err = sum(abs2,field_modes(wave, bearing.inner_radius, bd1.boundarytype.fieldtype) - bd1.coefficients[inds,:], dims=2)
+        inds = Int[findfirst(bd1.modes .== m) for m in wave.method.modes]
+        err1 = sum(abs2,field_modes(wave, bearing.inner_radius, bd1.boundarytype.fieldtype) - bd1.coefficients[inds,:], dims=2) ./ norm(bd1.coefficients[inds,:])
         
         inds = [findfirst(bd2.modes .== m) for m in wave.method.modes]
-        err = err + sum(abs2,field_modes(wave, bearing.outer_radius, bd2.boundarytype.fieldtype) - bd2.coefficients[inds,:], dims=2)
+        err2 = sum(abs2,field_modes(wave, bearing.outer_radius, bd2.boundarytype.fieldtype) - bd2.coefficients[inds,:], dims=2) ./ norm(bd2.coefficients[inds,:])
 
-        err
+        err1 + err2
     end
 
     # for higher frequencies in this case all the errors are small

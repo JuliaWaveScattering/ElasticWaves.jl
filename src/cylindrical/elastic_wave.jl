@@ -65,7 +65,7 @@ function modes_coefficients!(sim::BearingSimulation{ModalMethod})
 
     mode_errors = zeros(T, length(modes))
 
-    is = sortperm(modes, by = abs)
+    is = sortperm_modes(modes)
 
     for i in is
         A = boundarycondition_system(ω, bearing, sim.boundarydata1.boundarytype, sim.boundarydata2.boundarytype, modes[i])
@@ -74,18 +74,35 @@ function modes_coefficients!(sim::BearingSimulation{ModalMethod})
             sim.boundarydata2.coefficients[i,:]
         ]
 
-        # solve A*x = b with tikinov regulariser
-        # x = A \ b
         δ = method.regularisation_parameter
-        x = [A; sqrt(δ) * I] \ [b; zeros(size(A)[2])]
 
-        relative_error_x = cond(A) * eps(T) 
+        # solve A*x = b with svd
+        U, S, V = svd(A);
+        
+        # keep only singular values that are above the threshold
+        inds = findall(S .> S[1] * δ);
+        S = S[inds]; U = U[:,inds]; V = V[:,inds];
+
+        Σ = Diagonal(one(T) ./ S);
+
+        # now A ≈ U * Diagonal(S[inds]) * V';       
+        # we construct the solution x by projecting x onto the V subspace
+        x = V * Σ * (U') * b;
+
+        # tikinov regulariser solution commented below
+            # bigA = [A; sqrt(δ) * I];
+            # x = bigA \ [b; zeros(size(A)[2])]
+
+        error_x = S[1] * eps(T) / S[end]
         
         error = if norm(b) > 0
-            relative_error = norm(A*x - b) / norm(b);
-            max(relative_error,relative_error_x)
-        else relative_error_x
+            norm(A*x - b) / norm(b);
+        else 
+            norm(A*x - b);
         end
+        
+        error = max(error_x, error)
+
 
         coefficients[i] = x
         mode_errors[i] = error
@@ -105,7 +122,7 @@ function modes_coefficients!(sim::BearingSimulation{ModalMethod})
     i = findfirst(mode_errors[is] .== zero(T))
     if !isnothing(i)
         if i == 1
-            error("there are no stable modes, and therefore no solution found")
+            @warn("there are no stable modes. Will return an empty solution.")
         end    
         
         # best to keep the indices in the same order they were given and not in the sorted order

@@ -56,7 +56,7 @@ end
 
 function ModalMethod(; 
         tol::Float64 = eps(Float64)^(1/2), 
-        regularisation_parameter::Float64 = zero(Float64),
+        regularisation_parameter::Float64 = eps(Float64),
         only_stable_modes::Bool = true,
         modes::Vector{Int} = Int[],
         mode_errors::Vector = Float64[]
