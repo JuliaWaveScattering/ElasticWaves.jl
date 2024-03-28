@@ -93,7 +93,9 @@ function modes_coefficients!(sim::BearingSimulation{ModalMethod})
             # bigA = [A; sqrt(δ) * I];
             # x = bigA \ [b; zeros(size(A)[2])]
 
-        error_x = S[1] * eps(T) / S[end]
+        # S[end] > S[1] * eps(T) / method.tol
+
+        error_x = S[1] * eps(T) / S[end] 
         
         error = if norm(b) > 0
             norm(A*x - b) / norm(b);
@@ -102,7 +104,6 @@ function modes_coefficients!(sim::BearingSimulation{ModalMethod})
         end
         
         error = max(error_x, error)
-
 
         coefficients[i] = x
         mode_errors[i] = error

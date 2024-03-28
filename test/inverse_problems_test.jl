@@ -24,7 +24,7 @@
     bd2 = BoundaryData(TractionBoundary(outer = true); coefficients =  forcing_modes[:,3:4])
     
     # Will use only the Fourier modes that were calculated correctly by adding the option: only_stable_modes = true
-    method = ModalMethod(tol = 1e-3, only_stable_modes = true)
+    method = ModalMethod(tol = 1e-5, only_stable_modes = true)
     sims = [
         BearingSimulation(ω, bearing, bd1, bd2; method = method)
     for ω in ωs];

@@ -161,6 +161,7 @@
         modes = modes
     )
 
+    method = ModalMethod(only_stable_modes = false, regularisation_parameter = eps(Float64))
     sim = BearingSimulation(ω, bearing, bd1, bd2; method = method)
     wave = ElasticWave(sim);
 

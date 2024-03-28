@@ -13,7 +13,7 @@ bc_inv2 = TractionBoundary(outer=true)
 bc_for1 = TractionBoundary(inner=true)
 bc_for2= TractionBoundary(outer=true)
 
-ω = 0.1
+ω = 0.5
 n = 3;
 M = boundarycondition_system(ω, bearing, bc_for1, bc_for2, n)
 
