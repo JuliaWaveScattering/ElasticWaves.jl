@@ -1,16 +1,24 @@
 using ElasticWaves
-using MultipleScattering
-using Plots
+# using Plots
 using LinearAlgebra
 using BlockDiagonals
 
 steel = Elastic(2; ρ = 7800.0, cp = 5000.0, cs = 3500.0)
-bearing = RollerBearing(medium = steel, inner_radius = 1.0, outer_radius = 2.0)
+
+steel = Elastic(2; ρ = 1.0, cp = 3.0, cs = 2.0)
+bearing = RollerBearing(medium = steel, inner_radius = 1.5, outer_radius = 2.0)
 
 bc_inv1 = DisplacementBoundary(outer=true)
 bc_inv2 = TractionBoundary(outer=true)
 bc_for1 = TractionBoundary(inner=true)
 bc_for2= TractionBoundary(outer=true)
+
+ω = 0.1
+n = 3;
+M = boundarycondition_system(ω, bearing, bc_for1, bc_for2, n)
+
+cond(M)
+
 ωs = LinRange(1.0e1,1.0e6,1000)
 basis_order = 5
 basis_length = basisorder_to_basislength(Acoustic{Float64,2}, basis_order)
