@@ -14,10 +14,26 @@ bc_for1 = TractionBoundary(inner=true)
 bc_for2= TractionBoundary(outer=true)
 
 ω = 0.5
-n = 3;
+n = 20;
+
+cp = steel.cp; cs = steel.cs
+kP = ω / cp; kS = ω / cs
+
 M = boundarycondition_system(ω, bearing, bc_for1, bc_for2, n)
 
 cond(M)
+
+r1 = bearing.inner_radius;
+r2 = bearing.outer_radius;
+
+S = diagm([
+    besselj(n, kP * r1)/2 + besselj(n, kP * r2)/2, 
+    hankelh1(n, kP * r1)/2 + hankelh1(n, kP * r2)/2,
+    besselj(n, kS * r1)/2 + besselj(n, kS * r2)/2, 
+    hankelh1(n, kS * r1)/2 + hankelh1(n, kS * r2)/2,
+])
+
+cond(M * inv(S))
 
 ωs = LinRange(1.0e1,1.0e6,1000)
 basis_order = 5
