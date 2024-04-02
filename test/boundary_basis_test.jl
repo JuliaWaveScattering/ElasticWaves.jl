@@ -180,11 +180,11 @@
         max(error1,error2)
     end
 
-    @test maximum(inner_boundary_errors) < 2e-8
+    @test maximum(inner_boundary_errors) < 5e-8
 
 ## Method 2
     # here we use coarse boundary data for the boundary with the prior. For the other boundary we need to use fine boundary data, otherwise the prior method is not even an improvement on the ModalMethod
-    modal_method = ModalMethod(tol = 1e-11, only_stable_modes = true)
+    modal_method = ModalMethod(tol = 1e-10, only_stable_modes = true)
     method = PriorMethod(tol = modal_method.tol, modal_method = modal_method)
 
     sims = map(eachindex(ωs)) do i

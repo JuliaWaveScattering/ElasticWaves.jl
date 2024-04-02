@@ -33,7 +33,9 @@ S = diagm([
     hankelh1(n, kS * r1)/2 + hankelh1(n, kS * r2)/2,
 ])
 
-cond(M * inv(S))
+SM = diagm([1 / mean(abs.(M[:,j])) for j in 1:size(M,2)])
+
+cond(M * SM)
 
 ωs = LinRange(1.0e1,1.0e6,1000)
 basis_order = 5

@@ -76,6 +76,9 @@ function modes_coefficients!(sim::BearingSimulation{ModalMethod})
 
         δ = method.regularisation_parameter
 
+        SM = diagm([T(4) / sum(abs.(A[:,j])) for j in 1:size(A,2)])
+        A = A * SM
+
         # solve A*x = b with svd
         U, S, V = svd(A);
         
@@ -105,7 +108,7 @@ function modes_coefficients!(sim::BearingSimulation{ModalMethod})
         
         error = max(error_x, error)
 
-        coefficients[i] = x
+        coefficients[i] = SM * x
         mode_errors[i] = error
 
         if error > method.tol

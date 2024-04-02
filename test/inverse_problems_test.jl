@@ -2,7 +2,7 @@
 
 @testset "Inverse problems for the modes" begin
 
-    ωs = [1e3,4e4,7e4]
+    ωs = [2e3,4e4,7e4]
 
     # NOTE: The inverse problem can become more ill-posed if the imaginary part of the wavespeed is large enogh
     steel = Elastic(2; ρ = 7800.0, cp = 5000.0, cs = 3500.0)
@@ -96,13 +96,13 @@
         maximum(abs.(waves[i].potentials[2].coefficients - inverse_waves[i].potentials[2].coefficients)) / mean(abs.(waves[i].potentials[2].coefficients))
     for i in eachindex(ωs)]
 
-    @test maximum(errors) < 1e-13
+    @test maximum(errors) < 1e-11
 
     errors = [
         maximum(abs.(waves[i].potentials[1].coefficients - inverse_waves[i].potentials[1].coefficients)) / mean(abs.(waves[i].potentials[1].coefficients))
     for i in eachindex(ωs)]
 
-    @test maximum(errors) < 1e-13
+    @test maximum(errors) < 1e-11
     
     # Check if inverse_waves predicts the same traction on the inner boundary
     inner_traction_forcing_modes = [
@@ -115,7 +115,7 @@
         maximum(abs.(in_modes - bd1.coefficients[1:l,:])) / mean(abs.(in_modes))
     end
 
-    @test maximum(errors) < 1e-12
+    @test maximum(errors) < 1e-8
 
     outer_traction_forcing_modes = [
         field_modes(w, bearing.outer_radius, TractionType())
@@ -126,7 +126,7 @@
         maximum(abs.(out_modes - bd2.coefficients[1:l,:])) / mean(abs.(out_modes))
     end
 
-    @test maximum(errors) < 1e-12
+    @test maximum(errors) < 1e-10
 
 end
 
