@@ -11,7 +11,7 @@
 (**)
 (*M  =\!\(\**)
 (*TagBox[*)
-(*RowBox[{"(", "", GridBox[{*)
+(*RowBox[{"(", GridBox[{*)
 (*{*)
 (*RowBox[{*)
 (*SubscriptBox["J", "n"], "[", *)
@@ -34,7 +34,7 @@
 (*RowBox[{"k", "[", "1", "]"}]}], "]"}]}]}*)
 (*},*)
 (*GridBoxAlignment->{"Columns" -> {{Center}}, "Rows" -> {{Baseline}}},*)
-(*GridBoxSpacings->{"Columns" -> {Offset[0.27999999999999997`], {Offset[0.7]}, Offset[0.27999999999999997`]}, "Rows" -> {Offset[0.2], {Offset[0.4]}, Offset[0.2]}}], "", ")"}],*)
+(*GridBoxSpacings->{"Columns" -> {Offset[0.27999999999999997`], {Offset[0.7]}, Offset[0.27999999999999997`]}, "Rows" -> {Offset[0.2], {Offset[0.4]}, Offset[0.2]}}], ")"}],*)
 (*Function[BoxForm`e$, MatrixForm[BoxForm`e$]]]\);*)
 (*B= {0,fo[n] Subscript[J, n][ko a[1]]};*)
 (*B= {-fo[n],fo[n] };*)
@@ -51,14 +51,10 @@
 (*NM = M//.subN;*)
 (*NB = B//.subN;*)
 (*(*NB = NM.xo*)*)
-
-
-(* ::Input:: *)
 (*{Abs@Det[NM/.n->#],SingularValueList[NM/.n->#]}&/@ns*)
 
 
 (* ::Input:: *)
-(**)
 (*(*which has the well posed solution*)*)
 (*eqs = M . {a[n],c[n]} -NB;*)
 (*\[Epsilon] = 10^-14;*)
@@ -105,85 +101,35 @@
 
 
 (* ::Input:: *)
-(**)
 (*(*The smallest example of a similar unstable system is*)*)
 (**)
 (*M  =\!\(\**)
 (*TagBox[*)
-(*RowBox[{"(", "", GridBox[{*)
+(*RowBox[{"(", GridBox[{*)
 (*{*)
 (*RowBox[{*)
-(*RowBox[{*)
 (*SubscriptBox["J", "n"], "[", *)
 (*RowBox[{"a1", " ", *)
-(*RowBox[{"k", "[", "1", "]"}]}], "]"}], "/", *)
-(*RowBox[{"(", *)
-(*RowBox[{*)
-(*RowBox[{*)
-(*SubscriptBox["J", "n"], "[", *)
-(*RowBox[{"a2", " ", *)
-(*RowBox[{"k", "[", "1", "]"}]}], "]"}], "+", *)
-(*RowBox[{*)
-(*SubscriptBox["J", "n"], "[", *)
-(*RowBox[{"a1", " ", *)
-(*RowBox[{"k", "[", "1", "]"}]}], "]"}]}], ")"}]}], *)
-(*RowBox[{*)
+(*RowBox[{"k", "[", "1", "]"}]}], "]"}], *)
 (*RowBox[{*)
 (*SubscriptBox["H", "n"], "[", *)
 (*RowBox[{"a1", " ", *)
-(*RowBox[{"k", "[", "1", "]"}]}], "]"}], "/", *)
-(*RowBox[{"(", *)
-(*RowBox[{*)
-(*RowBox[{*)
-(*SubscriptBox["H", "n"], "[", *)
-(*RowBox[{"a2", " ", *)
-(*RowBox[{"k", "[", "1", "]"}]}], "]"}], "+", *)
-(*RowBox[{*)
-(*SubscriptBox["H", "n"], "[", *)
-(*RowBox[{"a1", " ", *)
-(*RowBox[{"k", "[", "1", "]"}]}], "]"}]}], ")"}]}]},*)
+(*RowBox[{"k", "[", "1", "]"}]}], "]"}]},*)
 (*{*)
-(*RowBox[{*)
 (*RowBox[{"-", *)
 (*RowBox[{*)
 (*SubscriptBox["J", "n"], "[", *)
 (*RowBox[{"a2", " ", *)
-(*RowBox[{"k", "[", "1", "]"}]}], "]"}]}], "/", *)
-(*RowBox[{"(", *)
-(*RowBox[{*)
-(*RowBox[{*)
-(*SubscriptBox["J", "n"], "[", *)
-(*RowBox[{"a2", " ", *)
-(*RowBox[{"k", "[", "1", "]"}]}], "]"}], "+", *)
-(*RowBox[{*)
-(*SubscriptBox["J", "n"], "[", *)
-(*RowBox[{"a1", " ", *)
-(*RowBox[{"k", "[", "1", "]"}]}], "]"}]}], ")"}]}], *)
-(*RowBox[{*)
+(*RowBox[{"k", "[", "1", "]"}]}], "]"}]}], *)
 (*RowBox[{"-", *)
 (*RowBox[{*)
 (*SubscriptBox["H", "n"], "[", *)
 (*RowBox[{"a2", " ", *)
-(*RowBox[{"k", "[", "1", "]"}]}], "]"}]}], "/", *)
-(*RowBox[{"(", *)
-(*RowBox[{*)
-(*RowBox[{*)
-(*SubscriptBox["H", "n"], "[", *)
-(*RowBox[{"a2", " ", *)
-(*RowBox[{"k", "[", "1", "]"}]}], "]"}], "+", *)
-(*RowBox[{*)
-(*SubscriptBox["H", "n"], "[", *)
-(*RowBox[{"a1", " ", *)
-(*RowBox[{"k", "[", "1", "]"}]}], "]"}]}], ")"}]}]}*)
+(*RowBox[{"k", "[", "1", "]"}]}], "]"}]}]}*)
 (*},*)
 (*GridBoxAlignment->{"Columns" -> {{Center}}, "Rows" -> {{Baseline}}},*)
-(*GridBoxSpacings->{"Columns" -> {Offset[0.27999999999999997`], {Offset[0.7]}, Offset[0.27999999999999997`]}, "Rows" -> {Offset[0.2], {Offset[0.4]}, Offset[0.2]}}], "", ")"}],*)
+(*GridBoxSpacings->{"Columns" -> {Offset[0.27999999999999997`], {Offset[0.7]}, Offset[0.27999999999999997`]}, "Rows" -> {Offset[0.2], {Offset[0.4]}, Offset[0.2]}}], ")"}],*)
 (*Function[BoxForm`e$, MatrixForm[BoxForm`e$]]]\);*)
-(**)
-(*(*M  =(\[NoBreak]1	1*)
-(*-Subscript[J, n][a2 k[1]]/(Subscript[J, n][a1 k[1]])	-Subscript[H, n][a2 k[1]]/(Subscript[H, n][a1 k[1]])*)
-(**)
-(*\[NoBreak]);*)*)
 (**)
 (*B= {0,fo[n] Subscript[J, n][ko a[1]]};*)
 (*B= {-fo[n],fo[n] };*)
@@ -194,34 +140,45 @@
 
 
 (* ::Input:: *)
-(*dn = 3;*)
-(*ns = Range[0,35,dn];*)
+(*dn = 7;*)
+(*ns = Range[1,75,dn];*)
 (**)
 (*NM = M//.subN;*)
 (*NB = B//.subN;*)
 (*(*NB = NM.xo*)*)
-
-
-(* ::Input:: *)
-(*{Abs@Det[NM/.n->#],SingularValueList[NM/.n->#]}&/@ns*)
-
-
-(* ::Input:: *)
 (**)
-(*(*which has the well posed solution*)*)
-(*eqs = M . {a[n],c[n]} -NB;*)
+(*(*Use the following to condition matrix*)*)
+(*S = DiagonalMatrix[1/{Mean@Abs@NM[[All,1]],Mean@Abs@NM[[All,2]]}];*)
+(**)
+(*{Abs@Det[NM . S/.n->#],SingularValueList[NM . S/.n->#]}&/@ns*)
+
+
+(* ::Input:: *)
+(*(*Test the solutions*)*)
+(*eqs = NM . S . {a[n],c[n]} -NB;*)
 (*\[Epsilon] = 10^-14;*)
 (*subsol=Solve[eqs==RandomReal[\[Epsilon],2] +RandomReal[\[Epsilon],2] I,{a[n],c[n]}]//Simplify//Flatten;*)
 (*subsol2=Solve[eqs==RandomReal[\[Epsilon],2] +RandomReal[\[Epsilon],2] I,{a[n],c[n]}]//Simplify//Flatten;*)
 (**)
+
+
+(* ::Input:: *)
+(**)
 (*(*test the solution*)*)
-(*subNsols= (subsol//.subN//Flatten)/.n->#&/@ns ;*)
-(*subNsols2= (subsol2//.subN//Flatten)/.n->#&/@ns ;*)
+(*Nsols=S . Transpose[subsol//.subN/.Rule-> List][[2]]/.n->#&/@ns ;*)
+(*Nsols2=S . Transpose[subsol2//.subN/.Rule-> List][[2]]/.n->#&/@ns ;*)
 (**)
-(*sols = Transpose[#/.Rule-> List][[2]]&/@subNsols;*)
-(*sols2 = Transpose[#/.Rule-> List][[2]]&/@subNsols2;*)
-(**)
-(*diffsols = sols-sols2;*)
+(*(*relative error is small and of the order of \[Epsilon] !!*)*)
+(*(Norm/@(Nsols-Nsols2)) /(Norm/@(Nsols))*)
+
+
+(* ::Input:: *)
+(*(*final check that we did indeed solve the original equation*)*)
+(*Norm[(NM/.n->ns[[#]]) . Nsols[[#]]-NB]/Norm[NB]&/@Range@Length@ns*)
+
+
+(* ::Input:: *)
+(*diffsols = Nsols-Nsols2;*)
 (*Norm/@diffsols*)
 (**)
 (*#[[1]]&/@diffsols*)
@@ -235,7 +192,7 @@
 
 
 (* ::Input:: *)
-(*ClearAll[b,a,c,b,d];*)
+(*ClearAll[b,a,c,b,d,x];*)
 (*(*The smallest example of a similar unstable system is*)*)
 (*M = {*)
 (*	{Subscript[J, n][a1 k[1]], Subscript[H, n][a1 k[1]],Subscript[J, n][a1 k[2]],Subscript[H, n][a1 k[2]]},*)
@@ -244,57 +201,64 @@
 (*         {Derivative[1][Subscript[J, n]][a2 k[1]], Derivative[1][Subscript[H, n]][a2 k[1]],Derivative[1][Subscript[J, n]][a2 k[2]],Derivative[1][Subscript[H, n]][a2 k[2]]}*)
 (*};*)
 (**)
-(*no = 30;*)
-(**)
-(*x =RandomReal[1,4] + RandomReal[1,4] I;*)
-(*B = M . x //.subN/.n->no*)
-
-
-(* ::Input:: *)
-(**)
-
-
-(* ::Input:: *)
-(**)
-(*B = {0,fo[n] Subscript[J, n][ko a1],0, fo[n] Derivative[1][Subscript[J, n]][ko a1]};*)
 (*B = {0,fo[n],0, fo[n]};*)
 (**)
+
+
+(* ::Input:: *)
 (*subN = {a2->2.0,a1->1.5,ko-> 0.1,k[1] -> 2.0,k[2] -> 3.2,Subscript[J, n][ko a[1]]->1.0,fo[n]->1, Subscript[H, n_][x_] ->HankelH1[n,x], Subscript[J, n_][x_] ->BesselJ[n,x], Derivative[1][Subscript[H, n_]][x_] ->D[HankelH1[n,x],x],Derivative[1][Subscript[J, n_]][x_] ->D[BesselJ[n,x],x]};*)
+(**)
+
+
+(* ::Input:: *)
+(**)
+(**)
+(*dn = 7;*)
+(*ns = Range[1,75,dn];*)
 (**)
 (*NM = M//.subN;*)
 (*NB = B//.subN;*)
 (**)
-(*{Abs@Det[NM/.n->#],SingularValueList[NM/.n->#]}&/@ns //Quiet*)
+(*(*Use the following to condition matrix*)*)
+(*S = DiagonalMatrix[Table[1/Mean@Abs@NM[[All,j]],{j,1,Length@B}]];*)
 
 
 (* ::Input:: *)
-(**)
+(*{Abs@Det[NM . S/.n->#],SingularValueList[NM . S/.n->#]}&/@ns*)
+
+
+(* ::Input:: *)
 (*(*which has the well posed solution*)*)
-(*vars = {a[n],b[n],c[n],d[n]};*)
-(*eqs = M . vars - B;*)
+(*vars =  Array[a,Length@B];*)
+(*eqs = NM . S . vars-NB;*)
+(*\[Epsilon] = 10^-14;*)
+(*subsol=Solve[eqs==RandomReal[\[Epsilon],Length@B] +RandomReal[\[Epsilon],Length@B] I,Evaluate@vars]//Simplify//Flatten;*)
+(*subsol2=Solve[eqs==RandomReal[\[Epsilon],Length@B] +RandomReal[\[Epsilon],Length@B] I,Evaluate@vars]//Simplify//Flatten;*)
 (**)
-(*subsol=Solve[eqs==0,Evaluate@vars]//Simplify//Flatten;*)
+
+
+(* ::Input:: *)
+(*Transpose[*)
+(*Flatten@Solve[eqs==RandomReal[\[Epsilon],Length@B] +RandomReal[\[Epsilon],Length@B] I//.subN/.n->1,Evaluate@vars]/.Rule-> List*)
+(*][[2]]*)
+
+
+(* ::Input:: *)
 (**)
 (*(*test the solution*)*)
-(*subNsols= (subsol//.subN//Flatten)/.n->#&/@ns //Flatten;*)
-(**)
-(*Neqs = eqs //.subN/.n->#&/@ns ;*)
-(*errors=Norm/@(%/.subNsols)*)
-(**)
-
-
-(* ::Input:: *)
-(*sublinsols =Flatten[ Thread[(vars/.subN/.n->#)->LinearSolve[NM/.n->#,NB+ RandomReal[{-10^-15,10^-15},4]/.n->#]]&/@ns]//Quiet;*)
-(*Neqs/.sublinsols;*)
-(*errors=Norm/@(%/.subNsols)*)
+(*Nsols=(S/.n->#) . Transpose[*)
+(*Flatten@Solve[eqs==RandomReal[\[Epsilon],Length@B] +RandomReal[\[Epsilon],Length@B] I//.subN/.n->#,Evaluate@vars]/.Rule-> List*)
+(*][[2]]&/@ns ;*)
+(*Nsols2=(S/.n->#) . Transpose[*)
+(*Flatten@Solve[eqs==RandomReal[\[Epsilon],Length@B] +RandomReal[\[Epsilon],Length@B] I//.subN/.n->#,Evaluate@vars]/.Rule-> List*)
+(*][[2]]&/@ns ;*)
 
 
 (* ::Input:: *)
 (**)
+(*(*relative error is small and of the order of \[Epsilon] !!*)*)
+(*(Norm/@(Nsols-Nsols2)) /(Norm/@(Nsols))*)
 (**)
-(**)
-(*subNsol=subsol//.subN/.n->1;*)
-(*eqs//.subN/.n->1/.subNsol*)
 
 
 (* ::Input:: *)
@@ -350,242 +314,4 @@
 (*{Abs@f[1,n]Abs@BesselJ[n,a[1] k[1]],Abs@A[1,n]Abs@HankelH1[n,a[1] k[1]]}//.subN//Flatten;*)
 (*%/.n->#&/@ns;*)
 (*%/.Flatten@subNsol*)
-(**)
-
-
-(* ::Input:: *)
-(*(*Is the matrix system ill-posed?*)*)
-(*NM = M //.subN;*)
-(*Nb = b //.subN;*)
-(*{Abs@Det[NM/.n->#],SingularValueList[NM/.n->#]}&/@ns*)
-(**)
-
-
-(* ::Input:: *)
-(*(*If we numerically solve the system:*)*)
-(*sols =Flatten[ Thread[(vars/.subN/.n->#)->LinearSolve[NM/.n->#,-Nb+ RandomReal[{-10^-14,10^-14},2]/.n->#]]&/@ns]//Quiet;*)
-(*eqs//.subN/.n->#&/@ns;*)
-(*Norm/@(%/.sols)*)
-(**)
-
-
-(* ::Input:: *)
-(*invM = Inverse[M]*)
-(*invM . b*)
-(*NinvM =invM //.subN;*)
-(*Nb = b //.subN;*)
-
-
-(* ::Input:: *)
-(*invsols =Flatten[ Thread[(vars/.subN/.n->#)->(-NinvM . (Nb + RandomReal[{10^-18,10^-15}])/.n->#)]&/@ns];*)
-(*Norm/@(eqs//.subN/.n->#&/@ns/.invsols)*)
-(**)
-
-
-(* ::Input:: *)
-(**)
-
-
-(* ::Input:: *)
-(*eqs//.subN/.n->#&/@ns/.invsols*)
-(**)
-
-
-(* ::Input:: *)
-(*Nx = -NinvM . Nb/.n-> 1*)
-(*M . Nx//.subN/.n-> 1*)
-(*b//.subN/.n-> 1*)
-(**)
-(**)
-
-
-(* ::Input:: *)
-(*#->#&/@ns*)
-
-
-(* ::Input:: *)
-(*(* For one particle *)*)
-(*(*Clear[dq0,dq]*)
-(*denom = Y[a[1] k[1],a[0] k[1]] Derivative[1][Subscript[J, n]][a[0] k[0]]-dq0 Subscript[J, n][a[0] k[0]] Yd[a[1] k[1],a[0] k[1]];*)
-(*force = (Ao[n] Subscript[H, n][ko a[1]]+fo[n] Subscript[J, n][ko a[1]])/denom;*)
-(**)
-(*numer = - dq0  Yd[a[0] k[1],a[0] k[1]]*)
-(*force numer  == f[0,n]/.subsol [[1]]/.{dq0 \[Rule] q[0]/q[1]}//Simplify*)
-(*numer = dq0 Subscript[J, n][a[0] k[0]] Derivative[1][Subscript[H, n]][a[0] k[1]]- Subscript[H, n][a[0] k[1]] Derivative[1][Subscript[J, n]][a[0] k[0]];*)
-(*force numer  ==f[1,n]/.subsol [[1]]/.{dq0 \[Rule] q[0]/q[1]}//Simplify*)
-(**)
-(*numer =  Subscript[J, n][a[0] k[1]] Derivative[1][Subscript[J, n]][a[0] k[0]]-dq0 Subscript[J, n][a[0] k[0]] Derivative[1][Subscript[J, n]][a[0] k[1]]*)
-(*force  numer== A[1,n]/.subsol [[1]]/.{dq0 \[Rule] q[0]/q[1]}//Simplify*)
-(**)*)
-
-
-(* ::Input:: *)
-(*D[Y[x,y],x,y]*)
-(**)
-(*Yd [y,x]+Yd [x,y]//Simplify*)
-(**)
-(*capsule = tmp2;*)
-
-
-Test subtracting the frequency response of the capsule . 
-I'll assume the background is water, that there is Sunflower oil
-in the tube, and the tube itself is silica;
-
-
-
-
-subN = {Subscript[a, 1] -> 1, Subscript[a, 0] -> 3/4., qo-> 1, Subscript[q, 1]-> 6, Subscript[q, 0]-> 0.9, Subscript[k, 1]-> ko/3., Subscript[k, 0] -> 1.1 ko, fo[_] -> 1};
-subHJ = { 
-\!\(\*
-TagBox[
-StyleBox[
-RowBox[{
-RowBox[{
-RowBox[{"Derivative", "[", "1", "]"}], "[", 
-RowBox[{"Subscript", "[", 
-RowBox[{"H", ",", "n_"}], "]"}], "]"}], "[", "k_", "]"}],
-ShowSpecialCharacters->False,
-ShowStringCharacters->True,
-NumberMarks->True],
-FullForm]\) -> D[HankelH1[n,\[FormalK]],\[FormalK]]/.\[FormalK]->k, 
-\!\(\*
-TagBox[
-StyleBox[
-RowBox[{
-RowBox[{
-RowBox[{"Derivative", "[", "1", "]"}], "[", 
-RowBox[{"Subscript", "[", 
-RowBox[{"J", ",", "n_"}], "]"}], "]"}], "[", "k_", "]"}],
-ShowSpecialCharacters->False,
-ShowStringCharacters->True,
-NumberMarks->True],
-FullForm]\) ->  D[BesselJ[n,\[FormalK]],\[FormalK]]/.\[FormalK]->k, 
-\!\(\*
-TagBox[
-StyleBox[
-RowBox[{
-RowBox[{"Subscript", "[", 
-RowBox[{"H", ",", "n_"}], "]"}], "[", "k_", "]"}],
-ShowSpecialCharacters->False,
-ShowStringCharacters->True,
-NumberMarks->True],
-FullForm]\) :> HankelH1[n,k], 
-\!\(\*
-TagBox[
-StyleBox[
-RowBox[{
-RowBox[{"Subscript", "[", 
-RowBox[{"J", ",", "n_"}], "]"}], "[", "k_", "]"}],
-ShowSpecialCharacters->False,
-ShowStringCharacters->True,
-NumberMarks->True],
-FullForm]\) :> BesselJ[n,k]
-};
-
-tube = capsule/.{Subscript[k, 0]-> ko, Subscript[q, 0]-> qo} //FullSimplify;
-core = capsule/.{Subscript[k, 1]-> ko, Subscript[q, 1]-> qo} //FullSimplify;
-
-tubeSubtract = capsule - tube  /.subHJ/.subN //Simplify;
-Ncore = core/.subHJ/.subN //Simplify;
-
-
-subN = {Subscript[a, 1] -> 1, Subscript[a, 0] -> 2., qo-> 4., 
-    Subscript[q, 1]-> 1, Subscript[q, 0]-> 9., ko->0.5,
-   Subscript[k, 1]-> 1., Subscript[k, 0] -> 1/3., fo[_] -> 1
-};
-
-Activate@capsule/.subHJ/.subN/.{n->1}
-
-
-
-
-Activate@Inactive[Y][1\!\(\*
-TagBox["*",
-"InactiveToken",
-BaseStyle->"Inactive",
-SyntaxForm->"*"]\)1.`,2.`\!\(\*
-TagBox["*",
-"InactiveToken",
-BaseStyle->"Inactive",
-SyntaxForm->"*"]\)1.`]/.subHJ/.n->1
-Activate@Ydd[1\!\(\*
-TagBox["*",
-"InactiveToken",
-BaseStyle->"Inactive",
-SyntaxForm->"*"]\)1.`,2.`\!\(\*
-TagBox["*",
-"InactiveToken",
-BaseStyle->"Inactive",
-SyntaxForm->"*"]\)1.`]/.subHJ/.n->1
-
-
-Test subtracting the frequency response of the capsule . 
-I'll assume the background is water, that there is Sunflower oil
-in the tube, and the tube itself is silica;
-
-Plot[{Abs@Ncore/.ko-> k/.n-> 0,  Abs@tubeSubtract/.ko-> k/.n-> 0},{k,0,1.}, 
-PlotLegends->{"Just core", "Capsule - Tube"}, AxesLabel->{"k x tube radius", "response"} ]
-Legended[Graphics[{{{}, {}, Annotation[{RGBColor[0.368417, 0.506779, 0.709798], AbsoluteThickness[1.6], Opacity[1.], Line[CompressedData["
-
-
-(* Rationale:  
-
-Let u[c,t] be the reponse of core + tube (the capsule), u[0,t] be the reponse of just the tube,
-and u[c,0] be the reponse of just the core, so that u[0,0] =0 
-(u[0,0] the response with the tube and core being the same as the background material.
-
-Then 
-(1) u[c,t] - u[0,t] = \!\(
-\*SubscriptBox[\(\[PartialD]\), \(c\)]\(u[0, t]\)\)c + O[c^2] = \!\(
-\*SubscriptBox[\(\[PartialD]\), \(c\)]\(u[0, 0]\)\)c + \!\(
-\*SubscriptBox[\(\[PartialD]\), \(ct\)]\(u[0, 0]\)\)c t + O[c t] + O[c^2]
-(2) u[c,0] = u[0,0] + \!\(
-\*SubscriptBox[\(\[PartialD]\), \(c\)]\(u[0, 0]\)\)c + O[c^2] = \!\(
-\*SubscriptBox[\(\[PartialD]\), \(c\)]\(u[0, 0]\)\)c + O[c^2]
-using (1) and (2) implies that 
-u[c,t] - u[0,t] = O[c t] + O[c^2]
-So the two are similar if the material in the tube is similar to 
-the background material.  
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-(* ::Section:: *)
-(*Addition Theorems*)
-
-
-(* ::Input:: *)
-(*ClearAll[Graf,R,\[CapitalTheta]]*)
-(*R[l_] := Norm[{x,y}-{x[l],y[l]}];*)
-(*\[CapitalTheta][l_] := ArcTan@@({x,y}-{x[l],y[l]});*)
-(*R[l_,j_] := Norm[{x[j],y[j]}-{x[l],y[l]}];*)
-(*\[CapitalTheta][l_,j_] := ArcTan@@({x[j],y[j]}-{x[l],y[l]});*)
-(**)
-(*Graf[H_,M_]:= H[n,R[l]]E^(I n \[CapitalTheta][l])  - Sum[H[n-m,R[l,j]]E^(I (n-m) \[CapitalTheta][l,j]) BesselJ[m, R[j]]E^(I m \[CapitalTheta][j]),{m,-M,M}];*)
-(*error =Abs[ Graf[HankelH1,50]/HankelH1[n,R[l]] ]/.{x[l]-> 0,y[l]-> 0, x[j]-> 2,y[j]-> 0, y->0};*)
-(*Plot[error/.{n->3},{x,0.1,1},PlotRange-> All]*)
-(**)
-(*error =Abs[ Graf[HankelH1,3]/HankelH1[n,R[l]] ]/.{x[l]-> 0,y[l]-> 0, x[j]-> 2,y[j]-> 0, y->0};*)
-(*Plot[error/.{n->3},{x,1.,2},PlotRange-> All]*)
-(**)
-
-
-(* ::Input:: *)
-(*error =Abs[ Graf[BesselJ,20]/BesselJ[n,R[l]] ]/.{x[l]-> 0,y[l]-> 0, x[j]-> 2,y[j]-> 0, y->0};*)
-(*Plot[error/.{n->3},{x,0.3,2},PlotRange-> All]*)
-(**)
 (**)
