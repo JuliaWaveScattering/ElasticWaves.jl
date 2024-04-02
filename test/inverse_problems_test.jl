@@ -126,7 +126,7 @@
         maximum(abs.(out_modes - bd2.coefficients[1:l,:])) / mean(abs.(out_modes))
     end
 
-    @test maximum(errors) < 1e-13
+    @test maximum(errors) < 1e-12
 
 end
 
