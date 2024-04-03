@@ -163,7 +163,6 @@
 
 
 (* ::Input:: *)
-(**)
 (*(*test the solution*)*)
 (*Nsols=S . Transpose[subsol//.subN/.Rule-> List][[2]]/.n->#&/@ns ;*)
 (*Nsols2=S . Transpose[subsol2//.subN/.Rule-> List][[2]]/.n->#&/@ns ;*)
@@ -203,16 +202,11 @@
 (**)
 (*B = {0,fo[n],0, fo[n]};*)
 (**)
-
-
-(* ::Input:: *)
 (*subN = {a2->2.0,a1->1.5,ko-> 0.1,k[1] -> 2.0,k[2] -> 3.2,Subscript[J, n][ko a[1]]->1.0,fo[n]->1, Subscript[H, n_][x_] ->HankelH1[n,x], Subscript[J, n_][x_] ->BesselJ[n,x], Derivative[1][Subscript[H, n_]][x_] ->D[HankelH1[n,x],x],Derivative[1][Subscript[J, n_]][x_] ->D[BesselJ[n,x],x]};*)
 (**)
 
 
 (* ::Input:: *)
-(**)
-(**)
 (*dn = 7;*)
 (*ns = Range[1,75,dn];*)
 (**)
@@ -228,35 +222,31 @@
 
 
 (* ::Input:: *)
-(*(*which has the well posed solution*)*)
+(*(*Solve without conditioning*)*)
+(*vars =  Array[a,Length@B];*)
+(*eqs = NM . vars-NB;*)
+(*\[Epsilon] = 10^-14;*)
+(*error:= RandomReal[\[Epsilon],Length@B] +RandomReal[\[Epsilon],Length@B] I*)
+(*Nsols= Quiet@LinearSolve[NM/.n->#,NB+error/.n->#]&/@ns ;*)
+(*Nsols2= Quiet@LinearSolve[NM/.n->#,NB+error/.n->#]&/@ns ;*)
+(**)
+(*(* Finds a good solution despite conditioning problems*)*)
+(*(Norm/@(Nsols-Nsols2)) /(Norm/@(Nsols))*)
+
+
+(* ::Input:: *)
 (*vars =  Array[a,Length@B];*)
 (*eqs = NM . S . vars-NB;*)
 (*\[Epsilon] = 10^-14;*)
-(*subsol=Solve[eqs==RandomReal[\[Epsilon],Length@B] +RandomReal[\[Epsilon],Length@B] I,Evaluate@vars]//Simplify//Flatten;*)
-(*subsol2=Solve[eqs==RandomReal[\[Epsilon],Length@B] +RandomReal[\[Epsilon],Length@B] I,Evaluate@vars]//Simplify//Flatten;*)
+(**)
+(*Nsols=(S/.n->#) . LinearSolve[NM . S/.n->#,NB+error/.n->#]&/@ns ;*)
+(*Nsols2= (S/.n->#) . LinearSolve[NM . S/.n->#,NB+error/.n->#]&/@ns ;*)
+(**)
 (**)
 
 
 (* ::Input:: *)
-(*Transpose[*)
-(*Flatten@Solve[eqs==RandomReal[\[Epsilon],Length@B] +RandomReal[\[Epsilon],Length@B] I//.subN/.n->1,Evaluate@vars]/.Rule-> List*)
-(*][[2]]*)
-
-
-(* ::Input:: *)
-(**)
-(*(*test the solution*)*)
-(*Nsols=(S/.n->#) . Transpose[*)
-(*Flatten@Solve[eqs==RandomReal[\[Epsilon],Length@B] +RandomReal[\[Epsilon],Length@B] I//.subN/.n->#,Evaluate@vars]/.Rule-> List*)
-(*][[2]]&/@ns ;*)
-(*Nsols2=(S/.n->#) . Transpose[*)
-(*Flatten@Solve[eqs==RandomReal[\[Epsilon],Length@B] +RandomReal[\[Epsilon],Length@B] I//.subN/.n->#,Evaluate@vars]/.Rule-> List*)
-(*][[2]]&/@ns ;*)
-
-
-(* ::Input:: *)
-(**)
-(*(*relative error is small and of the order of \[Epsilon] !!*)*)
+(*(*relative error is still small and of the order of \[Epsilon] !!*)*)
 (*(Norm/@(Nsols-Nsols2)) /(Norm/@(Nsols))*)
 (**)
 

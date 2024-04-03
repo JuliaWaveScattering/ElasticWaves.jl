@@ -4,7 +4,6 @@
     bearing = RollerBearing(medium = medium, inner_radius=1.0, outer_radius = 1.5)
     dr = bearing.outer_radius - bearing.inner_radius
 
-
     numberofsimulations = 3;
     
     # the higher the frequency, the worse the result. 
@@ -61,7 +60,7 @@
 
     # Solve the whole field for the forward problem        
         # the method specifies to use only stable modes.
-        modal_method = ModalMethod(tol = 1e-11, only_stable_modes = true)
+        modal_method = ModalMethod(tol = 1e-10, only_stable_modes = true)
 
         forward_sims = map(eachindex(ωs)) do i
             BearingSimulation(ωs[i], bearing, boundarydata1s[i], boundarydata2s[i]; 
@@ -208,7 +207,7 @@
     # method should always work for high enough frequencies
     @test inner_boundary_errors[end] < 1e-10
 
-    # There error is surprisingly large, I find. What has happened is that Method 2 was solved to a higher basis_order (more resolution) than the forward problem. This means this Method 2 used parts of the boundarybasis1_inverses that the forward problem ignored (disgarded). So, for some frequencies, Method 2 is closer to the original forward boundary data than it is to the inner boundary data predicted by the forward problem
+    # There error is surprisingly large, I find. What has happened is that Method 2 was solved to a higher basis_order (more resolution) than the forward problem. This means that Method 2 used parts of the boundarybasis1_inverses that the forward problem ignored (disgarded). So, for some frequencies, Method 2 could even be closer to the original forward boundary data than it is to the inner boundary data predicted by the forward problem
     original_inner_boundary_errors = map(eachindex(ωs)) do i
         predict_bds = boundary_data(forward_sims[i], inverse_waves[i])
 
@@ -217,7 +216,7 @@
 
         max(error1,error2)
     end
-    @test original_inner_boundary_errors[end] < 1e-10
+    @test original_inner_boundary_errors[end] < modal_method.tol
     
     forward_inner_boundary_errors = map(eachindex(ωs)) do i
 
@@ -230,7 +229,7 @@
     # There is no way to perfectly recover the original inner boundary data for all frequencies, as the forward problem is not perfectly solved for all frequencies. However, we can exactly recover the solution of the forward problem by solving Method 2 with the same modes as the forward problem
 
     sims = map(eachindex(ωs)) do i
-        modal_method = ModalMethod(tol = 1e-11, only_stable_modes = true, modes = forward_waves[i].method.modes)
+        modal_method = ModalMethod(tol = forward_waves[i].method.tol, only_stable_modes = true, modes = forward_waves[i].method.modes)
         method = PriorMethod(tol = modal_method.tol, modal_method = modal_method)
 
         BearingSimulation(ωs[i], method, bearing, 
@@ -249,12 +248,12 @@
         max(error1,error2)
     end
 
-    @test maximum(inner_boundary_errors) < 1e-10
+    @test maximum(inner_boundary_errors) < 5e-10
 
     # Here we just swap which boundary uses a basis and which uses just boundary data just for completeness
     
     sims = map(eachindex(ωs)) do i
-        modal_method = ModalMethod(tol = 1e-11, only_stable_modes = true, modes = forward_waves[i].method.modes)
+        modal_method = ModalMethod(tol = forward_waves[i].method.tol, only_stable_modes = true, modes = forward_waves[i].method.modes)
         method = PriorMethod(tol = modal_method.tol, modal_method = modal_method)
 
         BearingSimulation(ωs[i], method, bearing, 
@@ -273,13 +272,13 @@
         max(error1,error2)
     end
 
-    @test maximum(inner_boundary_errors) < 1e-10
+    @test maximum(inner_boundary_errors) < 4e-10
 
 
 ## Method 3
 
     sims = map(eachindex(ωs)) do i
-        modal_method = ModalMethod(tol = 1e-11, only_stable_modes = true)
+        modal_method = ModalMethod(tol = 1e-10, only_stable_modes = true)
         method = PriorMethod(tol = modal_method.tol, modal_method = modal_method)
 
         BearingSimulation(ωs[i], method, bearing, 

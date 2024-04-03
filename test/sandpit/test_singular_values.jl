@@ -13,8 +13,8 @@ bc_inv2 = TractionBoundary(outer=true)
 bc_for1 = TractionBoundary(inner=true)
 bc_for2= TractionBoundary(outer=true)
 
-ω = 0.5
-n = 20;
+ω = 4.5
+n = 55;
 
 cp = steel.cp; cs = steel.cs
 kP = ω / cp; kS = ω / cs
@@ -26,16 +26,26 @@ cond(M)
 r1 = bearing.inner_radius;
 r2 = bearing.outer_radius;
 
-S = diagm([
-    besselj(n, kP * r1)/2 + besselj(n, kP * r2)/2, 
-    hankelh1(n, kP * r1)/2 + hankelh1(n, kP * r2)/2,
-    besselj(n, kS * r1)/2 + besselj(n, kS * r2)/2, 
-    hankelh1(n, kS * r1)/2 + hankelh1(n, kS * r2)/2,
-])
 
-SM = diagm([1 / mean(abs.(M[:,j])) for j in 1:size(M,2)])
+S = diagm([4 / sum(abs.(M[:,j])) for j in 1:size(M,2)])
 
-cond(M * SM)
+cond(M * S)
+
+x = rand(4) + rand(4) .* im;
+
+# need to scale x for b to give reasonable values
+x = S * x
+
+b = M * x
+
+# test just solving without conditioning
+x2 = inv(M) * b
+
+norm(x - x2) / norm(x)
+
+xS = S * inv(M * S) * b
+
+norm(x - xS) / norm(xS)
 
 ωs = LinRange(1.0e1,1.0e6,1000)
 basis_order = 5

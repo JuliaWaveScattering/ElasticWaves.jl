@@ -3,7 +3,7 @@
 @testset "Loading profile" begin
 
 # the higher the frequency, the worse the result. This is already a high frequency.
-medium = Elastic(2; ρ = 2.0, cp = 1.0 - 0.0im, cs = 0.8 - 0.0im)
+medium = Elastic(2; ρ = 2.0, cp = 10.0 - 0.0im, cs = 8.0 - 0.0im)
 
 Ω = 2pi * 15 / 60 # large wind turbines rotate at about 15 rpm
 Z = 8 
@@ -69,7 +69,7 @@ kp * dr
         fields = [zeros(Complex{Float64},  forward_θs |> length) zeros(Complex{Float64}, forward_θs |> length)]
     )
 
-    modal_method = ModalMethod(tol = 1e-5, only_stable_modes = true)
+    modal_method = ModalMethod(tol = 1e-9, only_stable_modes = true)
     forward_sim = BearingSimulation(ω, modal_method, bearing, bd1_for, bd2_for);
 
     wave = ElasticWave(forward_sim);

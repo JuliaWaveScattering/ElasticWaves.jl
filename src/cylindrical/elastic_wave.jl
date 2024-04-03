@@ -74,31 +74,36 @@ function modes_coefficients!(sim::BearingSimulation{ModalMethod})
             sim.boundarydata2.coefficients[i,:]
         ]
 
-        δ = method.regularisation_parameter
-
         SM = diagm([T(4) / sum(abs.(A[:,j])) for j in 1:size(A,2)])
         A = A * SM
 
-        # solve A*x = b with svd
-        U, S, V = svd(A);
-        
-        # keep only singular values that are above the threshold
-        inds = findall(S .> S[1] * δ);
-        S = S[inds]; U = U[:,inds]; V = V[:,inds];
+        ## NOTE: we have commented out all regularisers. The system is too small, only 4 x4, meaning that we loss 50% - 75% accuracy when regularising, which is too much. Better to not use that mode.
+         
+        ## solve A*x = b with svd
+            # U, S, V = svd(A);
+            
+            ## keep only singular values that are above the threshold
+            # δ = method.regularisation_parameter
+            # inds = findall(S .> S[1] * δ);
+            # S = S[inds]; U = U[:,inds]; V = V[:,inds];
 
-        Σ = Diagonal(one(T) ./ S);
+            # Σ = Diagonal(one(T) ./ S);
 
-        # now A ≈ U * Diagonal(S[inds]) * V';       
-        # we construct the solution x by projecting x onto the V subspace
-        x = V * Σ * (U') * b;
+            ## now A ≈ U * Diagonal(S[inds]) * V';       
+            ## we construct the solution x by projecting x onto the V subspace
+            # x = V * Σ * (U') * b;
+            # S[end] > S[1] * eps(T) / method.tol
 
-        # tikinov regulariser solution commented below
+            # error_x = S[1] * eps(T) / S[end] 
+
+        ## tikinov regulariser solution commented below
+            # δ = method.regularisation_parameter
             # bigA = [A; sqrt(δ) * I];
             # x = bigA \ [b; zeros(size(A)[2])]
 
-        # S[end] > S[1] * eps(T) / method.tol
-
-        error_x = S[1] * eps(T) / S[end] 
+        x = A \ b    
+        
+        error_x = cond(A) * eps(T)
         
         error = if norm(b) > 0
             norm(A*x - b) / norm(b);
@@ -163,15 +168,21 @@ function modes_coefficients!(sim::BearingSimulation{PriorMethod})
 
     ## The forward problem
         mode_errors = zeros(T, modes |> length)
-        Ms = [zeros(Complex{T},4,4) for n = modes]
+        MSs = [zeros(Complex{T},4,4) for n = modes]
+        Ss = [zeros(Complex{T},4,4) for n = modes]
 
         # this sortperm_modes below is now depricated, as all modes arrive at this point already sorted in this order. Will remove 
         is = sortperm_modes(modes)
 
         for i in is
             M = boundarycondition_system(ω, bearing, boundarybasis1.basis[1].boundarytype, boundarybasis2.basis[1].boundarytype, modes[i])
-            mode_errors[i] = cond(M) * eps(T)
-            Ms[i] = M
+
+            S = diagm([T(4) / sum(abs.(M[:,j])) for j in 1:size(M,2)])
+            MS = M * S
+
+            mode_errors[i] = cond(MS) * eps(T)
+            MSs[i] = MS
+            Ss[i] = S
 
             if mode_errors[i] > method.modal_method.tol
                 @warn "The relative error for the boundary conditions was $(mode_errors[i]) for (ω,mode) = $((ω,modes[i]))"
@@ -192,7 +203,8 @@ function modes_coefficients!(sim::BearingSimulation{PriorMethod})
             # best to keep the indices in the same order they were given and not in the sorted order
             inds = sort(is[1:i-1])
 
-            Ms = Ms[inds]
+            MSs = MSs[inds]
+            Ss = Ss[inds]
             mode_errors = mode_errors[inds]
             modes = modes[inds]
 
@@ -219,7 +231,8 @@ function modes_coefficients!(sim::BearingSimulation{PriorMethod})
         @reset method.modal_method.mode_errors = mode_errors
         @reset method.modal_method.modes = modes
 
-        M_forward = BlockDiagonal(Ms)
+        M_forward = BlockDiagonal(MSs)
+        S_forward = BlockDiagonal(Ss)
 
     # calculate the prior matrix and bias vector
         prior_matrix, bias_vector = prior_and_bias(modes, boundarydata1, boundarydata2, boundarybasis1, boundarybasis2) 
@@ -229,8 +242,8 @@ function modes_coefficients!(sim::BearingSimulation{PriorMethod})
         # x = [A; sqrt(δ) * I] \ [b; zeros(size(A)[2])]
 
         # there is not point in regularising as only well posed Ms are used
-        B = M_forward \ prior_matrix
-        c = M_forward \ bias_vector
+        B = S_forward * (M_forward \ prior_matrix)
+        c = S_forward * (M_forward \ bias_vector)
 
         # a = vcat(wave.potentials[1].coefficients,wave.potentials[2].coefficients)[:]
         # a = B*x + c
