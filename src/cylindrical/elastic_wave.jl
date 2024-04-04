@@ -247,13 +247,13 @@ function modes_coefficients!(sim::BearingSimulation{PriorMethod})
 
         # a = vcat(wave.potentials[1].coefficients,wave.potentials[2].coefficients)[:]
         # a = B*x + c
-        # M_forward * a = prior_matrix * x + bias_vector
+        # inv(S_forward) * M_forward * a = prior_matrix * x + bias_vector
         # norm(B * [1.0,1.0] + c - a) / norm(a)
 
         # prior_matrix * x 
         # M_forward * a
         # 
-        # x = prior_matrix \ (M_forward * a)
+        # x = prior_matrix \ (inv(S_forward) * M_forward * a)
         # norm(prior_matrix * x - M_forward * a) / norm(prior_matrix * x)
         # norm(prior_matrix * [1.0,1.0] - M_forward * a) / norm(prior_matrix * x)
 

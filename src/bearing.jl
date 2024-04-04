@@ -185,7 +185,7 @@ end
 A convenience function to predict the boundary data of 'sim' according to the solution 'wave'.    
 """
 function BoundaryData(boundarycondition::BoundaryCondition, radius::AbstractFloat, θs::AbstractVector{T}, wave::ElasticWave{2}) where T <: AbstractFloat
-
+    
     xs = [
         radial_to_cartesian_coordinates([radius,θ]) 
     for θ in θs];
@@ -193,7 +193,7 @@ function BoundaryData(boundarycondition::BoundaryCondition, radius::AbstractFloa
     fs = [field(wave, x, boundarycondition.fieldtype) for x in xs];
     fs = hcat(fs...) |> transpose |> collect
 
-    return BoundaryData(boundarycondition; θs = θs, fields = fs)
+    return BoundaryData(boundarycondition; θs = θs, fields = Matrix{Complex{T}}(fs))
 end
 
 struct BoundaryBasis{BD <: AbstractBoundaryData}
@@ -429,7 +429,7 @@ function setup(sim::BearingSimulation{PriorMethod})
     end
 
     if modes |> isempty
-        println("No modes was specified. Will use the largest number of modes according to the data provided (boundarybasis1, boundarybasis2, boundarydata1, and boundarydata2)")
+        println("No modes were specified. Will use the as many modes as possible according to the data provided (boundarybasis1, boundarybasis2, boundarydata1, and boundarydata2)")
 
         # need the Fourier modes for two boundaries. This can be provided either by one BoundaryBasis and one BoundaryData (most common), or by two BoundaryBasis. We determine the scenario first:
 
