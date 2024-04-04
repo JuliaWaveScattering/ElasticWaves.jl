@@ -286,6 +286,9 @@ A convenience function to predict the boundary data of 'sim' according to the so
 """
 function boundary_data(sim::BearingSimulation, wave::ElasticWave{2})
 
+    if wave.potentials[1].modes |> isempty 
+        @error "The wave potentials are empty. Can not calculate field."
+    end     
     bd1 = sim.boundarydata1;
     bd2 = sim.boundarydata2;
 
