@@ -37,7 +37,7 @@ function RollerBearing(; medium::Elastic{2,T},
     R =  rollers_inside ? (inner_radius - roller_radius) : (outer_radius + roller_radius)
     d = 2 * roller_radius
 
-    if !(2pi * R ≈ number_of_rollers * (d + roller_separation))
+    if number_of_rollers >0 && !(2pi * R ≈ number_of_rollers * (d + roller_separation))
         error(" the number of rollers, and separation distance, do not match the geometry of the raceway.")
     end    
 
