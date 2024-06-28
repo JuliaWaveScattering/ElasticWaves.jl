@@ -42,8 +42,8 @@ kp * dr
     # fp_loading = sum(amps[i] .* cos.((i-1) .* loading_θs) for i in eachindex(amps));
     # fs_loading = 0.0 .* fp_loading;
 
-    using Plots 
-    plot(loading_θs, real.(fp_loading))
+    # using Plots 
+    # plot(loading_θs, real.(fp_loading))
 
     bc1_forward = TractionBoundary(inner=true)
     bc2_forward = TractionBoundary(outer=true)
