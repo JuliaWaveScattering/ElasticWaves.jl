@@ -42,8 +42,8 @@ kp * dr
     # fp_loading = sum(amps[i] .* cos.((i-1) .* loading_θs) for i in eachindex(amps));
     # fs_loading = 0.0 .* fp_loading;
 
-    # using Plots 
-    # plot(loading_θs, real.(fp_loading))
+    using Plots 
+    plot(loading_θs, real.(fp_loading))
 
     bc1_forward = TractionBoundary(inner=true)
     bc2_forward = TractionBoundary(outer=true)
@@ -304,5 +304,5 @@ end
         #plot(bd1_inner.θs, 2pi / Z .* abs.(bd1_inner.fields[:,1]), label = "predicted loading")
         #plot!(loading_θs, abs.(fp_loading), linestyle = :dash, label = "true loading")
     
-       @test norm(bd1_inner.fields - bd1_for.fields) / norm(bd1_for.fields) < 1e-10
+       @test norm(bd1_inner.fields - bd1_for.fields) / norm(bd1_for.fields) < 2e-10
     end

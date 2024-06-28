@@ -28,7 +28,7 @@ function BoundaryData(ω::Number, bearing::RollerBearing, loading_profile::Bound
         loading_profile = fields_to_fouriermodes(loading_profile, modes)
     end
         
-    coefficients =  loading_profile.coefficients 
+    coefficients = loading_profile.coefficients 
     modes = loading_profile.modes
 
     # the natural wavenumber of the bearing ω_m that is closest to the given frequency ω is ω_m = frequency_order * Z * Ω
@@ -40,7 +40,7 @@ function BoundaryData(ω::Number, bearing::RollerBearing, loading_profile::Bound
     fields = fouriermodes_to_fields(loading_profile.θs, boundary_fourier_coefficients, boundary_modes)
 
     return BoundaryData(loading_profile.boundarytype; 
-        θs = loading_profile.θs, 
+        θs = loading_profile.θs,
         fields = fields,
         coefficients = boundary_fourier_coefficients,
         modes =  boundary_modes
