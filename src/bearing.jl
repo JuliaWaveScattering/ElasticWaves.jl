@@ -9,6 +9,7 @@ struct RollerBearing{T <: AbstractFloat}
     number_of_rollers::Int
     rollers_inside::Bool
     roller_radius::Float64
+    "the circumferential distance between the boundaries of adjacent rollers."
     roller_separation::Float64
     angular_speed::Float64
 end
@@ -29,12 +30,16 @@ function RollerBearing(; medium::Elastic{2,T},
         @error "both inner_gaps and outer_gaps need to be an even number of angles"
     end
 
+    if number_of_rollers * (2*roller_radius + roller_separation) > 2pi (inner_radius - roller_radius) 
+        @error "The rollers do not fit! Need to decrease the size of roller_radius or roller_separation or number_of_rollers"
+    end    
+
     println("Note that the traction on the inner boundary (τn,τt) is interpreted to be the vector τ = - τn * er - τt * eθ.")
 
     # we assume the rollers are in contact with the raceway, but have a neglible indentation into the raceway. In which case we should have that 
     
     # the radius of the circle passing through the centre of the rollers
-    R =  rollers_inside ? (inner_radius - roller_radius) : (outer_radius + roller_radius)
+    R = rollers_inside ? (inner_radius - roller_radius) : (outer_radius + roller_radius)
     d = 2 * roller_radius
 
     if number_of_rollers >0 && !(2pi * R ≈ number_of_rollers * (d + roller_separation))

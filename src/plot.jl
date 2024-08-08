@@ -25,12 +25,12 @@
         end
     end
 
-    circle_outer = Circle.(bearing.inner_radius)
+    circle_outer = Circle(bearing.inner_radius)
     @series begin
         circle_outer
     end
 
-    circle_outer = Circle.(bearing.outer_radius)
+    circle_outer = Circle(bearing.outer_radius)
     @series begin
         circle_outer
     end
