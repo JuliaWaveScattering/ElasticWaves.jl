@@ -19,8 +19,8 @@ function RollerBearing(; medium::Elastic{2,T},
         outer_radius::Union{T,Complex{T}} = 0.0,
         inner_gaps::Vector{T} = typeof(medium).parameters[2][],
         outer_gaps::Vector{T} = typeof(medium).parameters[2][],
-        roller_radius::T = inner_radius / typeof(inner_radius)(4.0),
         number_of_rollers::Int = 8,
+        roller_radius::T = inner_radius / (typeof(inner_radius)(1.0) + 2.5*number_of_rollers / (2pi)),
         rollers_inside::Bool = true,
         roller_separation::T = 2pi * (rollers_inside ? (inner_radius - roller_radius) : (outer_radius + roller_radius)) / number_of_rollers - 2 * roller_radius, 
         angular_speed::T = 1.0
@@ -30,7 +30,11 @@ function RollerBearing(; medium::Elastic{2,T},
         @error "both inner_gaps and outer_gaps need to be an even number of angles"
     end
 
-    if number_of_rollers * (2*roller_radius + roller_separation) > 2pi (inner_radius - roller_radius) 
+    if roller_separation < 0
+        @error "The roller_separation can not be negative."
+    end    
+
+    if number_of_rollers * (2*roller_radius + roller_separation) > 2pi * (inner_radius - roller_radius) 
         @error "The rollers do not fit! Need to decrease the size of roller_radius or roller_separation or number_of_rollers"
     end    
 

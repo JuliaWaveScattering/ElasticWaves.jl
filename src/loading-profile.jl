@@ -4,7 +4,7 @@ function natural_frequencies(bearing::RollerBearing, frequency_order::Int)
     Ω = bearing.angular_speed
     Z = bearing.number_of_rollers
 
-    ωs = (0:frequency_order) .* (Z * Ω)
+    ωs = (1:frequency_order) .* (Z * Ω)
 
     return ωs
 end    
