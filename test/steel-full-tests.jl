@@ -59,6 +59,9 @@ end
 min_loading_ns = (1 .- Cs .* Ω) .* ms .* Z 
 max_loading_ns = (1 .+ Cs .* Ω) .* ms .* Z 
 
+min_loading_ns = Int.(round.(min_loading_ns))
+max_loading_ns = Int.(round.(max_loading_ns))
+
 mode_intervals = hcat(min_loading_ns, max_loading_ns) |> transpose |> collect
 
 plot(min_loading_ns)
@@ -92,7 +95,9 @@ loading_profile = BoundaryData(bc1_forward,
 loading_profile = fields_to_fouriermodes(loading_profile)
 
 
-all_measurable_modes = [mode_intervals[1,i]:mode_intervals[2,i] for i in 1:size(mode_intervals,2)]
+all_measurable_modes = [
+    mode_intervals[1,i]:mode_intervals[2,i] 
+for i in 1:size(mode_intervals,2)]
 
 all_measurable_modes = vcat(all_measurable_modes...)
 all_measurable_modes = union(all_measurable_modes)
