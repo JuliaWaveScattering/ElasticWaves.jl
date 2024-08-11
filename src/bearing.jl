@@ -126,7 +126,7 @@ struct BoundaryData{BC <: BoundaryCondition, T} <: AbstractBoundaryData{BC}
             end
         end
 
-        return new{BC, T}(boundarytype, θs |> collect, fields, coefficients, modes |> collect)
+        return new{BC, T}(boundarytype, θs |> collect, Complex.(fields), coefficients, modes |> collect)
     end
 
 end
@@ -170,7 +170,7 @@ function BoundaryData(boundarytype::BC;
         fields = fields[is,:];
     end
 
-    return BoundaryData(boundarytype,θs |> collect, fields, coefficients, modes |> collect)
+    return BoundaryData(boundarytype, θs |> collect, Complex.(fields), Complex.(coefficients), modes |> collect)
 end
 
 # is_standard_order(bd::BoundaryData) = is_standard_order(bd.modes)
