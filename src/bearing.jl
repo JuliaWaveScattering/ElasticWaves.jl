@@ -380,7 +380,13 @@ function setup(sim::BearingSimulation{ModalMethod})
     boundarydata1 = sim.boundarydata1
     boundarydata2 = sim.boundarydata2
 
-    get_order(coefficients) = isempty(coefficients) ? - 1 : basislength_to_basisorder(PhysicalMedium{2,1}, size(coefficients,1))
+    get_order(coefficients) = if isempty(coefficients)
+        - 1 
+    else 
+        l = size(coefficients,1)
+        l = 2 * Int(floor((l - 1) / 2)) + 1
+        basislength_to_basisorder(PhysicalMedium{2,1}, l)
+    end    
 
     # if the modes not given, then determine the modes from the data
     if isempty(modes)

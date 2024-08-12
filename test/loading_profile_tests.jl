@@ -55,7 +55,7 @@ kp * dr
 
     loading_profile2 = fields_to_fouriermodes(loading_profile, -3:3)
     loading_profile2 = fouriermodes_to_fields(loading_profile2)
-    plot!(loading_θs, real.(loading_profile2.fields[:,1]), linestyle = :dash)
+    # plot!(loading_θs, real.(loading_profile2.fields[:,1]), linestyle = :dash)
     # scatter(loading_profile2.modes, abs.(loading_profile2.coefficients[:,1]))
 
     bd1_for = BoundaryData(ω, bearing, loading_profile);
