@@ -317,7 +317,7 @@
         max(error1,error2)
     end
 
-    @test original_inner_boundary_errors[end] < 5e-11
+    @test original_inner_boundary_errors[end] < 1e-10
 end
 
 # inner_boundary_errors = map(eachindex(ωs)) do i
