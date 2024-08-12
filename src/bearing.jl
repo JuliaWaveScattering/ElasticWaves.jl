@@ -175,6 +175,11 @@ end
 
 # is_standard_order(bd::BoundaryData) = is_standard_order(bd.modes)
 
+"""
+    select_modes(bd::BoundaryData, modes::AbstractVector{Int})
+
+Returns a 'BoundaryData' with only the 'modes' given.    
+"""
 function select_modes(bd::BoundaryData, modes::AbstractVector{Int})
     
     if !(setdiff(modes,bd.modes) |> isempty)
@@ -189,9 +194,20 @@ function select_modes(bd::BoundaryData, modes::AbstractVector{Int})
 end
 
 """
-    BoundaryData(wave::ElasticWave{2}, radius, θs, fieldtype)
+    BoundaryData(wave::ElasticWave{2}, radius, wave::ElasticWave{2})
 
-A convenience function to predict the boundary data of 'sim' according to the solution 'wave'.    
+A convenience function to predict the boundary data  according to the solution 'wave' using the modes only.    
+"""
+function BoundaryData(boundarycondition::BoundaryCondition, radius::AbstractFloat, wave::ElasticWave{2})
+
+    fs = field_modes(wave, radius, boundarycondition.fieldtype)
+
+    return BoundaryData(boundarycondition; coefficients = fs, modes = wave.potentials[1].modes)
+end
+"""
+    BoundaryData(wave::ElasticWave{2}, radius, θs,  wave::ElasticWave{2})
+
+A convenience function to predict the boundary data of according to the solution 'wave'.    
 """
 function BoundaryData(boundarycondition::BoundaryCondition, radius::AbstractFloat, θs::AbstractVector{T}, wave::ElasticWave{2}) where T <: AbstractFloat
     

@@ -3,16 +3,15 @@
 
 using ElasticWaves
 using Test, Statistics, LinearAlgebra, MultipleScattering
+using Accessors
 
 # @testset "Steel bearing" begin
 
 # Well almost steel!
-medium = Elastic(2; ρ = 1400.0, cp = 1000.0 - 0.0im, cs = 700.0 - 0.0im)
 medium = Elastic(2; ρ = 2100.0, cp = 1500.0 - 0.0im, cs = 1050.0 - 0.0im)
 medium = Elastic(2; ρ = 7000.0, cp = 5000.0 - 0.0im, cs = 3500.0 - 0.0im)
 
-Ω = 2pi * 20 / 60 # large wind turbines rotate at about 15 rpm
-Ω = 2pi * 30 / 60 # large wind turbines rotate at about 15 rpm
+Ω = 2pi * 70 / 60 # large wind turbines rotate at about 15 rpm
 Z = 15 
 
 inner_radius = 1.0
@@ -38,7 +37,7 @@ bc1_forward = TractionBoundary(inner=true)
 bc2_forward = TractionBoundary(outer=true)
 ns = 0:25
 
-max_condition_number = 2e7
+max_condition_number = 1e7
 tol = max_condition_number * eps(Float64)
 
 ωs = ωms
@@ -79,7 +78,7 @@ qs = real.(qs)
 qs = [ ((q < 0) ? 0.0 : q) for q in qs]
 
 θos = [-1.0];
-θos = [-1.0, -1.2];
+# θos = [-1.0, -1.2];
 is = [findmin(abs.(θo .- θs))[2] for θo in θos]
 qs[is] .= 0.0
 plot(θs,qs)
@@ -137,9 +136,7 @@ bd2_for = BoundaryData(bc2_forward,
 # a little bit of an inverse crime
 bd2_inverse = bd2_for
 
-
-
-ω = ωs[4]
+ω = ωs[1]
 bd1_for = BoundaryData(ω, bearing, loading_profile);
 
 modal_method = ModalMethod(tol = tol, only_stable_modes = true)
@@ -152,6 +149,13 @@ maximum(wave.method.mode_errors .|> abs)
 # create the data from evaluating the forward problem 
 bd1_inverse = BoundaryData(bc1_inverse, bearing.inner_radius, θs_inv, wave)
 
+amp = 5e-4 .* mean(abs.(bd1_inverse.fields))
+
+reals = amp/2 .* (rand(size(bd1_inverse.fields)...) .- 0.5)
+imags = amp/2 .* (rand(size(bd1_inverse.fields)...) .- 0.5) .* im
+
+@reset bd1_inverse.fields = bd1_inverse.fields + reals + imags 
+
 modal_method = if wave.method.modes |> length < length(θs_inv)
     ModalMethod(modes = wave.method.modes,tol = tol, only_stable_modes = true)
 else    
@@ -163,4 +167,9 @@ inverse_sim = BearingSimulation(ω, modal_method, bearing, bd1_inverse, bd2_inve
 inverse_wave = ElasticWave(inverse_sim);
 inverse_wave.method.modes
 
- 
+
+predict_traction = BoundaryData(bc1_forward,  bearing.inner_radius, inverse_wave)
+
+norm(predict_traction.coefficients - select_modes(bd1_for,predict_traction.modes).coefficients) / norm(predict_traction.coefficients)
+
+loading_profile(ω,bearing,predict_traction)
