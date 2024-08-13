@@ -16,11 +16,16 @@ function fields_to_fouriermodes(boundarydata::AbstractBoundaryData, modes::Abstr
     return boundarydata
 end
 
-function fouriermodes_to_fields(boundarydata::AbstractBoundaryData)
+function fouriermodes_to_fields(boundarydata::AbstractBoundaryData, θs::AbstractVector = boundarydata.θs)
 
-    fields = fouriermodes_to_fields(boundarydata.θs, boundarydata.coefficients, boundarydata.modes)
+    if θs |> isempty  
+        θs = LinRange(0,2π, length(boundarydata.modes) + 1)[1:end-1]
+    end    
+
+    fields = fouriermodes_to_fields(θs, boundarydata.coefficients, boundarydata.modes)
     
     @reset boundarydata.fields = fields
+    @reset boundarydata.θs = θs
 
     return boundarydata
 end

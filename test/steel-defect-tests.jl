@@ -38,8 +38,7 @@ bc2_forward = TractionBoundary(outer=true)
 bc1_inverse = DisplacementBoundary(inner=true)
 bc2_inverse = TractionBoundary(inner=true)
 
-modes = 0:25
-
+modes = 0:14
 max_condition_number = 1e7
 tol = max_condition_number * eps(Float64)
 
@@ -68,10 +67,6 @@ conds_vec = map(ωms) do ω
     end
 end
 
-scatter()
-scatter!.(conds_vec)
-scatter!(ylims = (0,max_condition_number))
-
 loading_modes_vec = map(eachindex(ms)) do i
     modes_vec[i] .- ms[i] * Z
 end
@@ -90,7 +85,7 @@ end
 scatter(vcat(scatter_ms_vec...),abs.(vcat(loading_modes_vec...)))
 scatter!(ylims = (0, 50), xlab = "ωm frequency", ylab = "loading modes")
 
-measurable_loading_modes = union(vcat(loading_modes...));
+measurable_loading_modes = union(vcat(loading_modes_vec...));
 all_measurable_modes = [-reverse(measurable_loading_modes); measurable_loading_modes]
 
 # Cs = ns ./ ωs
@@ -224,6 +219,12 @@ loading_data = BoundaryData(loading_datas[1].boundarytype,
     modes = modes, 
     coefficients = coes
 )
+
+loading_data = fouriermodes_to_fields(loading_data, θs)
+
+plot(loading_data.θs, 1.85 .+ loading_data.fields[:,1] .|> real)
+plot!(θs,qs, linestyle = :dash)
+
 
 loading_data = loading_datas[4]
 modes = intersect(loading_data.modes, loading_profile.modes)
