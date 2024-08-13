@@ -346,10 +346,10 @@ function nondimensionalise!(boundarydata::BoundaryData{BoundaryCondition{Displac
     return boundarydata
 end
 
-function nondimensionalise(bearing::RollerBearing, sim::BearingSimulation)
+function nondimensionalise(bearing::RollerBearing, ω::Number)
 
-    kp = sim.ω / bearing.medium.cp;
-    non_medium = Elastic(2; ρ = 1 / sim.ω^2, cp = sim.ω, cs = bearing.medium.cs * kp)
+    kp = ω / bearing.medium.cp;
+    non_medium = Elastic(2; ρ = 1 / ω^2, cp = ω, cs = bearing.medium.cs * kp)
     
     # nondimensionalise bearing geometry
     @reset bearing.medium = non_medium
@@ -371,7 +371,7 @@ function nondimensionalise!(sim::BearingSimulation)
     normalize!(sim.boundarybasis2)
 
     # nondimensionalise bearing
-    sim.bearing = nondimensionalise(sim.bearing,sim)
+    sim.bearing = nondimensionalise(sim.bearing,sim.ω)
 
     return sim
 end
