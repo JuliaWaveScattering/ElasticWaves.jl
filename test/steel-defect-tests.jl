@@ -10,7 +10,7 @@ using Accessors
 medium = Elastic(2; ρ = 2100.0, cp = 1500.0 - 0.0im, cs = 1050.0 - 0.0im)
 medium = Elastic(2; ρ = 7000.0, cp = 5000.0 - 0.0im, cs = 3500.0 - 0.0im)
 
-Ω = 2pi * 80 / 60 # large wind turbines rotate at about 15 rpm
+Ω = 2pi * 90 / 60 # large wind turbines rotate at about 15 rpm
 Z = 15 
 
 inner_radius = 1.0
@@ -175,6 +175,9 @@ loading_datas = map(ωms) do ω
     # create the data from evaluating the forward problem 
     bd1_inverse = BoundaryData(bc1_inverse, bearing.inner_radius, θs_inv, wave)
 
+    # to immitate smoothing in time, we should finely samply in θs and then smooth the data in the same way. Then sample only for the number of sensors
+
+
     # amp = 5e-4 .* mean(abs.(bd1_inverse.fields))
     # amp = 0 .* mean(abs.(bd1_inverse.fields))
 
@@ -215,10 +218,6 @@ coes = Array{Complex{Float64}, 2}(undef, length(modes), 2)
 for data in loading_datas
     inds = [findfirst(m .== modes) for m in data.modes]
     coes[inds,:] = data.coefficients
-    # add_modes = setdiff(data.modes, modes)
-    # add_data = select_modes(data, add_modes)
-    # modes = [modes; add_data.modes]
-    # coes = [coes; add_data.coefficients]
 end
 
 loading_data = BoundaryData(loading_datas[1].boundarytype, 
