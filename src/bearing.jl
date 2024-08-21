@@ -392,6 +392,7 @@ end
 
 function setup(sim::BearingSimulation{ModalMethod})
     
+    max_mode = sim.method.maximum_mode
     modes = sim.method.modes
     boundarydata1 = sim.boundarydata1
     boundarydata2 = sim.boundarydata2
@@ -414,8 +415,11 @@ function setup(sim::BearingSimulation{ModalMethod})
         modes = intersect(modes_vec...) |> collect
 
         if isempty(modes)
-            error("boundarydata1 and boundarydata2 share no modes in common. Fourier modes are required for the ModalMethod")
+            @error "boundarydata1 and boundarydata2 share no modes in common. Fourier modes are required for the ModalMethod"
         end
+
+        is = findall(abs.(modes) .< max_mode)
+        modes = modes[is]
 
         is = sortperm_modes(modes);
         modes = modes[is];

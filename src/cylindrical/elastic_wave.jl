@@ -116,7 +116,7 @@ function modes_coefficients!(sim::BearingSimulation{ModalMethod})
         coefficients[i] = SM * x
         mode_errors[i] = error
 
-        if error > method.tol
+        if error > method.tol || isnan(error)
             @warn("The relative error for the boundary conditions was $(error) for (ω,mode) = $((ω,modes[i]))")
             if method.only_stable_modes 
                 mode_errors[i] = zero(T)

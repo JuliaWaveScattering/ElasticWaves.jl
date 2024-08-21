@@ -174,6 +174,6 @@ plot(bearing, 0.0)
         plot!(frame = :none, title="", xguide ="",yguide ="")
     end
     
-    gif(anim,"docs/images/bearings-time-crack.gif", fps = 4)
+    # gif(anim,"docs/images/bearings-time-crack.gif", fps = 4)
     # gif(anim,"docs/images/bearings-time.gif", fps = 4)
     # gif(anim,"docs/images/bearings-time-slow.gif", fps = 4)
