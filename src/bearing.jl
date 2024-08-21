@@ -34,9 +34,15 @@ function RollerBearing(; medium::Elastic{2,T},
         @error "The roller_separation can not be negative."
     end    
 
-    if number_of_rollers * (2*roller_radius + roller_separation) > 2pi * (inner_radius - roller_radius) 
+    if rollers_inside && number_of_rollers * (2*roller_radius + roller_separation) > 2pi * (inner_radius - roller_radius) 
         @error "The rollers do not fit! Need to decrease the size of roller_radius or roller_separation or number_of_rollers"
-    end    
+    end
+
+    if !rollers_inside && number_of_rollers * (2*roller_radius + roller_separation) > 2pi * (outer_radius + roller_radius) 
+        @error "The rollers do not fit! Need to decrease the size of roller_radius or roller_separation or number_of_rollers"
+    end
+
+
 
     println("Note that the traction on the inner boundary (τn,τt) is interpreted to be the vector τ = - τn * er - τt * eθ.")
 
