@@ -149,6 +149,7 @@ dω = ωms[2] - ωms[1]
 f0_mat = outer_displacement(ωs; slip_amplitude = 0.00, defect_size = 0.0, rel_error = 0.05, numberofsensors = 2)
 
 iterations = 10
+iterations = 1
 f1_mats = [
     outer_displacement(ωs; slip_amplitude = 0.01, defect_size = 0.0, rel_error = 0.05, numberofsensors = 2)
 for i = 1:iterations]
@@ -165,6 +166,22 @@ plot(ωs, 1e9 .* abs.(f0_mat[:,1]), linestyle = :dash)
 plot!(ωs, 1e9 .* abs.(f1_mats[1][:,1]))
 plot!(ωs, 1e9 .* abs.(f2_mats[1][:,1]), ylims = (0,3.0))
 scatter!(ωms, 0.0 .* ωms, lab = "")
+
+
+using DSP, Plots
+x = 14:0.04:50
+y0 = sin.(x)
+y = cos.(2.3 .* x) .* y0 .+ cos.(2.3 .* x) .* sin.(1.2x)
+y = cos.(2.3 .* x) .* y0 .* sin.(1.4x)
+
+env = abs.(hilbert(y))
+env2 = abs.(hilbert(env))
+
+plot(x, abs.(y0))
+plot!(x, y, linestyle=:dash)
+plot!(x, env, color = :green)
+plot!(x, env2, color = :red)
+plot!(x, -env, color = :green)
 
 # using ProfileView
 # @time outer_displacement(ωms; slip_amplitude = 0.0, defect_size = 0.0, rel_error = 0.0, numberofsensors = 2)
