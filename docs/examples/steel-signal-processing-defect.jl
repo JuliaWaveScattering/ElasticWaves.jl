@@ -21,6 +21,8 @@ bearing = RollerBearing(medium = medium,
     roller_radius = inner_radius / (typeof(inner_radius)(1.0) + 2.5*Z / (2pi))
 )
 
+plot(bearing)
+
 # Types of boundary conditions for the forward and inverse problem
 const bc1_forward = TractionBoundary(inner=true)
 const bc2_forward = TractionBoundary(outer=true)
@@ -70,14 +72,14 @@ bd2_for = BoundaryData(bc2_forward,
 
 bd2_inverse = bd2_for # a little bit of an inverse crime
 
-function outer_displacement(ωs; 
+function outer_acceleration(ωs; 
         bearing = bearing,
         numberofsensors = 2,
         maximum_mode = 120,
         tol = tol,
         rel_error = 0.00,
         slip_amplitude = 0.0,
-        defect_size = 1.0,
+        defect_size = 0.2,
         loading_profile_defect = loading_profile_defect,
         loading_profile = loading_profile,
     )
@@ -131,41 +133,99 @@ function outer_displacement(ωs;
         plot(bd1_for_recover.θs, abs.(bd1_for_recover.fields[:,1]))
         
         bd1_inverse = BoundaryData(bc1_inverse, bearing.inner_radius, θs_inv, wave)
-        bd1_inverse.fields[:]
+        bd1_inverse.fields[:] .* ω^2
     end
 
     return hcat(fields...) |> transpose |> collect
 end
 
 frequency_order = 10
-frequency_order = 9
+frequency_order = 19
 ms = 1:frequency_order
 ωms = natural_frequencies(bearing, frequency_order) |> collect
+
+f0_mat = outer_acceleration(ωms; slip_amplitude = 0.00, defect_size = 0.0, rel_error = 0.0, numberofsensors = 2)
+plot(ωms, 1e9 .* abs.(f0_mat[:,1]), linestyle = :dash)
+scatter!(ωms, 0.0 .* ωms, lab = "")
+
 dω = ωms[2] - ωms[1]
 ωs = dω:(dω/10):ωms[end]
+
+ωs = ωms[5]:(dω/4):ωms[end]
 # ωs = dω:(dω/2):ωms[end]
 ωs |> length
+rel_error = 0.0
 
-f0_mat = outer_displacement(ωs; slip_amplitude = 0.00, defect_size = 0.0, rel_error = 0.05, numberofsensors = 2)
+f0_mat = outer_acceleration(ωs; slip_amplitude = 0.00, defect_size = 0.0, rel_error = rel_error, numberofsensors = 2)
+
+plot(ωs, 1e9 .* abs.(f0_mat[:,1]), linestyle = :dash)
+scatter!(ωs, 0.0 .* ωms, lab = "")
 
 iterations = 10
-iterations = 1
 f1_mats = [
-    outer_displacement(ωs; slip_amplitude = 0.01, defect_size = 0.0, rel_error = 0.05, numberofsensors = 2)
+    outer_acceleration(ωs; slip_amplitude = 0.01, defect_size = 0.0, rel_error = rel_error, numberofsensors = 2)
 for i = 1:iterations]
 f2_mats = [
-    outer_displacement(ωs; slip_amplitude = 0.01, defect_size = 1.0, rel_error = 0.05, numberofsensors = 2)
+    outer_acceleration(ωs; slip_amplitude = 0.0, defect_size = 0.1, rel_error = rel_error, numberofsensors = 2)
+for i = 1:iterations]
+f3_mats = [
+    outer_acceleration(ωs; slip_amplitude = 0.01, defect_size = 0.1, rel_error = rel_error, numberofsensors = 2)
 for i = 1:iterations]
 
-plot(ωs, 1e9 .* abs.(f0_mat[:,1]), linestyle = :dash)
-plot!(ωs, 1e9 .* abs.(mean(f1_mats)[:,1]))
-plot!(ωs, 1e9 .* abs.(mean(f2_mats)[:,1]), ylims = (0,3.0))
-scatter!(ωms, 0.0 .* ωms, lab = "")
+plot(ωs, 1e9 .* abs.(f0_mat[:,1]), linestyle = :solid, lab = "baseline")
+plot!(ωs, 1e9 .* abs.(mean(f2_mats)[:,1]), linestyle = :solid, lab = "defect")
+plot!(ωs, 1e9 .* abs.(mean(f1_mats)[:,1]), lab = "slip", linestyle = :dash)
+plot!(ωs, 1e9 .* abs.(mean(f3_mats)[:,1]), lab = "slip & defect", linestyle = :dashdot)
+scatter!(ωms[5:end], 0.0 .* ωms, lab = "")
 
-plot(ωs, 1e9 .* abs.(f0_mat[:,1]), linestyle = :dash)
-plot!(ωs, 1e9 .* abs.(f1_mats[1][:,1]))
-plot!(ωs, 1e9 .* abs.(f2_mats[1][:,1]), ylims = (0,3.0))
-scatter!(ωms, 0.0 .* ωms, lab = "")
+# plot(ωs, 1e9 .* abs.(f0_mat[:,1]), linestyle = :dash, lab = "baseline")
+# plot!(ωs, 1e9 .* abs.(f1_mats[1][:,1]), lab = "slip")
+# plot!(ωs, 1e9 .* abs.(f2_mats[1][:,1]), lab = "slip & defect")
+# scatter!(ωms[5:end], 0.0 .* ωms, lab = "")
+
+
+ω2s = ωs[1]:(ωs[2] - ωs[1]):(2ωs[end] + ωs[2] - 2ωs[1])
+ts = ω_to_t(ω2s)
+
+Fs_vec = [f0_mat[:,1], mean(f1_mats)[:,1], mean(f2_mats)[:,1], mean(f3_mats)[:,1]];
+
+Fs_vec = [[f; f .* 0.0] for f in Fs_vec];
+fs_vec = [frequency_to_time(F, ω2s, ts) for F in Fs_vec]
+
+plot(ts, fs_vec[1])
+plot!(ts, 0.12 .* cos.(10 .* ts .* Ω), linestyle = :dash)
+
+
+using DSP
+env_vec = [abs.(hilbert(fs)) for fs in fs_vec]
+plot!(env_vec[3])
+
+Fenvs_vec = [time_to_frequency(env, ts, ω2s) for env in env_vec]
+
+
+plot(ω2s, abs.(Fs_vec[1]))
+plot!(ω2s, abs.(Fenvs_vec[1]), xlim = (ωs[1],ωs[end]))
+
+plot(ω2s, abs.(Fs_vec[2]))
+plot!(ω2s, abs.(Fenvs_vec[2]), xlim = (ωs[1],ωs[end]))
+
+plot(ω2s, abs.(Fs_vec[3]))
+plot!(ω2s, abs.(Fenvs_vec[3]), xlim = (ωs[1],ωs[end]))
+
+
+plot(ω2s, abs.(Fs_vec[1]), xlim = (ωs[1],ωs[end]), linestyle=:dash, lab = "loading")
+plot!(ω2s, abs.(Fs_vec[4]), xlim = (ωs[1],ωs[end]), linestyle=:dash, lab = "slip defect")
+plot!(ω2s, abs.(Fenvs_vec[3]), xlim = (ωs[1],ωs[end]), lab = "env defect")
+plot!(ω2s, abs.(Fenvs_vec[4]), xlim = (ωs[1],ωs[end]), ylims = (0,0.003), linestyle=:dash, lab = "env slip defect")
+
+
+scatter!(ωms[5:end], 0.0 .* ωms, lab = "")
+# ω0s = 0:(ωs[2]-ωs[1]):((length(ωs)-1) * (ωs[2]-ωs[1]))
+# ts = ω_to_t(ω0s)
+# f0_time = frequency_to_time(f0_mat[:,1], ω0s, ts)
+# plot(f0_time, xlim = (1,6))
+
+
 
 
 using DSP, Plots

@@ -9,6 +9,7 @@ medium = Elastic(2; ρ = 7000.0, cp = 5000.0 - 0.0im, cs = 3500.0 - 0.0im)
 
 # need a higher rotation speed Ω for the forward and inverse problem to be well posed. In practice, we need only the inverse problem to be well posed.
 Ω = 2pi * 120 / 60 # large wind turbines rotate at about 15 rpm
+# Ω = 2pi * 1200 / 60 # large wind turbines rotate at about 15 rpm
 Z = 15 
 
 inner_radius = 1.0
@@ -32,7 +33,9 @@ bc1_inverse = DisplacementBoundary(inner=true)
 bc2_inverse = TractionBoundary(inner=true)
 
 modes_to_measure = 0:12
+modes_to_measure = 0:20
 max_condition_number = 1e7
+max_condition_number = 2e8
 tol = max_condition_number * eps(Float64)
 
 ωs = ωms
@@ -53,12 +56,11 @@ loading_modes_vec = map(eachindex(ms)) do i
     modes_vec[i] .- ms[i] * Z
 end
 
-# scatter_ms_vec = map(eachindex(ms)) do i
-#     [ms[i] for l in loading_modes_vec[i]]
-# end
-
-# scatter(vcat(scatter_ms_vec...),abs.(vcat(loading_modes_vec...)))
-# scatter!(ylims = (0, 50), xlab = "ωm frequency", ylab = "loading modes")
+scatter_ms_vec = map(eachindex(ms)) do i
+    [ms[i] for l in loading_modes_vec[i]]
+end
+scatter(vcat(scatter_ms_vec...),abs.(vcat(loading_modes_vec...)))
+scatter!(ylims = (0, 50), xlab = "ωm frequency", ylab = "loading modes")
 
 measurable_loading_modes = union(vcat(loading_modes_vec...));
 all_measurable_modes = [-reverse(measurable_loading_modes); measurable_loading_modes]
@@ -87,6 +89,10 @@ loading_profile = BoundaryData(bc1_forward,
     fields = hcat(qs .+ 0.0im,0.0 .* qs)
 )
 loading_profile = fields_to_fouriermodes(loading_profile)
+bd1_for = BoundaryData(ωms[3], bearing, loading_profile);
+# scatter(loading_profile.modes, loading_profile.coefficients[:,1] .|> abs, ylims = (0.,0.1))
+scatter(bd1_for.modes, bd1_for.coefficients[:,1] .|> abs, ylims = (0.,0.2))
+
 
 non_measurable_modes = setdiff(loading_profile.modes, all_measurable_modes)
 
@@ -135,7 +141,7 @@ function predict_boundary(rel_error = 0.005, modes_to_measure = modes_to_measure
 
         bd1_inverse = BoundaryData(bc1_inverse, bearing.inner_radius, θs, wave)
 
-        # add 0.5% error
+        # add rel_error
         amp = mean(abs.(bd1_inverse.fields))
         error = rel_error .* amp .* (rand(Complex{Float64},size(bd1_inverse.fields)...) .- 0.5 .- 0.5im)
 
@@ -182,9 +188,8 @@ function predict_boundary(rel_error = 0.005, modes_to_measure = modes_to_measure
     return fouriermodes_to_fields(loading_predict, θs)
 end
 
-
-
-loading_predict = predict_boundary(0.0001,0:10)
+measured_modes = 0:15
+loading_predict = predict_boundary(0.01,measured_modes)
 
 modes = intersect(loading_predict.modes, loading_profile.modes)
 loading_true = select_modes(loading_profile,modes)
@@ -202,7 +207,7 @@ norm(loading_predict.fields[:,1]- qs_defect) / norm(loading_predict.fields[:,1])
 # Do a ribbon plot 
 
 data = map(1:150) do i
-    real.(predict_boundary(0.01,0:10).fields[:,1])
+    real.(predict_boundary(0.01,measured_modes).fields[:,1])
 end
 
 ## redo the simulation 100 times each with a different error
@@ -212,15 +217,52 @@ y_mat = hcat(data...) # simpler to make a big matrix
 ys_mean = mean(y_mat, dims = 2)[:]
 ys_std = std(y_mat, dims = 2)[:]
 
-h = 200
+h = 400
 gr(linewidth = 1.0, size = (1.6 * h, h ))
 
-plot(θs, abs.(ys_mean); ribbon = ys_std, fillalpha=.4, linewidth = 2.0, lab = "predicted")
+plot(θs, abs.(ys_mean); ribbon = ys_std .* 0.5, fillalpha=.4, linewidth = 2.0, lab = "predicted")
 plot!(θs,qs, linestyle = :dash, lab = "exact")
 plot!(xlab = "θ", ylab = "loading profile")
 
-# savefig("docs/images/steel-bearing-defect-11-modes.pdf")
+# savefig("docs/images/steel-bearing-defect-modes-$(measured_modes[end])-RPM-$(Int(round(60 * Ω / (2pi)))).pdf")
 
-# Next we simulate the measured displacement on the outer raceway and test the signal processing methods typically used.
+# use fewer modes
+measured_modes = 0:6
 
+loading_predict = predict_boundary(0.01,measured_modes)
 
+modes = intersect(loading_predict.modes, loading_profile.modes)
+loading_true = select_modes(loading_profile,modes)
+loading_predict = select_modes(loading_predict,modes)
+
+norm(loading_true.coefficients - loading_predict.coefficients) / norm(loading_true.coefficients)
+
+loading_predict = fouriermodes_to_fields(loading_predict, θs)
+
+plot(loading_predict.θs, loading_predict.fields[:,1] .|> real)
+plot!(θs,qs_defect, linestyle = :dash)
+
+norm(loading_predict.fields[:,1]- qs_defect) / norm(loading_predict.fields[:,1])
+
+# Do a ribbon plot 
+
+data = map(1:100) do i
+    real.(predict_boundary(0.02,measured_modes).fields[:,1])
+end
+
+## redo the simulation 100 times each with a different error
+
+# calculate the mean and standard deviation of y for each value of x
+y_mat = hcat(data...) # simpler to make a big matrix
+ys_mean = mean(y_mat, dims = 2)[:]
+ys_std = std(y_mat, dims = 2)[:]
+
+h = 250
+gr(linewidth = 1.0, size = (1.6 * h, h ))
+
+plot(θs, abs.(ys_mean); ribbon = ys_std .* 0.5, fillalpha=.4, linewidth = 2.0, lab = "predicted")
+plot!(θs,qs, linestyle = :dash, lab = "exact")
+plot!(xlab = "θ", ylab = "loading profile")
+# plot!(xlab = "θ", ylab = "loading profile", ylims = (-2., 6.))
+
+# savefig("docs/images/steel-bearing-defect-6-modes-error-2%.pdf")
