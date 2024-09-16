@@ -310,3 +310,26 @@ plot!(xlab = "θ", ylab = "loading profile")
 # Next we simulate the measured displacement on the outer raceway and test the signal processing methods typically used.
 
 
+
+
+
+using DSP
+θs = 0.0:0.04:(8pi)
+f_fault = sin.(7 .* θs) .^ 3 
+fs =  #(3 .+ 0.5 .* rand(θs |> length)) .* (cos.(17 .* θs)) + 
+    (2 .+ 0.2 .* rand(θs |> length)) .* (cos.(15 .* θs)) + 
+    f_fault
+env = hilbert(fs)
+plot(fs)
+plot!(abs.(env))
+
+moving_average(vs,n) = [sum(@view vs[i:(i+n-1)])/n for i in 1:(length(vs)-(n-1))]
+
+plot(fs)
+plot!(moving_average(fs,15))
+
+plot(abs.(env) .- mean(abs.(env)))
+plot!(f_fault)
+
+plot(moving_average(fs,15) .- mean(moving_average(fs,15)))
+plot!(f_fault)
