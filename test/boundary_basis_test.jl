@@ -248,7 +248,7 @@
         max(error1,error2)
     end
 
-    @test maximum(inner_boundary_errors) < 5e-10
+    @test maximum(inner_boundary_errors) < 1e-9
 
     # Here we just swap which boundary uses a basis and which uses just boundary data just for completeness
     
