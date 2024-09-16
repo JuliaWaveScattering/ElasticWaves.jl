@@ -5,8 +5,9 @@ using ElasticWaves
 using Test, Statistics, LinearAlgebra, MultipleScattering
 using Plots, DataInterpolations
 
-medium = Elastic(2; ρ = 7000.0, cp = 5000.0 - 0.0im, cs = 3500.0 - 0.0im)
-medium = Elastic(2; ρ = 1000.0, cp = 1000.0 - 0.0im, cs = 700.0 - 0.0im)
+# used attenuation from Ultrasonic attenuation in pearlitic steel (2014)
+medium = Elastic(2; ρ = 7000.0, cp = 5000.0 - 7.0im, cs = 3500.0 - 5.5im)
+medium = Elastic(2; ρ = 1000.0, cp = 1000.0 - 1.2im, cs = 700.0 - 1.1im)
 
 # need a higher rotation speed Ω for the forward and inverse problem to be well posed. In practice, we need only the inverse problem to be well posed.
 Ω = 2pi * 700 / 60 # large wind turbines rotate at about 15 rpm
@@ -23,46 +24,120 @@ bearing = RollerBearing(medium = medium,
 
 plot(bearing)
 
-# Types of boundary conditions for the forward and inverse problem
-const bc1_forward = TractionBoundary(inner=true)
-const bc2_forward = TractionBoundary(outer=true)
+## Types of boundary conditions for the forward and inverse problem
+    const bc1_forward = TractionBoundary(inner=true)
+    const bc2_forward = TractionBoundary(outer=true)
 
-const bc1_inverse = DisplacementBoundary(inner=true)
-const bc2_inverse = TractionBoundary(inner=true)
+    const bc1_inverse = DisplacementBoundary(outer=true)
+    const bc2_inverse = TractionBoundary(outer=true)
 
-const max_condition_number = 1e7
-const tol = max_condition_number * eps(Float64)
+    const max_condition_number = 1e7
+    const tol = max_condition_number * eps(Float64)
 
-# start with stribeck, then add defects by multiplying
-segment_number = 40
-const θs = LinRange(-pi,pi, segment_number * bearing.number_of_rollers)[1:end-1]
+## Let's check the resonant modes of this raceway
+    
+    frequency_order = 20
+    ωms = natural_frequencies(bearing, frequency_order)
+    ωs = LinRange(ωms[1], ωms[end], 2000)
 
-q0 = 6.0; ε = 0.5;
-q0s = q0 .* (1 .+ 0im .- 1/(2ε) .* (1 .- cos.(θs))) .^ (10.0 / 9.0)
-q0s = real.(q0s)
-q0s = [ ((q < 0) ? 0.0 : q) for q in q0s]
+    modes = 0:12
+    resonances_vec = map(ωs) do ω
+        conds = map(modes) do n
+            nondim_bearing = nondimensionalise(bearing, ω)
+            A = boundarycondition_system(ω, nondim_bearing, bc1_forward, bc2_forward, n) 
+            SM = diagm([(4.0) / sum(abs.(A[:,j])) for j in 1:size(A,2)])
+            A = A * SM
+            cond(A)
+            # 1 / abs(det(A))
+        end
+    end
 
-θos = [-1.0];
-# θos = [-1.0, 0.1];
-is = [findmin(abs.(θo .- θs))[2] for θo in θos]
+    resonances_mat = hcat(resonances_vec...)
+    heatmap(ωs, modes, resonances_mat, c = cgrad(:thermal, rev = true), 
+        clims = (0,10000))
 
-qs_defect = θs .* 0.0 |> collect;
-qs_defect[is] = - q0s[is]
+    map(ωms) do ω
+        plot!([ω, ω], [0.0, modes[end]], c = :lightgreen, lab = "", linestyle = :dash)
+    end       
+    plot!()
 
-qs = q0s + qs_defect 
-plot(θs,qs)
+    # tap test 
 
-loading_profile = BoundaryData(bc1_forward, 
-    θs = θs, 
-    fields = hcat(q0s .+ 0.0im,0.0 .* q0s)
-)
-loading_profile = fields_to_fouriermodes(loading_profile)
+    θs = LinRange(-pi,pi, 50)[1:end-1]
+    bd1_for = BoundaryData(bc1_forward, 
+        θs = θs,
+        fields = [ [1.0; zeros(Complex{Float64},  length(θs)-1) ]  zeros(Complex{Float64}, θs |> length)]
+    )
+    bd2_for = BoundaryData(bc2_forward, 
+        θs = θs,
+        fields = [zeros(Complex{Float64},  θs |> length) zeros(Complex{Float64}, θs |> length)]
+    )
 
-loading_profile_defect = BoundaryData(bc1_forward, 
-    θs = θs, 
-    fields = hcat(qs_defect .+ 0.0im,0.0 .* qs_defect)
-)
-loading_profile_defect = fields_to_fouriermodes(loading_profile_defect)
+    modal_method = ModalMethod(tol = tol, only_stable_modes = true)
+    ωs = LinRange(ωms[1], ωms[end], 1000)
+
+    ω = ωs[4]
+    accelerations =  map(ωs) do ω
+        forward_sim = BearingSimulation(ω, modal_method, bearing, bd1_for, bd2_for);
+        wave = ElasticWave(forward_sim);
+
+        displacement_bd = BoundaryData(bc1_inverse, bearing.inner_radius, θs, wave)
+        ω^2 * norm(displacement_bd.fields[:,1])
+    end
+    
+
+    maximum(accelerations)
+    minimum(accelerations)
+
+    plot(ωs, accelerations, yaxis=:log)
+    map(ωms) do ω
+        plot!([ω, ω], [0.01, maximum(accelerations)], 
+            c = :lightgreen, lab = "", 
+            linestyle = :dash
+            , yaxis=:log)
+    end       
+    plot!()
+
+    plot(ωs[1:300], accelerations[1:300])
+    plot(ωs, accelerations)
+    
+    frequency_order = 16
+    ms = 1:frequency_order
+    ωms = natural_frequencies(bearing, frequency_order) |> collect
+
+    # plot!(ylims = (0,5))
+
+
+## start with stribeck, then add defects by multiplying
+    segment_number = 40
+    θs = LinRange(-pi,pi, segment_number * bearing.number_of_rollers)[1:end-1]
+
+    q0 = 6.0; ε = 0.5;
+    q0s = q0 .* (1 .+ 0im .- 1/(2ε) .* (1 .- cos.(θs))) .^ (10.0 / 9.0)
+    q0s = real.(q0s)
+    q0s = [ ((q < 0) ? 0.0 : q) for q in q0s]
+
+    θos = [-1.0];
+    # θos = [-1.0, 0.1];
+    is = [findmin(abs.(θo .- θs))[2] for θo in θos]
+
+    qs_defect = θs .* 0.0 |> collect;
+    qs_defect[is] = - q0s[is]
+
+    qs = q0s + qs_defect 
+    plot(θs,qs)
+
+    loading_profile = BoundaryData(bc1_forward, 
+        θs = θs, 
+        fields = hcat(q0s .+ 0.0im,0.0 .* q0s)
+    )
+    loading_profile = fields_to_fouriermodes(loading_profile)
+
+    loading_profile_defect = BoundaryData(bc1_forward, 
+        θs = θs, 
+        fields = hcat(qs_defect .+ 0.0im,0.0 .* qs_defect)
+    )
+    loading_profile_defect = fields_to_fouriermodes(loading_profile_defect)
 
 ## Below we calculate the displacement on the outer raceway
 bd2_for = BoundaryData(bc2_forward, 
@@ -129,8 +204,8 @@ function outer_acceleration(ωs;
         forward_sim = BearingSimulation(ω, modal_method, bearing, bd1_for, bd2_for);
         wave = ElasticWave(forward_sim);
 
-        bd1_for_recover = BoundaryData(bc1_forward, bearing.inner_radius, θs, wave)
-        plot(bd1_for_recover.θs, abs.(bd1_for_recover.fields[:,1]))
+        # bd1_for_recover = BoundaryData(bc1_forward, bearing.inner_radius, θs, wave)
+        # plot(bd1_for_recover.θs, abs.(bd1_for_recover.fields[:,1]))
         
         bd1_inverse = BoundaryData(bc1_inverse, bearing.inner_radius, θs_inv, wave)
         bd1_inverse.fields[:] .* ω^2
@@ -139,18 +214,12 @@ function outer_acceleration(ωs;
     return hcat(fields...) |> transpose |> collect
 end
 
-frequency_order = 10
-frequency_order = 19
-ms = 1:frequency_order
-ωms = natural_frequencies(bearing, frequency_order) |> collect
-
 f0_mat = outer_acceleration(ωms; slip_amplitude = 0.00, defect_size = 0.0, rel_error = 0.0, numberofsensors = 2)
 plot(ωms, 1e9 .* abs.(f0_mat[:,1]), linestyle = :dash)
 scatter!(ωms, 0.0 .* ωms, lab = "")
 
 dω = ωms[2] - ωms[1]
-ωs = dω:(dω/10):ωms[end]
-
+# ωs = dω:(dω/10):ωms[end]
 ωs = ωms[5]:(dω/4):ωms[end]
 # ωs = dω:(dω/2):ωms[end]
 ωs |> length
@@ -159,9 +228,9 @@ rel_error = 0.0
 f0_mat = outer_acceleration(ωs; slip_amplitude = 0.00, defect_size = 0.0, rel_error = rel_error, numberofsensors = 2)
 
 plot(ωs, 1e9 .* abs.(f0_mat[:,1]), linestyle = :dash)
-scatter!(ωs, 0.0 .* ωms, lab = "")
+scatter!(ωms[5:end], 0.0 .* ωms, lab = "")
 
-iterations = 10
+iterations = 20
 f1_mats = [
     outer_acceleration(ωs; slip_amplitude = 0.01, defect_size = 0.0, rel_error = rel_error, numberofsensors = 2)
 for i = 1:iterations]
@@ -179,25 +248,28 @@ plot!(ωs, 1e9 .* abs.(mean(f3_mats)[:,1]), lab = "slip & defect", linestyle = :
 scatter!(ωms[5:end], 0.0 .* ωms, lab = "")
 
 # plot(ωs, 1e9 .* abs.(f0_mat[:,1]), linestyle = :dash, lab = "baseline")
-# plot!(ωs, 1e9 .* abs.(f1_mats[1][:,1]), lab = "slip")
+plot!(ωs, 1e9 .* abs.(f1_mats[1][:,1]), lab = "slip")
 # plot!(ωs, 1e9 .* abs.(f2_mats[1][:,1]), lab = "slip & defect")
 # scatter!(ωms[5:end], 0.0 .* ωms, lab = "")
 
+decimate = 4;
 
-ω2s = ωs[1]:(ωs[2] - ωs[1]):(2ωs[end] + ωs[2] - 2ωs[1])
+ω2s = LinRange(ωs[1],ωs[1] + decimate * (ωs[end]-ωs[1]), decimate * (length(ωs) - 1) + 1)
+ω2s[1:length(ωs)] - collect(ωs) |> norm
+
+# ωs[1]:(ωs[2] - ωs[1]):(2ωs[end] + ωs[2] - 2ωs[1])
 ts = ω_to_t(ω2s)
 
 Fs_vec = [f0_mat[:,1], mean(f1_mats)[:,1], mean(f2_mats)[:,1], mean(f3_mats)[:,1]];
-
-Fs_vec = [[f; f .* 0.0] for f in Fs_vec];
+Fs_vec = [[f; zeros(length(ω2s) - length(f))] for f in Fs_vec];
 fs_vec = [frequency_to_time(F, ω2s, ts) for F in Fs_vec]
 
-plot(ts, fs_vec[1])
+plot(ts, fs_vec[1], xlims = (0,0.01))
 plot!(ts, 0.12 .* cos.(10 .* ts .* Ω), linestyle = :dash)
 
 
 using DSP
-env_vec = [abs.(hilbert(fs)) for fs in fs_vec]
+env_vec = [abs2.(hilbert(fs)) for fs in fs_vec]
 plot!(env_vec[3])
 
 Fenvs_vec = [time_to_frequency(env, ts, ω2s) for env in env_vec]
@@ -226,8 +298,6 @@ scatter!(ωms[5:end], 0.0 .* ωms, lab = "")
 # plot(f0_time, xlim = (1,6))
 
 
-
-
 using DSP, Plots
 x = 14:0.04:50
 y0 = sin.(x)
@@ -241,7 +311,7 @@ plot(x, abs.(y0))
 plot!(x, y, linestyle=:dash)
 plot!(x, env, color = :green)
 plot!(x, env2, color = :red)
-plot!(x, -env, color = :green)
+# plot!(x, -env, color = :green)
 
 # using ProfileView
 # @time outer_displacement(ωms; slip_amplitude = 0.0, defect_size = 0.0, rel_error = 0.0, numberofsensors = 2)
