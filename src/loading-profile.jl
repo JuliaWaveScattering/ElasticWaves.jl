@@ -17,7 +17,7 @@ end
 
     The frequency of the loading profile data provided is assumed to be ω - ω_m, where m = round(ω / (Z * Ω)). This is a bit opaque, so in the future we need to rewrite this to make it clearer.
 """    
-function BoundaryData(ω::Number, bearing::RollerBearing, loading_profile::BoundaryData)
+function BoundaryData(ω::Number, bearing::RollerBearing, loading_profile::BoundaryData; σ::Float64 = 2pi*bearing.inner_radius / (5.0 * bearing.number_of_rollers))
 
     Ω = bearing.angular_speed
     Z = bearing.number_of_rollers
@@ -35,7 +35,7 @@ function BoundaryData(ω::Number, bearing::RollerBearing, loading_profile::Bound
     modes = loading_profile.modes
 
     boundary_modes = modes .+ Z*frequency_order
-    boundary_fourier_coefficients = (Z/(2pi)) .* coefficients
+    boundary_fourier_coefficients = (exp(-π * σ^2 * frequency_order^2) * Z / (2pi)) .* coefficients
 
     fields = fouriermodes_to_fields(loading_profile.θs, boundary_fourier_coefficients, boundary_modes)
 
@@ -54,7 +54,7 @@ end
 
     The frequency of the loading profile data provided is assumed to be ω - ω_m, where m = round(ω / (Z * Ω)). This is a bit opaque, so in the future we need to rewrite this to make it clearer.
 """    
-function LoadingBoundaryData(ω::Number, bearing::RollerBearing, bd::BoundaryData)
+function LoadingBoundaryData(ω::Number, bearing::RollerBearing, bd::BoundaryData; σ::Float64 = 2pi*bearing.inner_radius / (5.0 * bearing.number_of_rollers))
 
     Ω = bearing.angular_speed
     Z = bearing.number_of_rollers
@@ -72,7 +72,7 @@ function LoadingBoundaryData(ω::Number, bearing::RollerBearing, bd::BoundaryDat
     modes = bd.modes
 
     loading_modes = modes .- Z*frequency_order
-    loading_coefficients = ((2pi)/Z) .* coefficients
+    loading_coefficients = (exp(π * σ^2 * frequency_order^2) * (2pi)/Z) .* coefficients
 
     return BoundaryData(bd.boundarytype;
         coefficients = loading_coefficients,

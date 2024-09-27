@@ -158,7 +158,7 @@ plot(bearing, 0.0)
     maxc = 0.18 .* maximum(norm.(field(time_result)))
     minc = - maxc
 
-    t = ts[4]
+    t = ts[14]
 
     # pyplot()
 
@@ -169,7 +169,7 @@ plot(bearing, 0.0)
             clim = (minc, maxc),
             leg = false,
         )
-        scatter!([bearing.inner_radius * cos(θo)], [bearing.inner_radius * sin(θo)])
+        # scatter!([bearing.inner_radius * cos(θo)], [bearing.inner_radius * sin(θo)])
         plot!(bearing, t)
         plot!(frame = :none, title="", xguide ="",yguide ="")
     end

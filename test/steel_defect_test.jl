@@ -1,5 +1,8 @@
 # Here we test the straight forward inverse problem for steel with a defect. See the docs/examples/steel-defect.jl for more details and plots. The example also adds errors, where here we are just checking for correctness without errors
 
+using ElasticWaves
+using Test, Statistics, LinearAlgebra, MultipleScattering
+
 @testset "Steel bearing defect" begin
 
 medium = Elastic(2; ρ = 7000.0, cp = 5000.0 - 0.0im, cs = 3500.0 - 0.0im)

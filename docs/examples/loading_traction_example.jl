@@ -6,18 +6,22 @@ using Plots
 # the higher the frequency, the worse the result. This is already a high frequency.
 medium = Elastic(2; ρ = 1.0, cp = 1.0 - 0.01im, cs = 0.8 - 0.01im)
 
-# Using realistic value for steel lead to neededing to solve the low frequency limit, which currently does not work
+# Using realistic value for steel lead to needing to solve the low frequency limit, which currently does not work
 # medium = Elastic(2; ρ = 7000.0, cp = 5000.0 - 0.0im, cs = 3500.0 - 0.0im)
 
 Ω = 2pi * 10 / 60 
-Ω = 2pi * 0.4 / 60
-Z = 4; 
+Ω = 2pi * 0.2 / 60
+Z = 12; 
+
+# spread of contact force
+σ = 0.2;
 
 bearing = RollerBearing(medium = medium, 
     inner_radius = 10.0, outer_radius = 15.0, 
     angular_speed = Ω,  
     rollers_inside = true,
-    number_of_rollers = Z
+    number_of_rollers = Z,
+    roller_radius = 1.8
 )
 
 Ω * bearing.outer_radius
@@ -39,11 +43,11 @@ plot(bearing, 0.0)
 
     # frequency_order = 100
 
+    ms = 1:frequency_order |> collect
     ωms = natural_frequencies(bearing, frequency_order) |> collect
     Z * Ω 
 
-    # need to exclude the zero frequency as is ill posed
-    ωs = ωms[2:end]
+    ωs = ωms
 
     dr = bearing.outer_radius - bearing.inner_radius
     kps = (ωms ./ medium.cp)
@@ -54,7 +58,8 @@ plot(bearing, 0.0)
 
 ## Do one example
     ω = ωms[end-2]
-    ω = ωms[2]
+    ω = ωms[1]
+    m = ms[1]
 
     loading_basis_order = 15;    
     loading_θs = LinRange(0.0, 2pi, 2loading_basis_order+2)[1:end-1]
@@ -75,7 +80,9 @@ plot(bearing, 0.0)
     bc2_forward = TractionBoundary(outer=true)
 
     loading_profile = BoundaryData(bc1_forward, θs = loading_θs, fields = hcat(fp_loading,fs_loading));
-    bd1_for = BoundaryData(ω, bearing, loading_profile);   
+
+
+    bd1_for = BoundaryData(ω, bearing, loading_profile; σ = σ);   
 
     basis_order = maximum(abs.(bd1_for.modes)) + 5;
     θs = LinRange(0.0, 2pi, 2basis_order+2)[1:end-1]
@@ -92,11 +99,7 @@ plot(bearing, 0.0)
     # test if loading profile was recovered
     # bd1_inner, bd2_outer = boundary_data(forward_sim, wave);
     bd1_inner = BoundaryData(bd1_for.boundarytype, bearing.inner_radius, LinRange(0,2pi,200)[1:end-1], wave);
-    plot(bd1_inner.θs, 2pi / bearing.number_of_rollers .* abs.(bd1_inner.fields[:,1]), label = "predicted loading")
-    plot!(loading_θs, abs.(fp_loading), linestyle = :dash, label = "true loading")
-
-    bd1_inner = BoundaryData(bd1_for.boundarytype, bearing.inner_radius*1.01, LinRange(0,2pi,100)[1:end-1], wave);
-    plot(bd1_inner.θs, 2pi / bearing.number_of_rollers .* abs.(bd1_inner.fields[:,1]), label = "predicted loading")
+    plot(bd1_inner.θs, exp(pi*σ^2*m^2) * 2pi / bearing.number_of_rollers .* abs.(bd1_inner.fields[:,1]), label = "predicted loading")
     plot!(loading_θs, abs.(fp_loading), linestyle = :dash, label = "true loading")
 
 ## plot the whole field    
@@ -126,7 +129,7 @@ plot(bearing, 0.0)
 
     results = map(ωs) do ω
 
-        bd1_for = BoundaryData(ω, bearing, loading_profile)
+        bd1_for = BoundaryData(ω, bearing, loading_profile; σ = σ)
         basis_order = maximum(abs.(bd1_for.modes)) + 5;
         θs = LinRange(0.0, 2pi, 2basis_order+2)[1:end-1]
     
@@ -154,7 +157,7 @@ plot(bearing, 0.0)
     all_results = FrequencySimulationResult(hcat(fields...), results[1].x, ωs[inds]);
 
     gr(size = (400,400))
-    i = 4;
+    i = 3;
     plot(all_results, ωs[i];
         seriestype=:heatmap
         , field_apply = f -> abs(f[1])
@@ -168,7 +171,7 @@ plot(bearing, 0.0)
     time_result = frequency_to_time(all_results; t_vec = ts)
 
     # maxc = 0.16 .* maximum(norm.(field(time_result)))
-    maxc = 0.4 .* maximum(norm.(field(time_result)))
+    maxc = 0.6 .* maximum(norm.(field(time_result)))
     # maxc = 0.5 .* maximum(norm.(field(time_result)))
     minc = - maxc
 
