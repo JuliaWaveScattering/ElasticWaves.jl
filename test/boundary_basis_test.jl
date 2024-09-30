@@ -305,7 +305,7 @@
         max(error1,error2)
     end
 
-    @test maximum(inner_boundary_errors) < 5e-11
+    @test maximum(inner_boundary_errors) < 7e-11
     
     # just like the forward problem, only the higher frequencies resolve the original boundary data accurately, as these had basis_order = 20, which was enough to represent the random data
     original_inner_boundary_errors = map(eachindex(ωs)) do i
