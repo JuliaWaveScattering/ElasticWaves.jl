@@ -10,7 +10,9 @@ medium = Elastic(2; ρ = 7000.0, cp = 5000.0 - 0.0im, cs = 3500.0 - 0.0im)
 # need a higher rotation speed Ω for the forward and inverse problem to be well posed. In practice, we need only the inverse problem to be well posed.
 Ω = 2pi * 120 / 60 # large wind turbines rotate at about 15 rpm
 # Ω = 2pi * 1200 / 60 # large wind turbines rotate at about 15 rpm
-Z = 15 
+Z = 15
+
+# c =  
 
 inner_radius = 1.0
 bearing = RollerBearing(medium = medium, 
@@ -35,6 +37,7 @@ bc2_inverse = TractionBoundary(inner=true)
 modes_to_measure = 0:12
 modes_to_measure = 0:20
 max_condition_number = 1e7
+max_condition_number = 1e5
 max_condition_number = 2e8
 tol = max_condition_number * eps(Float64)
 
