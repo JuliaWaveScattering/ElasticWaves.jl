@@ -334,6 +334,18 @@ function nondimensionalise(bearing::RollerBearing, sim::BearingSimulation)
     return bearing
 end
 
+function nondimensionalise(bearing::RollerBearing, ω::Number)
+
+    kp = ω / bearing.medium.cp;
+    non_medium = Elastic(2; ρ = 1 / ω^2, cp = ω, cs = bearing.medium.cs * kp)
+    
+    # nondimensionalise bearing geometry
+    @reset bearing.medium = non_medium
+    @reset bearing.inner_radius = bearing.inner_radius * kp
+    @reset bearing.outer_radius = bearing.outer_radius * kp
+    
+    return bearing
+end
 
 function nondimensionalise!(sim::BearingSimulation)
 

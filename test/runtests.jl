@@ -11,6 +11,10 @@ include("signal_processing_test.jl")
 
 include("source_scattering_test.jl")
 
+## Tests for translation Matrices
+
+include("source_test.jl")
+
 ## Tests for Cylindrical waves
     # an independent check for the formulas of displacement and traction
     include("traction_displacement_test.jl")
