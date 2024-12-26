@@ -23,10 +23,14 @@ struct ModalMethod <: SolutionMethod
     # to use Tikhonov regularization give a non-zero parameter
     regularisation_parameter::Float64
     only_stable_modes::Bool
+    maximum_mode::Int
     modes::Vector{Int}
     mode_errors::Vector{Float64}
 
-    function ModalMethod(tol::Float64, regularisation_parameter::Float64, only_stable_modes::Bool, modes::Vector{Int}, mode_errors::Vector{Float64})
+    function ModalMethod(tol::Float64, regularisation_parameter::Float64, only_stable_modes::Bool, maximum_mode::Int, modes::Vector{Int}, mode_errors::Vector{Float64})
+
+        is = findall(abs.(modes) .< maximum_mode)
+        modes = modes[is]
 
         is = sortperm_modes(modes);
         modes = modes[is]
@@ -39,7 +43,7 @@ struct ModalMethod <: SolutionMethod
             end
         end
 
-        new(tol, regularisation_parameter, only_stable_modes, modes, mode_errors)
+        new(tol, regularisation_parameter, only_stable_modes, maximum_mode, modes, mode_errors)
     end    
 end
 
@@ -58,6 +62,7 @@ function ModalMethod(;
         tol::Float64 = eps(Float64)^(1/2), 
         regularisation_parameter::Float64 = eps(typeof(tol)) / tol,
         only_stable_modes::Bool = true,
+        maximum_mode::Int = 160,
         modes::Vector{Int} = Int[],
         mode_errors::Vector = Float64[]
     )
@@ -66,7 +71,7 @@ function ModalMethod(;
         @warn "only_stable_modes was set to false. This means that potentially ill-posed (or unstable) modes will attempt to be solved, which could lead to non-sense solutions." 
     end
 
-    ModalMethod(tol, regularisation_parameter, only_stable_modes, modes, mode_errors)
+    ModalMethod(tol, regularisation_parameter, only_stable_modes, maximum_mode, modes, mode_errors)
 end
 
 function PriorMethod(; 

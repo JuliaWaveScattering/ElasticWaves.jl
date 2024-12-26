@@ -370,10 +370,10 @@ end
     traction_errors = map(waves) do wave
 
         inds = Int[findfirst(bd1.modes .== m) for m in wave.method.modes]
-        err1 = sum(abs2,field_modes(wave, bearing.inner_radius, bd1.boundarytype.fieldtype) - bd1.coefficients[inds,:], dims=2) ./ norm(bd1.coefficients[inds,:])
+        err1 = sum(abs2, field_modes(wave, bearing.inner_radius, bd1.boundarytype.fieldtype) - bd1.coefficients[inds,:], dims=2) ./ norm(bd1.coefficients[inds,:])
         
         inds = [findfirst(bd2.modes .== m) for m in wave.method.modes]
-        err2 = sum(abs2,field_modes(wave, bearing.outer_radius, bd2.boundarytype.fieldtype) - bd2.coefficients[inds,:], dims=2) ./ norm(bd2.coefficients[inds,:])
+        err2 = sum(abs2, field_modes(wave, bearing.outer_radius, bd2.boundarytype.fieldtype) - bd2.coefficients[inds,:], dims=2) ./ norm(bd2.coefficients[inds,:])
 
         err1 + err2
     end
