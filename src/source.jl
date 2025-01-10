@@ -110,84 +110,6 @@ struct SourceMap
     locations::AbstractArray{Float64}
     amplitudes::Vector{ComplexF64}
 end
-    
-#=function graff(sim::BearingSimulation,p_map::SourceMap, s_map::SourceMap)
-    bearing = sim.bearing
-    ω = sim.ω
-    medium = bearing.medium
-    kP = ω/medium.cp
-    kS = ω/medium.cp
-    modes = sim.boundarydata1.modes
-
-    p_locations = p_map.locations |>transpose
-    p_amps = p_map.amplitudes
-    number_of_p_sources = length(p_amps)
-    
-    s_locations = s_map.locations |>transpose
-    s_amps = s_map.amplitudes
-    number_of_s_sources = length(s_amps)
-
-    medium_p = Acoustic(medium.ρ, medium.cp, 2)
-    medium_s = Acoustic(medium.ρ, medium.cs, 2)
-    basis_length = length(modes)
-    order = maximum(modes)
-
-    bessel_coes_p = hcat(sum([im*p_amps[i]*reverse(outgoing_translation_matrix(medium_p, 0, order, ω, -p_locations[:,i]))/4 for i in 1:number_of_p_sources]), zeros(ComplexF64, basis_length)) |>transpose
-
-    bessel_coes_s = hcat(sum([im*s_amps[i]*reverse(outgoing_translation_matrix(medium_s, 0, order, ω, -s_locations[:,i]))/4 for i in 1:number_of_s_sources]), zeros(ComplexF64, basis_length)) |> transpose
-
-    hankel_coes_p = hcat(zeros(ComplexF64, basis_length),sum([im*p_amps[i]*reverse(regular_translation_matrix(medium_p, 0, order, ω, -p_locations[:,i]))/4 for i in 1:number_of_p_sources])) |> transpose
-
-    hankel_coes_s = hcat(zeros(ComplexF64, basis_length), sum([im*s_amps[i]*reverse(regular_translation_matrix(medium_s, 0, order, ω, -s_locations[:,i]))/4 for i in 1:number_of_s_sources])) |> transpose
-
-    ϕ_inner = HelmholtzPotential{2}(bearing.medium.cp, kP, bessel_coes_p, modes)
-    ψ_inner = HelmholtzPotential{2}(bearing.medium.cs, kS, bessel_coes_s, modes)
-    ϕ_outer = HelmholtzPotential{2}(bearing.medium.cp, kP, hankel_coes_p, modes)
-    ψ_outer = HelmholtzPotential{2}(bearing.medium.cs, kS, hankel_coes_s, modes)
-
-    return [ϕ_inner, ψ_inner, ϕ_outer, ψ_outer]
-end
-
-function source_simulation(sim::BearingSimulation, p_map::SourceMap, s_map::SourceMap)
-    
-    boundarydata1 = sim.boundarydata1
-    boundarydata2 = sim.boundarydata2
-    modes = boundarydata1.modes
-
-    pots = graff(sim, p_map, s_map)
-
-    bessel_coes_p = pots[1].coefficients
-    bessel_coes_s = pots[2].coefficients
-    hankel_coes_p = pots[3].coefficients
-    hankel_coes_s = pots[4].coefficients
-    
-    coes_inner = vcat(bessel_coes_p, bessel_coes_s)
-
-    coes_outer = vcat(hankel_coes_p, hankel_coes_s)
-    
-    Ms_inner = [vcat(boundarycondition_mode(sim.ω,TractionBoundary(inner=true), sim.bearing, n), zeros(ComplexF64, 2,4)) for n in modes]
-    
-    Ms_outer = [vcat(zeros(ComplexF64, 2,4), boundarycondition_mode(sim.ω,TractionBoundary(outer=true), sim.bearing, n)) for n in modes]
-
-    τ_r1 = [-Ms_inner[i]*coes_inner[:,i] for i in 1:length(modes)]
-    τ_r1 = hcat(τ_r1...)[1:2,:] |> transpose
-    
-    τ_r2 = [-Ms_outer[i]*coes_outer[:,i] for i in 1:length(modes)]
-    τ_r2 = hcat(τ_r2...)[1:2,:] |> transpose
-    
-    τ0_r1 = boundarydata1.coefficients
-    τ0_r2 = boundarydata2.coefficients
-
-    coefficients_r1 = τ_r1 + τ0_r1
-    coefficients_r2 = τ_r2 + τ0_r2
-
-    bd1 = BoundaryData(TractionBoundary(inner = true); coefficients = coefficients_r1, modes = modes)
-    bd2 = BoundaryData(TractionBoundary(outer = true); coefficients = coefficients_r2, modes = modes)
-
-    source_sim = BearingSimulation(sim.ω, sim.bearing, bd1, bd2)
-
-    return source_sim
-end=#
 
 function outgoing_basis_function(medium::Elastic{2}, ω::T) where {T<:Number}
     return function (order::Integer, x::AbstractVector{T})
@@ -241,22 +163,28 @@ function regular_translation_matrix(medium::Elastic{2}, in_order::Integer, out_o
     return V
 end
 
-function source_data(ω::Float64, bearing::RollerBearing, boundarytype::BC, p_map::SourceMap, s_map::SourceMap, modes::Vector{Int}, θs::AbstractVector) where {BC <: BoundaryCondition}
+
+function boundary_data(ω::Float64, bearing::RollerBearing, boundarytype::BC, p_map::SourceMap, s_map::SourceMap, modes::Vector{Int}, θs::AbstractVector) where {BC <: BoundaryCondition}
     fieldtype = boundarytype.fieldtype
     inner = boundarytype.inner
     order = maximum(modes)
     basis_length = 2*order+1
+
+    locations_p = p_map.locations
+    amplitudes_p = p_map.amplitudes
+    locations_s = s_map.locations
+    amplitudes_s = s_map.amplitudes
+
+    number_of_p_sources = length(amplitudes_p)
+    number_of_s_sources = length(amplitudes_s)
+
+    r = inner ? bearing.inner_radius : bearing.outer_radius
+
+    xs = [r*[cos(θ), sin(θ)] for θ in θs]
+    
     if inner == true
         # potentials of the form ΣH(kr')J(kr)exp(i*n*(θ-θ'))
-        locations_p = p_map.locations
-        amplitudes_p = p_map.amplitudes
-        locations_s = s_map.locations
-        amplitudes_s = s_map.amplitudes
 
-        number_of_p_sources = length(amplitudes_p)
-        number_of_s_sources = length(amplitudes_s)
-
-        xs = [bearing.inner_radius*[cos(θ), sin(θ)] for θ in θs]
         p_coes = [im*amplitudes_p[i]*hcat(outgoing_translation_matrix(bearing.medium, order, 0, ω, -locations_p[i,:])[1,:][1:basis_length], zeros(ComplexF64, basis_length))/4 for i in 1:number_of_p_sources]
         p_coes = sum(p_coes)
         s_coes = [im*amplitudes_s[i]*hcat(outgoing_translation_matrix(bearing.medium, order, 0, ω, -locations_s[i,:])[2,:][basis_length+1:end], zeros(ComplexF64, basis_length))/4 for i in 1:number_of_s_sources]
@@ -271,17 +199,9 @@ function source_data(ω::Float64, bearing::RollerBearing, boundarytype::BC, p_ma
     else
         # potentials of the form ΣJ(kr')H(kr)exp(i*n*(θ-θ'))
 
-        locations_p = p_map.locations
-        amplitudes_p = p_map.amplitudes
-        locations_s = s_map.locations
-        amplitudes_s = s_map.amplitudes
-
-        number_of_p_sources = length(amplitudes_p)
-        number_of_s_sources = length(amplitudes_s)
-
-        xs = [bearing.outer_radius*[cos(θ), sin(θ)] for θ in θs]
         p_coes = [im*amplitudes_p[i]*hcat(zeros(ComplexF64, basis_length),regular_translation_matrix(bearing.medium, order, 0, ω, -locations_p[i,:])[1,:][1:basis_length])/4 for i in 1:number_of_p_sources]
         p_coes = sum(p_coes)
+        
         s_coes = [im*amplitudes_s[i]*hcat(zeros(ComplexF64, basis_length),regular_translation_matrix(bearing.medium, order, 0, ω, -locations_s[i,:])[2,:][basis_length+1:end])/4 for i in 1:number_of_s_sources]
         s_coes = sum(s_coes)
 

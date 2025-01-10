@@ -43,7 +43,7 @@ export boundarycondition_mode, boundarycondition_system, modes_coefficients!
 
 # source.jl
 export SourceMap
-export graff, source_simulation, outgoing_basis_function, regular_basis_function, outgoing_translation_matrix, regular_translation_matrix
+export boundary_data, outgoing_basis_function, regular_basis_function, outgoing_translation_matrix, regular_translation_matrix
 
 using MultipleScattering
 using SpecialFunctions
