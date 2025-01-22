@@ -18,6 +18,34 @@ function boundarycondition_system(ω::AbstractFloat, bearing::RollerBearing, bc1
     return vcat(first_boundary, second_boundary)
 end
 
+function source_boundarycondition_mode(ω::AbstractFloat, bc::BoundaryCondition, bearing::RollerBearing, mode::Int)
+    r = (bc.inner == true) ? bearing.inner_radius : bearing.outer_radius
+    inner = bc.inner
+    outer = bc.outer
+
+    select_elements = [iszero(outer) iszero(inner); iszero(outer) iszero(inner)] 
+    pressure_modes = select_elements .* pressure_field_mode(ω, r, bearing.medium, mode, bc.fieldtype) 
+
+    shear_modes = select_elements .* shear_field_mode(ω, r, bearing.medium, mode, bc.fieldtype)
+
+    return hcat(
+        pressure_modes,
+        shear_modes
+    )
+end
+
+function source_boundarycondition_system(ω::AbstractFloat, bearing::RollerBearing, bc1::BoundaryCondition, bc2::BoundaryCondition, mode::Int)
+
+    if bc1 == bc2
+        error("Both boundary conditions are the same. It is not possible to solve the system with just one type of boundary data/condition.")
+    end     
+
+    first_boundary = source_boundarycondition_mode(ω, bc1, bearing, mode)
+    second_boundary = source_boundarycondition_mode(ω, bc2, bearing, mode)
+
+    return vcat(first_boundary, second_boundary)
+end
+
 function ElasticWave(sim::BearingSimulation)
 
     # using the bearing properties before nondimensionalise
