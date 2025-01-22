@@ -39,7 +39,7 @@ export fouriermodes_to_fields, fields_to_fouriermodes, sortperm_modes, is_standa
 export estimate_basisorder # soon to be removed
 
 # cylindrical/elastic_wave.jl
-export boundarycondition_mode, boundarycondition_system, modes_coefficients! 
+export boundarycondition_mode, boundarycondition_system, modes_coefficients!, source_boundarycondition_mode, source_boundarycondition_system 
 
 # source.jl
 export SourceMap
