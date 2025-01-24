@@ -39,7 +39,11 @@ export fouriermodes_to_fields, fields_to_fouriermodes, sortperm_modes, is_standa
 export estimate_basisorder # soon to be removed
 
 # cylindrical/elastic_wave.jl
-export boundarycondition_mode, boundarycondition_system, modes_coefficients! 
+export boundarycondition_mode, boundarycondition_system, modes_coefficients!, source_boundarycondition_mode, source_boundarycondition_system 
+
+# source.jl
+export SourceMap
+export boundary_data, outgoing_basis_function, regular_basis_function, outgoing_translation_matrix, regular_translation_matrix
 
 using MultipleScattering
 using SpecialFunctions
@@ -54,9 +58,9 @@ using RecipesBase
 
 include("types.jl")
 include("elasticity.jl")
+include("bearing.jl")
 include("source.jl")
 
-include("bearing.jl")
 include("loading-profile.jl")
 include("fields.jl")
 include("signal_processing.jl")

@@ -365,7 +365,6 @@ function nondimensionalise(bearing::RollerBearing, ω::Number)
     return bearing
 end
 
-
 function nondimensionalise!(sim::BearingSimulation)
 
     # nondimensionalise boundary data
