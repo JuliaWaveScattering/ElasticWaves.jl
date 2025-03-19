@@ -133,14 +133,14 @@ function boundary_data(ω::Float64, bearing::RollerBearing, boundarytype::BC, p_
     if boundarytype.inner == true
         p_coes = [
             (im/4) * amplitudes_p[i] * vcat(
-                outgoing_basis_function(acoustic_medium, ω)(order, -locations_p[i,:]) |> reverse,
+                outgoing_basis_function(acoustic_medium, ω)(order, locations_p[i,:]) |> reverse,
                 zeros(ComplexF64, 1, basis_length)
             ) 
         for i in 1:number_of_p_sources]
         
         s_coes = [
             (im/4) * amplitudes_s[i] * vcat(
-                outgoing_basis_function(shear_medium, ω)(order, -locations_s[i,:])  |> reverse,
+                outgoing_basis_function(shear_medium, ω)(order, locations_s[i,:])  |> reverse,
                 zeros(ComplexF64, 1, basis_length)
             ) 
         for i in 1:number_of_s_sources]
@@ -148,14 +148,14 @@ function boundary_data(ω::Float64, bearing::RollerBearing, boundarytype::BC, p_
         p_coes = [
             (im/4) * amplitudes_p[i] * vcat(
                 zeros(ComplexF64, 1, basis_length),
-                regular_basis_function(acoustic_medium, ω)(order, -locations_p[i,:]) |> reverse
+                regular_basis_function(acoustic_medium, ω)(order, locations_p[i,:]) |> reverse
             ) 
         for i in 1:number_of_p_sources]
         
         s_coes = [
             (im/4)*amplitudes_s[i] * vcat(
                 zeros(ComplexF64, 1, basis_length),
-                regular_basis_function(shear_medium, ω)(order, -locations_s[i,:])  |> reverse,
+                regular_basis_function(shear_medium, ω)(order, locations_s[i,:])  |> reverse,
             ) 
         for i in 1:number_of_s_sources]
     end

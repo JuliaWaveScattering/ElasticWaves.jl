@@ -133,7 +133,6 @@ modal_method = ModalMethod(tol = tol, only_stable_modes = true)
 function predict_boundary(rel_error = 0.005, modes_to_measure = modes_to_measure)
 
     numberofsensors = 2 * length(modes_to_measure) - 1
-    θs_inv = LinRange(0, 2pi, numberofsensors + 1)[1:end-1]
     modes_inv = -(length(modes_to_measure) - 1):(length(modes_to_measure) - 1) |> collect
 
     loading_datas = map(ωms) do ω
@@ -231,6 +230,7 @@ plot!(xlab = "θ", ylab = "loading profile")
 
 # use fewer modes
 measured_modes = 0:6
+measured_modes = 0:11
 
 loading_predict = predict_boundary(0.01,measured_modes)
 
@@ -260,12 +260,13 @@ y_mat = hcat(data...) # simpler to make a big matrix
 ys_mean = mean(y_mat, dims = 2)[:]
 ys_std = std(y_mat, dims = 2)[:]
 
-h = 250
-gr(linewidth = 1.0, size = (1.6 * h, h ))
+h = 220
+gr(linewidth = 1.0, size = (1.3 * h, h ))
 
 plot(θs, abs.(ys_mean); ribbon = ys_std .* 0.5, fillalpha=.4, linewidth = 2.0, lab = "predicted")
 plot!(θs,qs, linestyle = :dash, lab = "exact")
 plot!(xlab = "θ", ylab = "loading profile")
 # plot!(xlab = "θ", ylab = "loading profile", ylims = (-2., 6.))
 
-# savefig("docs/images/steel-bearing-defect-6-modes-error-2%.pdf")
+# savefig("docs/images/steel-bearing-defect-10-modes-error-2%-small.pdf")
+# savefig("docs/images/steel-bearing-defect-6-modes-error-2%-small.pdf")
