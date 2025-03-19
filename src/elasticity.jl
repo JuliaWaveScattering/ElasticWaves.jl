@@ -163,3 +163,65 @@ function show(io::IO, p::Elastic)
     write(io, "Elastic($(p.ρ), $(p.cp),  $(p.cs)) with Dim = $(spatial_dimension(p))")
     return
 end
+
+import MultipleScattering: outgoing_basis_function, regular_basis_function, outgoing_translation_matrix, regular_translation_matrix
+
+function outgoing_basis_function(medium::Elastic{2}, ω::T) where {T<:Number}
+    return function (order::Integer, x::AbstractVector{T})
+        r, θ  = cartesian_to_radial_coordinates(x)
+        kp = ω/medium.cp
+        ks = ω/medium.cs
+        vcat(
+            [hankelh1(m,kp*r)*exp(im*θ*m) for m = -order:order],
+            [hankelh1(m,ks*r)*exp(im*θ*m) for m = -order:order]
+        ) |> transpose
+    end
+end
+
+function regular_basis_function(medium::Elastic{2}, ω::T) where {T<:Number}
+    return function (order::Integer, x::AbstractVector{T})
+        r, θ  = cartesian_to_radial_coordinates(x)
+        kp = ω/medium.cp
+        ks = ω/medium.cs
+        vcat(
+            [besselj(m,kp*r)*exp(im*θ*m) for m = -order:order],
+            [besselj(m,ks*r)*exp(im*θ*m) for m = -order:order]
+        ) |> transpose
+    end
+end
+
+function outgoing_translation_matrix(medium::Elastic{2}, in_order::Integer, out_order::Integer, ω::T, x::AbstractVector{T}) where {T<:Number}
+
+    translation_vec = outgoing_basis_function(medium, ω)(in_order + out_order, x)
+    order = Int(length(translation_vec)/2)
+    
+    translation_vec_p = translation_vec[1:order]
+    translation_vec_s = translation_vec[order+1:end]
+    U_p = [
+        translation_vec_p[n-m + in_order + out_order + 1]
+    for n in -out_order:out_order, m in -in_order:in_order]
+
+    U_s = [
+        translation_vec_s[n-m + in_order + out_order + 1]
+    for n in -out_order:out_order, m in -in_order:in_order]
+
+    U = BlockDiagonal([U_p, U_s])
+    return U
+end
+
+function regular_translation_matrix(medium::Elastic{2}, in_order::Integer, out_order::Integer, ω::T, x::AbstractVector{T}) where {T<:Number}
+    translation_vec = regular_basis_function(medium, ω)(in_order + out_order, x)
+    order = Int(length(translation_vec)/2)
+    translation_vec_p = translation_vec[1:order]
+    translation_vec_s = translation_vec[order+1:end]
+    V_p = [
+        translation_vec_p[n-m + in_order + out_order + 1]
+    for n in -out_order:out_order, m in -in_order:in_order]
+
+    V_s = [
+        translation_vec_s[n-m + in_order + out_order + 1]
+    for n in -out_order:out_order, m in -in_order:in_order]
+
+    V = BlockDiagonal([V_p, V_s])
+    return V
+end

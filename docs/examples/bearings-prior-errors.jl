@@ -92,7 +92,7 @@ using Plots
     fp_loading = real.(fp_loading)
 
     fs_loading = 0.0 .* fp_loading;
-    fp_loading = 0.6 .* exp.(-0.5 .* (sin.(loading_θs) .- sin(θo)).^2) + loading_θs .* 0im; 
+    # fp_loading = 0.6 .* exp.(-0.5 .* (sin.(loading_θs) .- sin(θo)).^2) + loading_θs .* 0im; 
     
     plot(loading_θs, real.(fp_loading))
 
