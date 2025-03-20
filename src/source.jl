@@ -111,8 +111,8 @@ struct SourceMap
     amplitudes::Vector{ComplexF64}
 end
 
-
-function boundary_data(ω::Float64, bearing::RollerBearing, boundarytype::BC, p_map::SourceMap, s_map::SourceMap, modes::Vector{Int}, θs::AbstractVector) where {BC <: BoundaryCondition}
+# Needs to be checked against a method which directly evalutes how the source contributes to  boundarytype at specific points on the boundary.
+function boundary_data(ω::T, bearing::RollerBearing, boundarytype::BC, p_map::SourceMap, s_map::SourceMap, modes::Vector{Int}, θs::AbstractVector = T[]) where {BC <: BoundaryCondition, T}
 
     order = maximum(modes)
     basis_length = 2*order+1
@@ -166,7 +166,8 @@ function boundary_data(ω::Float64, bearing::RollerBearing, boundarytype::BC, p_
     ϕ = HelmholtzPotential{2}(bearing.medium.cp, ω / bearing.medium.cp, p_coes, modes)
     ψ = HelmholtzPotential{2}(bearing.medium.cs, ω / bearing.medium.cs, s_coes, modes)
 
-    wave = ElasticWave(ω, bearing.medium, [ϕ, ψ])
+    method = ModalMethod(modes=modes, mode_errors = zeros(T, length(modes)))
+    wave = ElasticWave(ω, bearing.medium, [ϕ, ψ], method)
     
     r = boundarytype.inner ? bearing.inner_radius : bearing.outer_radius
     xs = [r*[cos(θ), sin(θ)] for θ in θs]
@@ -174,5 +175,5 @@ function boundary_data(ω::Float64, bearing::RollerBearing, boundarytype::BC, p_
 
     coefficients = field_modes(wave, r, boundarytype.fieldtype)
 
-    return BoundaryData(boundarytype; θs=θs, fields = Matrix(data), coefficients = coefficients, modes = modes)
+    return BoundaryData(boundarytype; θs=θs, fields = Matrix{ComplexF64}(data), coefficients = coefficients, modes = modes)
 end
