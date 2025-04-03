@@ -180,6 +180,39 @@ end
 
 function modes_coefficients!(sim::BearingSimulation{PriorMethod})
 
+    EM_inverse, B_for, d_for, y_inv = prior_and_bias_inverse(sim)
+
+    ## Solve with the prior method
+
+    # EM_inverse * (B_for * x + c_for) =  y_inv 
+
+    # we should probably consider a regulariser here
+    x = (EM_inverse * B_for) \ (y_inv - EM_inverse * d_for)
+
+    a = B_for * x + d_for
+
+    boundary_error = norm(EM_inverse*a - y_inv) / norm(y_inv)
+    condition_number = cond(EM_inverse * B_for)
+
+    method = sim.method
+
+    @reset method.boundary_error = boundary_error
+    @reset method.condition_number = condition_number
+
+    sim.method = method
+
+    # if relative_error > sim.method.tol
+    #     @warn "The relative error for the boundary conditions was $(relative_error) for (ω,basis_order) = $((ω,basis_order))"
+    # end
+
+    coefficients = a
+    coefficients = reshape(coefficients,(4,:)) |> transpose |> collect
+
+    return sim.method.modal_method.modes, coefficients
+end
+
+function prior_and_bias_inverse(sim::BearingSimulation{PriorMethod})
+
     ω = sim.ω
     T = typeof(ω)
 
@@ -259,24 +292,26 @@ function modes_coefficients!(sim::BearingSimulation{PriorMethod})
         @reset method.modal_method.mode_errors = mode_errors
         @reset method.modal_method.modes = modes
 
+        sim.method = method
+
         M_forward = BlockDiagonal(MSs)
         S_forward = BlockDiagonal(Ss)
 
     # calculate the prior matrix and bias vector
-        prior_matrix, bias_vector = prior_and_bias(modes, boundarydata1, boundarydata2, boundarybasis1, boundarybasis2) 
+        prior_matrix, bias_vector = prior_and_bias_forward(modes, boundarydata1, boundarydata2, boundarybasis1, boundarybasis2) 
           
     # Define the linear prior matrix B and prior c
         # δ = method.regularisation_parameter
         # x = [A; sqrt(δ) * I] \ [b; zeros(size(A)[2])]
 
-        # there is not point in regularising as only well posed Ms are used
-        B = S_forward * (M_forward \ prior_matrix)
-        c = S_forward * (M_forward \ bias_vector)
+        # there is no point in regularising as only well posed Ms are used
+        B_for = S_forward * (M_forward \ prior_matrix)
+        c_for = S_forward * (M_forward \ bias_vector)
 
         # a = vcat(wave.potentials[1].coefficients,wave.potentials[2].coefficients)[:]
-        # a = B*x + c
+        # a = B_for*x + c_for
         # inv(S_forward) * M_forward * a = prior_matrix * x + bias_vector
-        # norm(B * [1.0,1.0] + c - a) / norm(a)
+        # norm(B_for * [1.0,1.0] + c - a) / norm(a)
 
         # prior_matrix * x 
         # M_forward * a
@@ -343,33 +378,10 @@ function modes_coefficients!(sim::BearingSimulation{PriorMethod})
 
     EM_inverse = Matrix(mortar(Es)) * M_inverse;
 
-## Solve with the prior method
-
-    # EM_inverse * (B * x + c) =  y_inv 
-
-    # we should probably consider a regulariser here
-    x = (EM_inverse * B) \ (y_inv - EM_inverse * c)
-
-    a = B*x + c
-
-    boundary_error = norm(EM_inverse*a - y_inv) / norm(y_inv)
-    condition_number = cond(EM_inverse * B)
-
-    @reset method.boundary_error = boundary_error
-    @reset method.condition_number = condition_number
-    sim.method = method
-
-    # if relative_error > sim.method.tol
-#         @warn "The relative error for the boundary conditions was $(relative_error) for (ω,basis_order) = $((ω,basis_order))"
-    # end
-
-    coefficients = a
-    coefficients = reshape(coefficients,(4,:)) |> transpose |> collect
-
-    return modes, coefficients
+    return EM_inverse, B_for, c_for, y_inv
 end
 
-function prior_and_bias(modes::AbstractVector{Int}, boundarydata1::BoundaryData{BC1,T}, boundarydata2::BoundaryData{BC2,T}, boundarybasis1::BoundaryBasis, boundarybasis2::BoundaryBasis) where {BC1, BC2, T}
+function prior_and_bias_forward(modes::AbstractVector{Int}, boundarydata1::BoundaryData{BC1,T}, boundarydata2::BoundaryData{BC2,T}, boundarybasis1::BoundaryBasis, boundarybasis2::BoundaryBasis) where {BC1, BC2, T}
 
 # Create the Prior matrix P 
     N1 = length(boundarybasis1.basis)

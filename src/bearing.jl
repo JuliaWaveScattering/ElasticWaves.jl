@@ -488,13 +488,17 @@ function setup(sim::BearingSimulation{PriorMethod})
             sim.boundarybasis2.basis[1]
         end
 
+        basis_boundary_number = isempty(sim.boundarybasis1) ? 2 : 1
+
         get_order(coefficients) = isempty(coefficients) ? - 1 : basislength_to_basisorder(PhysicalMedium{2,1}, size(coefficients,1))
         bd_to_modes(bd) = isempty(bd.modes) ? (-get_order(bd.fields):get_order(bd.fields)) : bd.modes
 
         modes_vec = bd_to_modes.([data1, data2])
         modes = intersect(modes_vec...) |> collect
 
-        if isempty(modes) error("The modes was not specified and the data does not any modes in common") end
+        if length(intersect(modes,modes_vec[basis_boundary_number])) < length(modes_vec[basis_boundary_number])
+            error("There is not enough boundary data for the modes specified in the boundarybasis. Try increasing the amount of data on the boundarydata.") 
+        end
 
         # use the standard ordering
         modes = modes[sortperm_modes(modes)]
