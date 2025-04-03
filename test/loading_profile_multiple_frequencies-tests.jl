@@ -165,7 +165,7 @@ kp * dr
     # bigA = [BB; sqrt(δ) * I];
     # x = bigA \ [YY - DD; zeros(size(BB)[2])]
 
-    inverse_wave = ElasticWave(inverse_sim);
+    inverse_wave = ElasticWave(inverse_sims[1]);
     inverse_wave.method.condition_number
     inverse_wave.method.boundary_error
 
@@ -183,11 +183,11 @@ kp * dr
     # scatter!(inverse_wave.method.modal_method.modes, abs.(predicted_forcing_coefficients[:,1]))
 
 
-   bd1_inner, bd2_outer = boundary_data(forward_sim, inverse_wave);
+   bd1_inner, bd2_outer = boundary_data(forward_sims[1], inverse_wave);
 
 #    plot(bd1_inner.θs, 2pi / Z .* abs.(bd1_inner.fields[:,1]), label = "predicted loading")
 #    plot!(loading_θs, abs.(fp_loading), linestyle = :dash, label = "true loading")
    
 #    plot(real.(bd2_outer.fields))
 
-   @test norm(bd1_inner.fields - bd1_for.fields) / norm(bd1_for.fields) < 1e-10
+   @test norm(bd1_inner.fields - forward_sims[1].boundarydata1.fields) / norm(forward_sims[1].boundarydata1.fields) < 1e-10
