@@ -30,10 +30,10 @@ using Plots
         angular_speed = Ω,  
         rollers_inside = true,
         number_of_rollers = 10,
-        roller_radius = 0.5
-        # number_of_rollers = 1
+        roller_radius = 0.5,
+        roller_contact_angular_spread = σ
     )
-
+roller_contact_angular_spread
     plot(bearing)
 
     Ω * bearing.outer_radius
@@ -122,7 +122,7 @@ using Plots
     basis_order = 50;
     θs = LinRange(0.0, 2pi, 2basis_order+2)[1:end-1]
 
-    bd1_for = BoundaryData(ω, bearing, loading_profile; σ = σ)
+    bd1_for = BoundaryData(ω, bearing, loading_profile)
     bd2_for = BoundaryData(bc2_forward, 
         θs = θs,
         modes = bd1_for.modes,
@@ -186,7 +186,7 @@ using Plots
         println("ω: ", ωs[i])
         println("central basis order: ", (i) * bearing.number_of_rollers)
 
-        bd1_for = BoundaryData(ωs[i], bearing, loading_profile; σ = σ)
+        bd1_for = BoundaryData(ωs[i], bearing, loading_profile)
         bd2_for = BoundaryData(bc2_forward,
             modes = bd1_for.modes,
             coefficients = zeros(Complex{Float64}, length(bd1_for.modes),2)
@@ -202,6 +202,7 @@ using Plots
 
     # check the loading profile
     Z = bearing.number_of_rollers
+    σ = bearing.roller_contact_angular_spread
 
     loadings = map(eachindex(waves)) do i 
         bd1_inner, bd2_outer = boundary_data(sims[i], waves[i]);
@@ -245,7 +246,7 @@ using Plots
         )
 
         # How loading is translated into boundary data
-        BoundaryData(ω, bearing, loading_data; σ = σ)
+        BoundaryData(ω, bearing, loading_data)
     end;
     boundarybasis1 = BoundaryBasis(basis);
 
@@ -322,7 +323,7 @@ using Plots
                 )
         
                 # How loading is translated into boundary data
-                BoundaryData(ωs[i], bearing, loading_data; σ = σ)
+                BoundaryData(ωs[i], bearing, loading_data)
             end;
 
             boundarybasis1 = BoundaryBasis(basis);

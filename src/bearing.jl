@@ -11,6 +11,8 @@ struct RollerBearing{T <: AbstractFloat}
     roller_radius::Float64
     "the circumferential distance between the boundaries of adjacent rollers."
     roller_separation::Float64
+    "Assumes that the traction on the surface decays like (1/σ) * exp(-π θ^2 / σ^2). The variabel below is σ."
+    roller_contact_angular_spread::Float64
     angular_speed::Float64
 end
 
@@ -22,7 +24,8 @@ function RollerBearing(; medium::Elastic{2,T},
         number_of_rollers::Int = 8,
         roller_radius::T = inner_radius / (typeof(inner_radius)(1.0) + 2.5*number_of_rollers / (2pi)),
         rollers_inside::Bool = true,
-        roller_separation::T = 2pi * (rollers_inside ? (inner_radius - roller_radius) : (outer_radius + roller_radius)) / number_of_rollers - 2 * roller_radius, 
+        roller_separation::T = 2pi * (rollers_inside ? (inner_radius - roller_radius) : (outer_radius + roller_radius)) / number_of_rollers - 2 * roller_radius,
+        roller_contact_angular_spread = 2pi*inner_radius / (5.0 * number_of_rollers), 
         angular_speed::T = 1.0
     ) where T <: AbstractFloat
 
@@ -56,7 +59,7 @@ function RollerBearing(; medium::Elastic{2,T},
         error(" the number of rollers, and separation distance, do not match the geometry of the raceway.")
     end    
 
-    RollerBearing{T}(medium, inner_radius, inner_gaps, outer_radius, outer_gaps, number_of_rollers,rollers_inside, roller_radius, roller_separation, angular_speed)
+    RollerBearing{T}(medium, inner_radius, inner_gaps, outer_radius, outer_gaps, number_of_rollers,rollers_inside, roller_radius, roller_separation, roller_contact_angular_spread, angular_speed)
 end
 
 

@@ -6,7 +6,7 @@
 medium = Elastic(2; ρ = 2.0, cp = 10.0 - 0.0im, cs = 8.0 - 0.0im)
 
 Ω = 2pi * 15 / 60 # large wind turbines rotate at about 15 rpm
-Z = 8 
+Z = 8
 
 bearing = RollerBearing(medium = medium, 
     inner_radius = 1.5, outer_radius = 2.0, 
@@ -105,7 +105,7 @@ kp * dr
 
     # as min_mode = 0 and max_mode is very large, we can consider any loading profiles with modes = -max_modes:max_modes 
 
-    loading_basis_order = 2;   
+    loading_basis_order = 2;
     basis = map(-loading_basis_order:loading_basis_order) do n
         fp = [1.0 + 0.0im]
 

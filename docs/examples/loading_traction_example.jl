@@ -21,7 +21,8 @@ bearing = RollerBearing(medium = medium,
     angular_speed = Ω,  
     rollers_inside = true,
     number_of_rollers = Z,
-    roller_radius = 1.8
+    roller_radius = 1.8,
+    roller_contact_angular_spread = σ
 )
 
 Ω * bearing.outer_radius
@@ -82,7 +83,7 @@ plot(bearing, 0.0)
     loading_profile = BoundaryData(bc1_forward, θs = loading_θs, fields = hcat(fp_loading,fs_loading));
 
 
-    bd1_for = BoundaryData(ω, bearing, loading_profile; σ = σ);   
+    bd1_for = BoundaryData(ω, bearing, loading_profile);   
 
     basis_order = maximum(abs.(bd1_for.modes)) + 5;
     θs = LinRange(0.0, 2pi, 2basis_order+2)[1:end-1]
@@ -129,7 +130,7 @@ plot(bearing, 0.0)
 
     results = map(ωs) do ω
 
-        bd1_for = BoundaryData(ω, bearing, loading_profile; σ = σ)
+        bd1_for = BoundaryData(ω, bearing, loading_profile)
         basis_order = maximum(abs.(bd1_for.modes)) + 5;
         θs = LinRange(0.0, 2pi, 2basis_order+2)[1:end-1]
     
