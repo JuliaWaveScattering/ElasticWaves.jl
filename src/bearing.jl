@@ -220,6 +220,8 @@ A convenience function to predict the boundary data of according to the solution
 """
 function BoundaryData(boundarycondition::BoundaryCondition, radius::AbstractFloat, θs::AbstractVector{T}, wave::ElasticWave{2}) where T <: AbstractFloat
     
+    # , modes::AbstractVector{Int} = Int[]
+    
     xs = [
         radial_to_cartesian_coordinates([radius,θ]) 
     for θ in θs];
@@ -316,7 +318,7 @@ import MultipleScattering: boundary_data
 """
     boundary_data(wave::ElasticWave{2}, sim::BearingSimulation)
 
-A convenience function to predict the boundary data of 'sim' according to the solution 'wave'.    
+A convenience function to calculate the boundary data of 'sim' according to the solution 'wave'.    
 """
 function boundary_data(sim::BearingSimulation, wave::ElasticWave{2})
 
