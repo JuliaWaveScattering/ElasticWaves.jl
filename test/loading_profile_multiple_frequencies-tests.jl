@@ -72,8 +72,8 @@ kp * dr
 
     θs_inv = LinRange(0, 2pi, numberofsensors + 1)[1:end-1]
 
-    loading_resolution = 120;
-    loading_θs = LinRange(0.0, 2pi, 2*loading_resolution+2)[1:end-1]
+    # loading_resolution = 120;
+    # loading_θs = LinRange(0.0, 2pi, 2*loading_resolution+2)[1:end-1]
 
     # solve the inverse problem with the PriorMethod
     method = PriorMethod(tol = modal_method.tol, modal_method = modal_method)
@@ -99,9 +99,12 @@ kp * dr
         boundarybasis1 = BoundaryBasis(basis);
 
         # create the data from evaluating the forward problem 
-        bd1_inverse = BoundaryData(bc1_inverse, bearing.outer_radius, θs_inv, waves[i])
+        bd1_inverse = BoundaryData(
+            BoundaryData(bc1_inverse; θs = θs_inv), 
+            bearing.outer_radius, waves[i]
+        )
 
-        bd2_inverse = BoundaryData(bc2_inverse, 
+        bd2_inverse = BoundaryData(bc2_inverse,
             modes = boundarybasis1.basis[1].modes,
             coefficients = 0.0 .* boundarybasis1.basis[1].coefficients
         )
@@ -116,7 +119,16 @@ kp * dr
     inverse_wave.method.boundary_error
 
     bd1_inner, bd2_outer = boundary_data(forward_sims[1], inverse_wave);
-    norm(bd1_inner.fields - forward_sims[1].boundarydata1.fields) / norm(forward_sims[1].boundarydata1.fields)
+    norm(bd1_inner.modes - forward_sims[1].boundarydata1.modes) 
+    norm(bd2_outer.modes - forward_sims[1].boundarydata2.modes) 
+
+    norm(bd1_inner.coefficients - forward_sims[1].boundarydata1.coefficients) / norm(forward_sims[1].boundarydata1.coefficients)
+    
+    norm(bd2_outer.coefficients - forward_sims[1].boundarydata2.coefficients) 
+    
+    # norm(bd1_inner.fields - forward_sims[1].boundarydata1.fields) / norm(forward_sims[1].boundarydata1.fields)
+
+
 
     inverse_sim_copies = deepcopy.(inverse_sims);
     nondimensionalise!.(inverse_sim_copies);

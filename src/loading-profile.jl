@@ -55,10 +55,11 @@ end
 
     The frequency of the loading profile data provided is assumed to be ω - ω_m, where m = round(ω / (Z * Ω)). This is a bit opaque, so in the future we need to rewrite this to make it clearer.
 """    
-function LoadingBoundaryData(ω::Number, bearing::RollerBearing, bd::BoundaryData; σ::Float64 = 2pi*bearing.inner_radius / (5.0 * bearing.number_of_rollers))
+function LoadingBoundaryData(ω::Number, bearing::RollerBearing, bd::BoundaryData)
 
     Ω = bearing.angular_speed
     Z = bearing.number_of_rollers
+    σ = bearing.roller_contact_angular_spread
 
     # the natural wavenumber of the bearing ω_m that is closest to the given frequency ω is ω_m = frequency_order * Z * Ω
     frequency_order = Int(round(ω / (Z * Ω)))

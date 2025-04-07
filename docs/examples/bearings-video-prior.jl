@@ -136,7 +136,8 @@ using Plots
     wave = ElasticWave(forward_sim);
     wave.method.mode_errors |> findmax
     
-    bd1_inverse = BoundaryData(bc1_inverse, bearing.outer_radius, θs, wave)  
+    bd_location = BoundaryData(bc1_inverse; θs = θs)
+    bd1_inverse = BoundaryData(bd_location, bearing.outer_radius, wave)  
     inverse_fields2 = bd1_inverse.fields[:,1]
     # inverse_fields1 = bd1_inverse.fields[:,1]
     # plot(θs,[real.(inverse_fields2)])
@@ -334,7 +335,8 @@ using Plots
     # θs_inv = [3.0,4.0,5.0]
 
     # create the data from evaluating the forward problem
-    bd1_inverse = BoundaryData(bc1_inverse, bearing.outer_radius, θs_inv, waves[i])
+    bd_location = BoundaryData(bc1_inverse; θs = θs_inv)
+    bd1_inverse = BoundaryData(bd_location, bearing.outer_radius, waves[i])
 
     # bd2_inverse = BoundaryData(bc2_inverse, 
     #     θs = θs,
@@ -406,7 +408,8 @@ using Plots
         # println("central basis order: ", (i+1) * bearing.number_of_rollers)
 
          # create the data from evaluating the forward problem
-        bd1_inverse = BoundaryData(bc1_inverse, bearing.outer_radius, θs_inv, waves[i])
+        bd_location = BoundaryData(bc1_inverse; θs = θs_inv)
+        bd1_inverse = BoundaryData(bd_location, bearing.outer_radius, waves[i])
 
         basis = map(-loading_basis_order:loading_basis_order) do n
             fp = [1.0 + 0.0im]

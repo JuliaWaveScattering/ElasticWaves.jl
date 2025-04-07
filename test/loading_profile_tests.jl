@@ -91,7 +91,7 @@ kp * dr
     θs_inv = LinRange(0, 2pi, numberofsensors + 1)[1:end-1]
 
     # create the data from evaluating the forward problem 
-    bd1_inverse = BoundaryData(bc1_inverse, bearing.outer_radius, θs_inv, wave)
+    bd1_inverse = BoundaryData(BoundaryData(bc1_inverse; θs = θs_inv), bearing.outer_radius, wave)
 
     # a little bit of an inverse crime
     bd2_inverse = bd2_for
@@ -245,7 +245,7 @@ end
         θs_inv = LinRange(0, 2pi, numberofsensors + 1)[1:end-1]
     
         # create the data from evaluating the forward problem 
-        bd1_inverse = BoundaryData(bc1_inverse, bearing.inner_radius, θs_inv, wave)
+        bd1_inverse = BoundaryData(BoundaryData(bc1_inverse; θs = θs_inv), bearing.inner_radius,wave)
     
         # a little bit of an inverse crime
         bd2_inverse = bd2_for

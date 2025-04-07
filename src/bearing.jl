@@ -182,24 +182,39 @@ function BoundaryData(boundarytype::BC;
     return BoundaryData(boundarytype, θs |> collect, Complex.(fields), Complex.(coefficients), modes |> collect)
 end
 
-# is_standard_order(bd::BoundaryData) = is_standard_order(bd.modes)
-
 """
-    select_modes(bd::BoundaryData, modes::AbstractVector{Int})
+    select_modes(bd::Union{BoundaryData,HelmholtzPotential}, modes::AbstractVector{Int})
 
-Returns a 'BoundaryData' with only the 'modes' given.    
+Returns a 'BoundaryData' or 'HelmholtzPotential' with only the 'modes' given.    
 """
-function select_modes(bd::BoundaryData, modes::AbstractVector{Int})
+function select_modes(bd::Union{BD,H}, modes::AbstractVector{Int}) where {BD <: BoundaryData, H <: HelmholtzPotential}
     
     if !(setdiff(modes,bd.modes) |> isempty)
         error("There are not enough modes in the boundarydata given to select the modes = $modes")
     end
     
     inds = [findfirst(m .== bd.modes) for m in modes]
+    
     @reset bd.modes = modes
-    @reset bd.coefficients = bd.coefficients[inds,:]
+    
+    if typeof(bd) <: HelmholtzPotential
+        @reset bd.coefficients = bd.coefficients[:,inds]
+    else    
+        @reset bd.coefficients = bd.coefficients[inds,:]
+    end    
 
     return bd
+end
+
+"""
+    select_modes(wave::ElasticWave, modes::AbstractVector{Int})
+
+Returns an 'ElasticWave' with only the 'modes' given.    
+"""
+function select_modes(wave::ElasticWave, modes::AbstractVector{Int})
+    
+    @reset wave.potentials = [select_modes(p, modes) for p in wave.potentials]
+    return wave
 end
 
 """
@@ -213,23 +228,48 @@ function BoundaryData(boundarycondition::BoundaryCondition, radius::AbstractFloa
 
     return BoundaryData(boundarycondition; coefficients = fs, modes = wave.potentials[1].modes)
 end
-"""
-    BoundaryData(wave::ElasticWave{2}, radius, θs,  wave::ElasticWave{2})
 
-A convenience function to predict the boundary data of according to the solution 'wave'.    
 """
-function BoundaryData(boundarycondition::BoundaryCondition, radius::AbstractFloat, θs::AbstractVector{T}, wave::ElasticWave{2}) where T <: AbstractFloat
+    BoundaryData(boundarydata::BoundaryData, radius, wave::ElasticWave{2})
+
+A convenience function to predict the data on a boundary according to the solution 'wave'. The format of the data, including the mesh and modes, is determined from boundarydata.
+"""
+function BoundaryData(bd::BoundaryData{BC,T}, radius::T, wave::ElasticWave{2}) where {T <: AbstractFloat, BC}
     
-    # , modes::AbstractVector{Int} = Int[]
+    θs = bd.θs
+    modes = bd.modes
     
+    # Calculate the fields according to wave
     xs = [
         radial_to_cartesian_coordinates([radius,θ]) 
     for θ in θs];
     
-    fs = [field(wave, x, boundarycondition.fieldtype) for x in xs];
+    fs = [field(wave, x, bd.boundarytype.fieldtype) for x in xs];
     fs = hcat(fs...) |> transpose |> collect
+    fs = reshape(fs,:,2)
 
-    return BoundaryData(boundarycondition; θs = θs, fields = Matrix{Complex{T}}(fs))
+    # Calculate the fourier modes according to wave
+    modes_setdiff = setdiff(modes, wave.potentials[1].modes);
+    if modes_setdiff |> length > 0
+        @warn "The modes in wave are not sufficient to calculate all the modes from the BoundaryData. Will set coefficients of the missing to zero."
+    end
+
+    # using only the modes which are shared, the others are zero
+    modes_intersect = intersect(modes, wave.potentials[1].modes);
+    wave_intersect = select_modes(wave,modes_intersect)
+
+    f_modes = field_modes(wave_intersect, radius, bd.boundarytype.fieldtype)
+    f_modes = reshape(f_modes,:,2)
+
+    modes_all = [modes_setdiff; modes_intersect]
+    f_modes = vcat(zeros(Complex{T},length(modes_setdiff),2), f_modes)
+   
+    inds = sortperm_modes(modes_all)
+    
+    return BoundaryData(bd.boundarytype; 
+        θs = θs, fields = Matrix{Complex{T}}(fs), 
+        modes = modes_all[inds], coefficients = Matrix{Complex{T}}(f_modes[inds,:])
+    )
 end
 
 struct BoundaryBasis{BD <: AbstractBoundaryData}
@@ -333,8 +373,12 @@ function boundary_data(sim::BearingSimulation, wave::ElasticWave{2})
     inners = [bd1.boundarytype.inner, bd2.boundarytype.inner]
     radiuses = radius_inner_outer.(inners)
     
-    bd1 = BoundaryData(bd1.boundarytype, radiuses[1], bd1.θs, wave)
-    bd2 = BoundaryData(bd2.boundarytype, radiuses[2], bd2.θs, wave)
+    
+    bd1_location = BoundaryData(bd1.boundarytype; θs = bd1.θs, modes = bd1.modes)
+    bd2_location = BoundaryData(bd2.boundarytype; θs = bd2.θs, modes = bd2.modes)
+
+    bd1 = BoundaryData(bd1_location, radiuses[1], wave)
+    bd2 = BoundaryData(bd2_location, radiuses[2], wave)
 
     return [bd1, bd2]
 end

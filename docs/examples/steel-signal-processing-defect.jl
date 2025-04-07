@@ -207,7 +207,8 @@ function outer_acceleration(ωs;
         # bd1_for_recover = BoundaryData(bc1_forward, bearing.inner_radius, θs, wave)
         # plot(bd1_for_recover.θs, abs.(bd1_for_recover.fields[:,1]))
         
-        bd1_inverse = BoundaryData(bc1_inverse, bearing.inner_radius, θs_inv, wave)
+        bd_location = BoundaryData(bc1_inverse; θs = θs_inv)
+        bd1_inverse = BoundaryData(bd_location, bearing.inner_radius, wave)
         bd1_inverse.fields[:] .* ω^2
     end
 

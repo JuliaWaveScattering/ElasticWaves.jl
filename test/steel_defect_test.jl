@@ -81,7 +81,7 @@ loading_datas = map(ωms) do ω
 
     # create the data from evaluating the forward problem.
     # In practice, we would smooth the time signal to remove the higher fourier modes, which have a large amplitude, as they are due to the smooth loading. To immitate this here, we just use a fine mesh θs, and extract the number of fourier modes which our numberofsensors can measure.
-    bd1_inverse = BoundaryData(bc1_inverse, bearing.inner_radius, θs, wave)
+    bd1_inverse = BoundaryData(BoundaryData(bc1_inverse; θs = θs), bearing.inner_radius, wave)
     bd1_inverse = fields_to_fouriermodes(bd1_inverse)
 
     # bd1 = BoundaryData(bc1_inverse, bearing.inner_radius, wave)

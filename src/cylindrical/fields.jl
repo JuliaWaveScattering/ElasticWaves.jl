@@ -3,7 +3,7 @@
 
 Returns the value of the potentical at the point `x`
 """
-function field(potential::HelmholtzPotential{2}, x::AbstractVector{T}) where T
+function field(potential::HelmholtzPotential, x::AbstractVector{T}) where T
 
     k = potential.wavenumber
     r, θ = cartesian_to_radial_coordinates(x)

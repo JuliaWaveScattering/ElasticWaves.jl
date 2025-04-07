@@ -20,24 +20,19 @@ end
 ## wave types
 
 """
-    HelmholtzPotential{Dim,T}
+    HelmholtzPotential{T}
 
 See [`field(::HelmholtzPotential, ::AbstractVector)`](@ref) for details on how to evaluate the Helmholtz potential.
 """
-struct HelmholtzPotential{Dim,T}
+struct HelmholtzPotential{T}
     wavespeed::Complex{T}
     wavenumber::Complex{T}
     "The first (second) row is for the besselj (hankelh1) fourier coefficients"
     coefficients::Matrix{Complex{T}}
     modes::Vector{Int}
 
-    function HelmholtzPotential{Dim}(wavespeed::Complex{T}, wavenumber::Complex{T},  coefficients::AbstractMatrix{Complex{T}}, modes::AbstractVector{Int}) where {Dim,T}
+    function HelmholtzPotential(wavespeed::Complex{T}, wavenumber::Complex{T},  coefficients::AbstractMatrix{Complex{T}}, modes::AbstractVector{Int}) where {T}
         
-        # if modes |> isempty
-        #     order = basislength_to_basisorder(PhysicalMedium{Dim,1},size(coefficients,2))
-        #     modes = -order:order |> collect
-        # end
-
         is = sortperm_modes(modes);
 
         if size(coefficients,1) != 2
@@ -48,7 +43,7 @@ struct HelmholtzPotential{Dim,T}
             @warn "It is usual to have a wavenumber with a negative imaginary part. Our convention of the Fourier transform implies that this wave is growing exponentially when propagating forward in time."
         end
 
-        new{Dim,T}(wavespeed, wavenumber, coefficients[:, is], modes[is] |> collect)
+        new{T}(wavespeed, wavenumber, coefficients[:, is], modes[is] |> collect)
     end
 end
 
@@ -63,12 +58,12 @@ For Dim = 4 the field `potentials` are, in order, the φ pressure, Φ shear,  an
 struct ElasticWave{Dim,M,T}
     ω::T
     medium::Elastic{Dim,T}
-    potentials::Vector{H} where H <:HelmholtzPotential{Dim,T}
+    potentials::Vector{H} where H <:HelmholtzPotential{T}
     method::M
 
     function ElasticWave(ω::T, medium::Elastic{Dim,T}, potentials::Vector{H}, method::M = ModalMethod();
             mode_errors = zeros(T, length(potentials[1].modes))
-        ) where {Dim,T,H <: HelmholtzPotential{Dim,T}, M<:SolutionMethod}
+        ) where {Dim,T,H <: HelmholtzPotential{T}, M<:SolutionMethod}
 
         modes_arr = [p.modes for p in potentials]
         lens = length.(modes_arr)

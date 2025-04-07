@@ -34,19 +34,19 @@ function plane_z_shear_source(medium::Elastic{3,T}, pos::AbstractArray{T} = zero
         ks2 = ks^2
 
         pcoefs = [Complex{T}(0.0) for l = 0:order for m = -l:l] 
-        # p_potential = HelmholtzPotential{3}(medium.cp, ω / medium.cp, [pcoefs; 0 .* pcoefs])
+        # p_potential = HelmholtzPotential(medium.cp, ω / medium.cp, [pcoefs; 0 .* pcoefs])
         
         Φcoefs = T(sqrt(pi)) * sum(source_field(centre,ω) .* polarisation) .*
         [
             (abs(m) == 1) ?  Complex{T}(m * (1.0im)^l * sqrt(T(2l + 1) / T((1+l)*l))) : Complex{T}(0)
         for l = 0:order for m = -l:l] 
-        # Φ_potential = HelmholtzPotential{3}(medium.cs, ω / medium.cs, [Φcoefs; 0 .* Φcoefs])
+        # Φ_potential = HelmholtzPotential(medium.cs, ω / medium.cs, [Φcoefs; 0 .* Φcoefs])
         
         χcoefs = T(sqrt(pi)) * sum(source_field(centre,ω) .* polarisation) .*
         [
             (abs(m) == 1) ?  Complex{T}((1.0im)^l * sqrt(T(2l + 1) / T((1+l)*l))) : Complex{T}(0)
         for l = 0:order for m = -l:l] 
-        # χ_potential = HelmholtzPotential{3}(medium.cs, ω / medium.cs, [χcoefs; 0 .* χcoefs])
+        # χ_potential = HelmholtzPotential(medium.cs, ω / medium.cs, [χcoefs; 0 .* χcoefs])
 
         # return ElasticWave(ω, medium, [pcoefs,Φcoefs,χcoefs])
         return [pcoefs Φcoefs χcoefs] ./ (-im * ks) |> transpose
@@ -163,8 +163,8 @@ function boundary_data(ω::T, bearing::RollerBearing, boundarytype::BC, p_map::S
     p_coes = sum(p_coes)
     s_coes = sum(s_coes)
 
-    ϕ = HelmholtzPotential{2}(bearing.medium.cp, ω / bearing.medium.cp, p_coes, modes)
-    ψ = HelmholtzPotential{2}(bearing.medium.cs, ω / bearing.medium.cs, s_coes, modes)
+    ϕ = HelmholtzPotential(bearing.medium.cp, ω / bearing.medium.cp, p_coes, modes)
+    ψ = HelmholtzPotential(bearing.medium.cs, ω / bearing.medium.cs, s_coes, modes)
 
     method = ModalMethod(modes=modes, mode_errors = zeros(T, length(modes)))
     wave = ElasticWave(ω, bearing.medium, [ϕ, ψ], method)

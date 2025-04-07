@@ -33,7 +33,7 @@ using Plots
         roller_radius = 0.5,
         roller_contact_angular_spread = σ
     )
-roller_contact_angular_spread
+
     plot(bearing)
 
     Ω * bearing.outer_radius
@@ -138,14 +138,17 @@ roller_contact_angular_spread
     wave = ElasticWave(forward_sim);
     wave.method.mode_errors |> findmax
     
-    bd1_inverse = BoundaryData(bc1_inverse, bearing.outer_radius, θs, wave)  
+    # bd1_inverse = BoundaryData(bc1_inverse, bearing.outer_radius, θs, wave)  
+    
+    bd_location = BoundaryData(bc1_inverse; θs = θs)
+    bd1_inverse = BoundaryData(bd_location, bearing.outer_radius, wave)  
     inverse_fields2 = bd1_inverse.fields[:,1]
+
     # inverse_fields1 = bd1_inverse.fields[:,1]
     # plot(θs,[real.(inverse_fields2)])
     # plot(θs,[abs.(inverse_fields1),abs.(inverse_fields2)])
     # norm(inverse_fields1 - inverse_fields2) / norm(inverse_fields1)
     # norm(abs.(inverse_fields1) - abs.(inverse_fields2)) / norm(inverse_fields1)
-
 
     # Need the frequency mode below to measure the mode 0 of the loading
     frequency_order * bearing.number_of_rollers
@@ -230,8 +233,8 @@ roller_contact_angular_spread
     # θs_inv = [3.0,4.0,5.0]
 
     # create the data from evaluating the forward problem
-    bd1_inverse = BoundaryData(bc1_inverse, bearing.outer_radius, θs_inv, waves[i])
-
+    bd_location = BoundaryData(bc1_inverse; θs = θs)
+    bd1_inverse = BoundaryData(bd_location, bearing.outer_radius, waves[i])
 
     # as min_mode = 0 and max_mode is very large, we can consider any loading profiles with modes = -max_modes:max_modes 
 
@@ -291,7 +294,6 @@ roller_contact_angular_spread
     
     ## do all frequencies
 
-
     function mean_inverse(error, loading_basis_order, numberofsensors)
         inverse_waves = map(eachindex(ωs)) do i
         
@@ -301,7 +303,8 @@ roller_contact_angular_spread
             # println("central basis order: ", (i+1) * bearing.number_of_rollers)
 
             # create the data from evaluating the forward problem
-            bd1_inverse = BoundaryData(bc1_inverse, bearing.outer_radius, θs_inv, waves[i])
+            bd_location = BoundaryData(bc1_inverse; θs = θs);
+            bd1_inverse = BoundaryData(bd_location, bearing.outer_radius, waves[i])
             
             m = mean(bd1_inverse.fields) * error
             f1 = bd1_inverse.fields[:,1] + (rand(size(bd1_inverse.fields[:,1])...) .- 0.5) .* m
@@ -356,7 +359,6 @@ roller_contact_angular_spread
         mean(inv_loadings)
     end
     
-
     inv_loadings = [mean_inverse(0.04,2,4) for n = 1:100];
     inv_loadings_2 = [mean_inverse(0.04,2,7) for n = 1:100];
 

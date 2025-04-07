@@ -73,8 +73,8 @@ function ElasticWave(sim::BearingSimulation)
     pressure_coefficients = coefficients[:,1:2] |> transpose
     shear_coefficients = coefficients[:,3:4] |> transpose
 
-    φ = HelmholtzPotential{2}(bearing.medium.cp, kP, pressure_coefficients, modes)
-    ψ = HelmholtzPotential{2}(bearing.medium.cs, kS, shear_coefficients, modes)
+    φ = HelmholtzPotential(bearing.medium.cp, kP, pressure_coefficients, modes)
+    ψ = HelmholtzPotential(bearing.medium.cs, kS, shear_coefficients, modes)
 
     return ElasticWave(ω, bearing.medium, [φ, ψ], method)
 end
