@@ -1,7 +1,7 @@
 module ElasticWaves
 
 # types.jl
-export ModalMethod, PriorMethod, GapMethod
+export ModalMethod, PriorMethod, GapMethod, ConstantRollerSpeedMethod
 export DisplacementType, TractionType
 
 # elasticity.jl

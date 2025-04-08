@@ -79,6 +79,51 @@ function ElasticWave(sim::BearingSimulation)
     return ElasticWave(ω, bearing.medium, [φ, ψ], method)
 end
 
+function ElasticWaves(sims::Vector{B}, method::ConstantRollerSpeedMethod) where B <: BearingSimulation
+
+    bearings = [s.bearing for s in sims];
+    non_dims = [s.nondimensionalise for s in sims];
+
+    if sum(non_dims) != length(sims)
+        error("all BearingSimulation need to be either all non-dimensiolised or not")
+    end    
+    
+    nondimensionalise = (sum(non_dims) == length(sims)) ? true : false
+
+    simcopys = map(sims) do sim 
+        if nondimensionalise
+            nondimensionalise!(deepcopy(sim))
+        else deepcopy(sim)    
+        end
+    end
+
+    modes_vec, coefficients_vec = modes_coefficients!(simcopys,method);
+
+    waves = map(eachindex(sims)) do i
+    
+        ω = simcopys[i].ω;
+        method = simcopys[i].method
+
+        kP = ω / bearings[i].medium.cp;
+        kS = ω / bearings[i].medium.cs;
+
+        coefficients = if simcopys[i].nondimensionalise
+            coefficients_vec[i] ./ kP^2
+        else coefficients_vec[i]
+        end
+
+        pressure_coefficients = coefficients[:,1:2] |> transpose
+        shear_coefficients = coefficients[:,3:4] |> transpose
+
+        φ = HelmholtzPotential(bearing.medium.cp, kP, pressure_coefficients, modes_vec[i])
+        ψ = HelmholtzPotential(bearing.medium.cs, kS, shear_coefficients, modes_vec[i])
+
+        ElasticWave(ω, bearing.medium, [φ, ψ], method)
+    end
+
+    return waves
+end
+
 function modes_coefficients!(sim::BearingSimulation{ModalMethod})
 
     ω = sim.ω
@@ -211,7 +256,48 @@ function modes_coefficients!(sim::BearingSimulation{PriorMethod})
     return sim.method.modal_method.modes, coefficients
 end
 
-function prior_and_bias_inverse(sim::BearingSimulation{PriorMethod})
+function modes_coefficients!(sims::Vector{B}, method::ConstantRollerSpeedMethod) where B <: BearingSimulation
+
+    data = prior_and_bias_inverse.(sims);
+
+    Bs = [d[2] for d in data];
+    ds = [d[3] for d in data];
+
+    EBs = [d[1] * d[2] for d in data];
+    Eds = [d[1] * d[3] for d in data];
+    y_invs = [d[4] for d in data];
+
+    BB = vcat(EBs...);
+    DD = vcat(Eds...);
+    YY = vcat(y_invs...);
+
+    # condition matrix
+    SM = diagm([4.0 / sum(abs.(BB[:,j])) for j in 1:size(BB,2)])
+    BB = BB * SM
+
+    x = BB \ (YY - DD);
+    x = SM * x
+    
+    boundary_error = norm(BB*x - (YY - DD)) / norm(YY - DD)
+    condition_number = cond(BB)
+
+    @reset method.boundary_error = boundary_error
+    @reset method.condition_number = condition_number
+
+    if size(BB,1) < size(BB,2)
+        @error "For the constant speed roller method, we expected the system to recover the Fourier coefficients of the loading profile to be overdetermined, but it is not. Consider using more frequencies."
+    end     
+
+    coefficients_vec = map(eachindex(sims)) do i
+        coes = Bs[i] * x + ds[i]
+        reshape(coes,(4,:)) |> transpose |> collect
+    end    
+    modes_vec = [sims[i].method.modal_method.modes for i in eachindex(sims)]
+
+    return modes_vec, coefficients_vec
+end
+
+function prior_and_bias_inverse(sim::BearingSimulation{P}) where P <: AbstractPriorMethod
 
     ω = sim.ω
     T = typeof(ω)

@@ -48,6 +48,28 @@ function BoundaryData(ω::Number, bearing::RollerBearing, loading_profile::Bound
     )
 end
 
+function BoundaryBasis(ω::Float64, bearing::RollerBearing, method::ConstantRollerSpeedMethod)
+
+    order = method.loading_basis_order
+
+    bc = TractionBoundary(inner = bearing.rollers_inside, outer = !bearing.rollers_inside)
+
+    basis = map(-order:order) do n
+        fp = [1.0 + 0.0im]
+
+        # The representation of the loading itself
+        loading_data = BoundaryData(bc, 
+            modes = [n],
+            coefficients = [fp method.ratio_shear_to_normal.*fp]
+        )
+
+        # How loading is translated into boundary data
+        BoundaryData(ω, bearing, loading_data)
+    end;
+
+    return BoundaryBasis(basis);
+end
+
 """
     LoadingBoundaryData(ω::Number, bearing::RollerBearing, bd::BoundaryData)
 

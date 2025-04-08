@@ -1,10 +1,13 @@
-using ElasticWaves, Test, LinearAlgebra
+using ElasticWaves, Test, LinearAlgebra, Statistics
 
 # the higher the frequency, the worse the result. This is already a high frequency.
 medium = Elastic(2; ρ = 2.0, cp = 10.0 - 0.0im, cs = 8.0 - 0.0im)
 
 Ω = 2pi * 15 / 60 # large wind turbines rotate at about 15 rpm
+Ω = 2pi * 60 / 60 # large wind turbines rotate at about 15 rpm
 Z = 8 
+
+ratio_shear_to_normal = 0.0
 
 bearing = RollerBearing(medium = medium, 
     inner_radius = 1.5, outer_radius = 2.0, 
@@ -13,11 +16,11 @@ bearing = RollerBearing(medium = medium,
     number_of_rollers = Z
 )
 
-frequency_order = 3
+frequency_order = 12
 
 ωms = natural_frequencies(bearing, frequency_order) |> collect
 
-ωms = [ωms[frequency_order]]
+# ωms = [ωms[frequency_order]]
 ω = ωms[1]
 
 dr = bearing.outer_radius - bearing.inner_radius
@@ -31,18 +34,10 @@ kp * dr
     loading_basis_order_forward = 2; # Used for the forward problem
     loading_basis_order = 2; # Used for the inverse problem
 
-    # loading_profile2 = fields_to_fouriermodes(loading_profile, -loading_basis_order_forward:loading_basis_order_forward)
-    # loading_profile = fouriermodes_to_fields(loading_profile2)
-
+    loading_coefficients = [0.3, -0.2, 0.0, -0.2, 0.3]
     loading_profile = BoundaryData(bc1_forward,
         modes = [-2,-1,0,1,2],
-        coefficients = [
-            0.3 0.0im;
-            -0.2 0.0im;
-            0.0 0.0im;
-            -0.2 0.0im;
-            0.3 0.0im
-        ]
+        coefficients = hcat(loading_coefficients, ratio_shear_to_normal .* loading_coefficients)
     )
 
     bd1_for = BoundaryData(ω, bearing, loading_profile)
@@ -56,10 +51,11 @@ kp * dr
         )
 
         forward_sim = BearingSimulation(ω, modal_method, bearing, bd1_for, bd2_for);
-    end;    
+    end;
 
     waves = ElasticWave.(forward_sims);
-    # println("max mode error:",maximum(waves[1].method.mode_errors .|> abs))
+    println("max mode error:",maximum(waves[1].method.mode_errors .|> abs))
+    println("max mode error:",maximum(waves[end].method.mode_errors .|> abs))
 
     # Need the frequency mode below to measure the mode 0 of the loading
     frequency_order * bearing.number_of_rollers
@@ -68,104 +64,47 @@ kp * dr
     bc1_inverse = DisplacementBoundary(outer=true)
     bc2_inverse = TractionBoundary(outer=true)
 
-    numberofsensors = 4
+    numberofsensors = 1
 
     θs_inv = LinRange(0, 2pi, numberofsensors + 1)[1:end-1]
 
-    # loading_resolution = 120;
-    # loading_θs = LinRange(0.0, 2pi, 2*loading_resolution+2)[1:end-1]
-
-    # solve the inverse problem with the PriorMethod
-    method = PriorMethod(tol = modal_method.tol, modal_method = modal_method)
+    method = ConstantRollerSpeedMethod(
+        tol = modal_method.tol, modal_method = modal_method,
+        loading_basis_order = 2,
+        ratio_shear_to_normal = ratio_shear_to_normal,
+    )
 
     inverse_sims = map(eachindex(ωms)) do i
 
-        ω = ωms[i]
-
         # Create a fourier basis for the loading, and then create a boundary basis from this
-        loading_basis_order = 2;  
-        basis = map(-loading_basis_order:loading_basis_order) do n
-            fp = [1.0 + 0.0im]
+        boundarybasis1 = BoundaryBasis(ωms[i], bearing, method);
 
-            # The representation of the loading itself
-            loading_data = BoundaryData(bc1_forward, 
-                modes = [n],
-                coefficients = [fp 0.0.*fp]
-            )
-
-            # How loading is translated into boundary data
-            BoundaryData(ω, bearing, loading_data)
-        end;
-        boundarybasis1 = BoundaryBasis(basis);
-
-        # create the data from evaluating the forward problem 
+        # create boundary data by evaluating the forward problem 
         bd1_inverse = BoundaryData(
             BoundaryData(bc1_inverse; θs = θs_inv), 
             bearing.outer_radius, waves[i]
         )
 
+        # known zero traction bvoundary data
         bd2_inverse = BoundaryData(bc2_inverse,
             modes = boundarybasis1.basis[1].modes,
             coefficients = 0.0 .* boundarybasis1.basis[1].coefficients
         )
         
-        inverse_sim = BearingSimulation(ω, method, bearing, bd1_inverse, bd2_inverse;
+        inverse_sim = BearingSimulation(ωms[i], method, bearing, bd1_inverse, bd2_inverse;
             boundarybasis1 = boundarybasis1,
         )
     end;
 
-    inverse_wave = ElasticWave(inverse_sims[1]);
-    inverse_wave.method.condition_number
-    inverse_wave.method.boundary_error
-
-    bd1_inner, bd2_outer = boundary_data(forward_sims[1], inverse_wave);
-    norm(bd1_inner.modes - forward_sims[1].boundarydata1.modes) 
-    norm(bd2_outer.modes - forward_sims[1].boundarydata2.modes)
-
-    norm(bd1_inner.coefficients - forward_sims[1].boundarydata1.coefficients) / norm(forward_sims[1].boundarydata1.coefficients)
-    
-    norm(bd2_outer.coefficients - forward_sims[1].boundarydata2.coefficients) 
-    
-    σ = bearing.roller_contact_angular_spread;
-    scale = Z/(2pi) * exp(- (π * σ^2) *  frequency_order^2);
-    
-    loading_ordered = select_modes(loading_profile, bd1_inner.modes .- frequency_order * Z);
-
-    norm(loading_ordered.coefficients - bd1_inner.coefficients ./ scale) / norm(loading_ordered.coefficients)
-    bd1_inner.modes .- frequency_order * Z
+    # function ElasticWaves(sims::Vector{B}, method::AbstractPriorMethod) where B <: BearingSimulation
 
     inverse_sim_copies = deepcopy.(inverse_sims);
     nondimensionalise!.(inverse_sim_copies);
 
     import ElasticWaves: prior_and_bias_inverse
     
-    data = prior_and_bias_inverse(inverse_sims[1]);
-
-    E_inv = data[1];
-    B = data[2];
-    d = data[3];
-    y_inv = data[4];
-
-    data = prior_and_bias_inverse(inverse_sim_copies[1]);
-
-    E_inv_non = data[1];
-    B_non = data[2];
-    d_non = data[3];
-    y_inv_non = data[4];
-
-    kP = ω / bearing.medium.cp;
-    kS = ω / bearing.medium.cs;
-
-    ρλ2μ = bearing.medium.ρ * bearing.medium.cp^2
-
-    norm(B * kP^2 * ρλ2μ - B_non) / norm(B_non)
-    norm(y_inv .* kp - y_inv_non) / norm(y_inv_non)
-    norm(d - d_non .* ρλ2μ)
-
-
     data = prior_and_bias_inverse.(inverse_sim_copies);
 
-    E_invs = [d[1] for d in data];
     Bs = [d[2] for d in data];
     ds = [d[3] for d in data];
 
@@ -173,14 +112,37 @@ kp * dr
     Eds = [d[1] * d[3] for d in data];
     y_invs = [d[4] for d in data];
 
+    # add some error to the boundary data
+    map(y_invs) do y 
+        y[1:2] = y[1:2] + mean(abs.(y[1:2])) .* 0.001 .* (rand(2) .- 0.5) + mean(abs.(y[1:2])) .* 0.001 .* (rand(2) .- 0.5) .* im
+    end;
+
     BB = vcat(EBs...);
     DD = vcat(Eds...);
     YY = vcat(y_invs...);
 
     cond(BB)
 
-    # Did non-dimenalisation make x different for each frequency??
+    SM = diagm([4.0 / sum(abs.(BB[:,j])) for j in 1:size(BB,2)])
+    BB = BB * SM
+
+    cond(BB)
+
     x = BB \ (YY - DD);
+    x = SM * x
+
+    if size(BB,1) < size(BB,2)
+        @error "For the constant speed roller method, we expected the system to recover the Fourier coefficients of the loading profile to be overdetermined, but it is not. Consider using more frequencies."
+    end     
+
+    # This should re-dimenalisation x as it has units of traction
+    λ2μ = bearing.medium.ρ * bearing.medium.cp^2
+
+    loading_profile2 = select_modes(loading_profile, -method.loading_basis_order:method.loading_basis_order)
+    loading_profile2.modes
+    norm(x .* λ2μ - loading_profile2.coefficients[:,1]) / norm(x .* λ2μ)
+
+
     modes = inverse_sim_copies[1].method.modal_method.modes
 
     coefficients = Bs[1] * x + ds[1];
@@ -203,10 +165,5 @@ kp * dr
     
     norm(bd1_inner.coefficients - forward_sims[1].boundarydata1.coefficients) / norm(forward_sims[1].boundarydata1.coefficients)
 
-    # This should re-dimenalisation x as it has units of traction
-    λ2μ = bearing.medium.ρ * bearing.medium.cp^2
 
-    loading_profile2 = select_modes(loading_profile, -loading_basis_order:loading_basis_order)
-    loading_profile2.modes
-    norm(x .* λ2μ - loading_profile2.coefficients[:,1])
 

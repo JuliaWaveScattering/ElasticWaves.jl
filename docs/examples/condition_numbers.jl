@@ -104,9 +104,7 @@ n = -3;
 ω = ωs[10]
 
 δ = 1e-8
-method = ModalMethod(regularisation_parameter = δ, 
-    only_stable_modes = false 
-)
+method = ModalMethod(only_stable_modes = false)
 
 errors = [
     begin

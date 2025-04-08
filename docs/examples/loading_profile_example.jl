@@ -78,7 +78,9 @@ plot(bearing, 0.0)
             coefficients = zeros(Complex{Float64}, size(bd1_for.coefficients,1) + (length(ωms))*bearing.number_of_rollers,2)
         )
 
-    modal_method = ModalMethod(tol = 2e-2, regularisation_parameter = 1e-12, only_stable_modes = true)
+    modal_method = ModalMethod(tol = 2e-2, #regularisation_parameter = 1e-12, 
+        only_stable_modes = true
+    )
     forward_sim = BearingSimulation(ω, bearing, bd1_for, bd2_for; 
         method = modal_method,
         nondimensionalise = true);

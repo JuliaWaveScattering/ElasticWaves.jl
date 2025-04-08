@@ -13,21 +13,19 @@ struct TractionType <: FieldType end
 ## methods to solve for waves in bearings 
 
 abstract type SolutionMethod end
-
 abstract type BearingMethod <: SolutionMethod end
+abstract type AbstractPriorMethod <: SolutionMethod end
 
 struct NoBearingMethod <: SolutionMethod end
 
 struct ModalMethod <: SolutionMethod
     tol::Float64
-    # to use Tikhonov regularization give a non-zero parameter
-    regularisation_parameter::Float64
     only_stable_modes::Bool
     maximum_mode::Int
     modes::Vector{Int}
     mode_errors::Vector{Float64}
 
-    function ModalMethod(tol::Float64, regularisation_parameter::Float64, only_stable_modes::Bool, maximum_mode::Int, modes::Vector{Int}, mode_errors::Vector{Float64})
+    function ModalMethod(tol::Float64, only_stable_modes::Bool, maximum_mode::Int, modes::Vector{Int}, mode_errors::Vector{Float64})
 
         is = findall(abs.(modes) .< maximum_mode)
         modes = modes[is]
@@ -43,24 +41,30 @@ struct ModalMethod <: SolutionMethod
             end
         end
 
-        new(tol, regularisation_parameter, only_stable_modes, maximum_mode, modes, mode_errors)
+        new(tol, only_stable_modes, maximum_mode, modes, mode_errors)
     end    
 end
 
 struct GapMethod <: BearingMethod end
 
-struct PriorMethod <: SolutionMethod
+struct PriorMethod <: AbstractPriorMethod
     tol::Float64
-    # to use Tikhonov regularization give a non-zero parameter
-    regularisation_parameter::Float64
     modal_method::ModalMethod
     condition_number::Float64
     boundary_error::Float64
 end
 
+struct ConstantRollerSpeedMethod <: AbstractPriorMethod
+    tol::Float64
+    modal_method::ModalMethod
+    condition_number::Float64
+    boundary_error::Float64
+    loading_basis_order::Int
+    ratio_shear_to_normal::Float64
+end
+
 function ModalMethod(; 
         tol::Float64 = eps(Float64)^(1/2), 
-        regularisation_parameter::Float64 = eps(typeof(tol)) / tol,
         only_stable_modes::Bool = true,
         maximum_mode::Int = 160,
         modes::Vector{Int} = Int[],
@@ -71,17 +75,29 @@ function ModalMethod(;
         @warn "only_stable_modes was set to false. This means that potentially ill-posed (or unstable) modes will attempt to be solved, which could lead to non-sense solutions." 
     end
 
-    ModalMethod(tol, regularisation_parameter, only_stable_modes, maximum_mode, modes, mode_errors)
+    ModalMethod(tol, only_stable_modes, maximum_mode, modes, mode_errors)
 end
 
 function PriorMethod(; 
         tol::Float64 = eps(Float64)^(1/2), 
-        regularisation_parameter::Float64 = zero(Float64),
         modes::Vector{Int} = Int[],
         modal_method = ModalMethod(tol = tol, modes = modes),
         condition_number = -one(Float64),
         boundary_error = -one(Float64),
 
     )
-    PriorMethod(tol, regularisation_parameter, modal_method, condition_number, boundary_error)
+    PriorMethod(tol, modal_method, condition_number, boundary_error)
+end
+
+function ConstantRollerSpeedMethod(;
+        loading_basis_order::Int = 2,
+        ratio_shear_to_normal::Float64 = zero(Float64),
+        tol::Float64 = eps(Float64)^(1/2), 
+        modes::Vector{Int} = Int[],
+        modal_method = ModalMethod(tol = tol, modes = modes),
+        condition_number = -one(Float64),
+        boundary_error = -one(Float64),
+
+    )
+    ConstantRollerSpeedMethod(tol, modal_method, condition_number, boundary_error, loading_basis_order, ratio_shear_to_normal)
 end

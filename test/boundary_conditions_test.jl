@@ -27,11 +27,10 @@
 
     # could regularise the lowest frequency, though it doesn't appear necessary
 
-    δs = [1e-8,0.0,0.0]
     tol = 1e-3
     sims = map(eachindex(ωs)) do i
         # the option only_stable_modes = false means the method will try to solve for modes which are ill posed 
-        method = ModalMethod(regularisation_parameter = δs[i], 
+        method = ModalMethod(#regularisation_parameter = δs[i], 
             tol = tol, 
             only_stable_modes = false 
         )
@@ -161,7 +160,7 @@
         modes = modes
     )
 
-    method = ModalMethod(only_stable_modes = false, regularisation_parameter = eps(Float64))
+    method = ModalMethod(only_stable_modes = false)
     sim = BearingSimulation(ω, bearing, bd1, bd2; method = method)
     wave = ElasticWave(sim);
 
@@ -221,7 +220,7 @@
         modes = wave.method.modes
     )
     
-    method = ModalMethod(regularisation_parameter = 0.0, only_stable_modes = false)
+    method = ModalMethod(only_stable_modes = false)
     sim = BearingSimulation(ω, bearing, bd1_inverse, bd2_inverse; method = method);
     wave_inverse = ElasticWave(sim);
 
@@ -252,7 +251,7 @@
         modes = modes
     )
 
-    method = ModalMethod(tol = 1e-1, regularisation_parameter = 1e-10, only_stable_modes = true)
+    method = ModalMethod(tol = 1e-1, only_stable_modes = true)
     sim = BearingSimulation(ω, bearing, bd1, bd2; method = method)
     wave = ElasticWave(sim);
 

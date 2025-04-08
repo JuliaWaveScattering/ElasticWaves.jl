@@ -506,7 +506,7 @@ function setup(sim::BearingSimulation{ModalMethod})
     return sim
 end
 
-function setup(sim::BearingSimulation{PriorMethod})
+function setup(sim::BearingSimulation{P}) where P <: AbstractPriorMethod
 
     modes = sim.method.modal_method.modes;
 
