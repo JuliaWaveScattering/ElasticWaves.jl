@@ -421,8 +421,8 @@ function nondimensionalise!(sim::BearingSimulation)
     nondimensionalise!(sim.boundarydata2, sim)
     
     # just normalise each of elements of the basis as their size does not matter
-    normalize!(sim.boundarybasis1)
-    normalize!(sim.boundarybasis2)
+    # normalize!(sim.boundarybasis1)
+    # normalize!(sim.boundarybasis2)
 
     # nondimensionalise bearing
     sim.bearing = nondimensionalise(sim.bearing,sim.ω)

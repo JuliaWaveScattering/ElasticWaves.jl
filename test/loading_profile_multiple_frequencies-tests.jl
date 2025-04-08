@@ -13,11 +13,11 @@ bearing = RollerBearing(medium = medium,
     number_of_rollers = Z
 )
 
-frequency_order = 4
+frequency_order = 3
 
 ωms = natural_frequencies(bearing, frequency_order) |> collect
 
-ωms = [ωms[4]]
+ωms = [ωms[frequency_order]]
 ω = ωms[1]
 
 dr = bearing.outer_radius - bearing.inner_radius
@@ -120,24 +120,55 @@ kp * dr
 
     bd1_inner, bd2_outer = boundary_data(forward_sims[1], inverse_wave);
     norm(bd1_inner.modes - forward_sims[1].boundarydata1.modes) 
-    norm(bd2_outer.modes - forward_sims[1].boundarydata2.modes) 
+    norm(bd2_outer.modes - forward_sims[1].boundarydata2.modes)
 
     norm(bd1_inner.coefficients - forward_sims[1].boundarydata1.coefficients) / norm(forward_sims[1].boundarydata1.coefficients)
     
     norm(bd2_outer.coefficients - forward_sims[1].boundarydata2.coefficients) 
     
-    # norm(bd1_inner.fields - forward_sims[1].boundarydata1.fields) / norm(forward_sims[1].boundarydata1.fields)
+    σ = bearing.roller_contact_angular_spread;
+    scale = Z/(2pi) * exp(- (π * σ^2) *  frequency_order^2);
+    
+    loading_ordered = select_modes(loading_profile, bd1_inner.modes .- frequency_order * Z);
 
-
+    norm(loading_ordered.coefficients - bd1_inner.coefficients ./ scale) / norm(loading_ordered.coefficients)
+    bd1_inner.modes .- frequency_order * Z
 
     inverse_sim_copies = deepcopy.(inverse_sims);
     nondimensionalise!.(inverse_sim_copies);
 
     import ElasticWaves: prior_and_bias_inverse
     
+    data = prior_and_bias_inverse(inverse_sims[1]);
+
+    E_inv = data[1];
+    B = data[2];
+    d = data[3];
+    y_inv = data[4];
+
+    data = prior_and_bias_inverse(inverse_sim_copies[1]);
+
+    E_inv_non = data[1];
+    B_non = data[2];
+    d_non = data[3];
+    y_inv_non = data[4];
+
+    kP = ω / bearing.medium.cp;
+    kS = ω / bearing.medium.cs;
+
+    ρλ2μ = bearing.medium.ρ * bearing.medium.cp^2
+
+    norm(B * kP^2 * ρλ2μ - B_non) / norm(B_non)
+    norm(y_inv .* kp - y_inv_non) / norm(y_inv_non)
+    norm(d - d_non .* ρλ2μ)
+
+
     data = prior_and_bias_inverse.(inverse_sim_copies);
 
     E_invs = [d[1] for d in data];
+    Bs = [d[2] for d in data];
+    ds = [d[3] for d in data];
+
     EBs = [d[1] * d[2] for d in data];
     Eds = [d[1] * d[3] for d in data];
     y_invs = [d[4] for d in data];
@@ -150,36 +181,32 @@ kp * dr
 
     # Did non-dimenalisation make x different for each frequency??
     x = BB \ (YY - DD);
+    modes = inverse_sim_copies[1].method.modal_method.modes
+
+    coefficients = Bs[1] * x + ds[1];
+    coefficients = reshape(coefficients,(4,:)) |> transpose |> collect;
+
+    kP = ω / bearing.medium.cp;
+    kS = ω / bearing.medium.cs;
+
+    coefficients = coefficients ./ kP^2
+
+    pressure_coefficients = coefficients[:,1:2] |> transpose
+    shear_coefficients = coefficients[:,3:4] |> transpose
+
+    φ = HelmholtzPotential(bearing.medium.cp, kP, pressure_coefficients, modes)
+    ψ = HelmholtzPotential(bearing.medium.cs, kS, shear_coefficients, modes)
+
+    inverse_wave = ElasticWave(ω, bearing.medium, [φ, ψ], method);
+
+    bd1_inner, bd2_outer = boundary_data(forward_sims[1], inverse_wave);
+    
+    norm(bd1_inner.coefficients - forward_sims[1].boundarydata1.coefficients) / norm(forward_sims[1].boundarydata1.coefficients)
 
     # This should re-dimenalisation x as it has units of traction
     λ2μ = bearing.medium.ρ * bearing.medium.cp^2
 
-    -loading_basis_order:loading_basis_order
-    x = x .* λ2μ
-
-
+    loading_profile2 = select_modes(loading_profile, -loading_basis_order:loading_basis_order)
     loading_profile2.modes
-    loading_profile2.coefficients
+    norm(x .* λ2μ - loading_profile2.coefficients[:,1])
 
-    # δ = method.regularisation_parameter
-    # bigA = [BB; sqrt(δ) * I];
-    # x = bigA \ [YY - DD; zeros(size(BB)[2])]
-
-
-    # using Plots
-    # scatter(wave.potentials[1].modes, abs.(wave.potentials[1].coefficients[1,:]), markersize = 4.0)
-    # scatter!(inverse_wave.potentials[1].modes, abs.(inverse_wave.potentials[1].coefficients[1,:]), markersize = 3.0)
-    # plot!(xlims = (-1 -loading_basis_order - mZ, loading_basis_order - mZ + 1))
-
-    # predicted_forcing_coefficients = hcat(
-    #     field_modes(inverse_wave, bearing.inner_radius, bd1_for.boundarytype.fieldtype),
-    #     field_modes(inverse_wave, bearing.outer_radius, bd1_for.boundarytype.fieldtype)
-    # )
-
-    # scatter(inverse_wave.method.modal_method.modes, abs.(predicted_forcing_coefficients[:,1]))
-    # scatter!(inverse_wave.method.modal_method.modes, abs.(predicted_forcing_coefficients[:,1]))
-
-#    plot(bd1_inner.θs, 2pi / Z .* abs.(bd1_inner.fields[:,1]), label = "predicted loading")
-#    plot!(loading_θs, abs.(fp_loading), linestyle = :dash, label = "true loading")
-   
-#    plot(real.(bd2_outer.fields))
