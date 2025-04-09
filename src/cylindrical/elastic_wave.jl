@@ -79,7 +79,7 @@ function ElasticWave(sim::BearingSimulation)
     return ElasticWave(ω, bearing.medium, [φ, ψ], method)
 end
 
-function ElasticWaveVector(sims::Vector{B}, method::ConstantRollerSpeedMethod) where B <: BearingSimulation
+function ElasticWaveVector(sims::Vector{B}) where {B <: BearingSimulation{ConstantRollerSpeedMethod}}
 
     bearings = [s.bearing for s in sims];
     non_dims = [s.nondimensionalise for s in sims];
@@ -97,7 +97,7 @@ function ElasticWaveVector(sims::Vector{B}, method::ConstantRollerSpeedMethod) w
         end
     end
 
-    modes_vec, coefficients_vec = modes_coefficients!(simcopys,method);
+    modes_vec, coefficients_vec = modes_coefficients!(simcopys);
 
     waves = map(eachindex(sims)) do i
     
@@ -106,9 +106,12 @@ function ElasticWaveVector(sims::Vector{B}, method::ConstantRollerSpeedMethod) w
 
         kP = ω / bearings[i].medium.cp;
         kS = ω / bearings[i].medium.cs;
+        ρλ2μ = bearings[i].medium.ρ * bearings[i].medium.cp^2
 
         coefficients = if simcopys[i].nondimensionalise
+            @reset method.loading_coefficients = method.loading_coefficients .* ρλ2μ
             coefficients_vec[i] ./ kP^2
+
         else coefficients_vec[i]
         end
 
@@ -256,7 +259,7 @@ function modes_coefficients!(sim::BearingSimulation{PriorMethod})
     return sim.method.modal_method.modes, coefficients
 end
 
-function modes_coefficients!(sims::Vector{B}, method::ConstantRollerSpeedMethod) where B <: BearingSimulation
+function modes_coefficients!(sims::Vector{B}) where B <: BearingSimulation{ConstantRollerSpeedMethod}
 
     data = prior_and_bias_inverse.(sims);
 
@@ -281,9 +284,13 @@ function modes_coefficients!(sims::Vector{B}, method::ConstantRollerSpeedMethod)
     boundary_error = norm(BB*x - (YY - DD)) / norm(YY - DD)
     condition_number = cond(BB)
 
-    @reset method.loading_coefficients = x
-    @reset method.boundary_error = boundary_error
-    @reset method.condition_number = condition_number
+    for sim in sims 
+        method = sim.method
+        @reset method.loading_coefficients = x
+        @reset method.boundary_error = boundary_error
+        @reset method.condition_number = condition_number
+        sim.method = method
+    end
 
     if size(BB,1) < size(BB,2)
         @error "For the constant speed roller method, we expected the system to recover the Fourier coefficients of the loading profile to be overdetermined, but it is not. Consider using more frequencies."

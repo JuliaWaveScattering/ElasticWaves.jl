@@ -305,4 +305,4 @@ end
         #plot!(loading_θs, abs.(fp_loading), linestyle = :dash, label = "true loading")
     
        @test norm(bd1_inner.fields - bd1_for.fields) / norm(bd1_for.fields) < 2e-10
-    end
+end

@@ -1,4 +1,6 @@
-using ElasticWaves, Test, LinearAlgebra, Statistics
+# using ElasticWaves, Test, LinearAlgebra, Statistics
+
+@testset "Loading profile multiple frequencies" begin
 
 # the higher the frequency, the worse the result. This is already a high frequency.
 medium = Elastic(2; ρ = 2.0, cp = 10.0 - 0.0im, cs = 8.0 - 0.0im)
@@ -74,108 +76,75 @@ kp * dr
         ratio_shear_to_normal = ratio_shear_to_normal,
     )
 
-    inverse_sims = map(eachindex(ωms)) do i
+    function inverse_simulations(error = 0.0)
+        inverse_sims = map(eachindex(ωms)) do i
 
-        # Create a fourier basis for the loading, and then create a boundary basis from this
-        boundarybasis1 = BoundaryBasis(ωms[i], bearing, method);
+            # Create a fourier basis for the loading, and then create a boundary basis from this
+            boundarybasis1 = BoundaryBasis(ωms[i], bearing, method);
 
-        # create boundary data by evaluating the forward problem 
-        bd1_inverse = BoundaryData(
-            BoundaryData(bc1_inverse; θs = θs_inv), 
-            bearing.outer_radius, waves[i]
-        )
+            # create boundary data by evaluating the forward problem 
+            bd1_inverse = BoundaryData(
+                BoundaryData(bc1_inverse; θs = θs_inv), 
+                bearing.outer_radius, waves[i]
+            )
 
-        # known zero traction bvoundary data
-        bd2_inverse = BoundaryData(bc2_inverse,
-            modes = boundarybasis1.basis[1].modes,
-            coefficients = 0.0 .* boundarybasis1.basis[1].coefficients
-        )
-        
-        inverse_sim = BearingSimulation(ωms[i], method, bearing, bd1_inverse, bd2_inverse;
-            boundarybasis1 = boundarybasis1,
-        )
-    end;
+            #add error to the measurements
+            scale = error * mean(abs.(bd1_inverse.fields)) / 2.0;
+            field_error = scale .* (rand(size(bd1_inverse.fields)...) .- 0.5) + scale .* (rand(size(bd1_inverse.fields)...) .- 0.5) .* im
+
+            bd1_inverse = BoundaryData(bc1_inverse,
+                θs = bd1_inverse.θs,
+                fields = bd1_inverse.fields + field_error
+            )
+
+            # known zero traction bvoundary data
+            bd2_inverse = BoundaryData(bc2_inverse,
+                modes = boundarybasis1.basis[1].modes,
+                coefficients = 0.0 .* boundarybasis1.basis[1].coefficients
+            )
+            
+            inverse_sim = BearingSimulation(ωms[i], method, bearing, bd1_inverse, bd2_inverse;
+                boundarybasis1 = boundarybasis1,
+            )
+        end
+    end
 
     # function ElasticWaves(sims::Vector{B}, method::AbstractPriorMethod) where B <: BearingSimulation
 
-    inverse_waves = ElasticWaveVector(inverse_sims, method);
+    inverse_waves = ElasticWaveVector(inverse_simulations());
 
-
-    # This should re-dimenalisation x as it has units of traction
-    λ2μ = bearing.medium.ρ * bearing.medium.cp^2
-
-    loading_profile2 = select_modes(loading_profile, -method.loading_basis_order:method.loading_basis_order)
-    loading_profile2.modes
-    norm(x .* λ2μ - loading_profile2.coefficients[:,1]) / norm(x .* λ2μ)
-
-
-
-    inverse_sim_copies = deepcopy.(inverse_sims);
-    nondimensionalise!.(inverse_sim_copies);
-
-    import ElasticWaves: prior_and_bias_inverse
+    loading_profile2 = select_modes(loading_profile, inverse_waves[1].method.loading_modes)
     
-    data = prior_and_bias_inverse.(inverse_sim_copies);
+    error = norm(inverse_waves[1].method.loading_coefficients - loading_profile2.coefficients[:,1]) / norm(inverse_waves[1].method.loading_coefficients)
 
-    Bs = [d[2] for d in data];
-    ds = [d[3] for d in data];
+    @test error < 1e-12
 
-    EBs = [d[1] * d[2] for d in data];
-    Eds = [d[1] * d[3] for d in data];
-    y_invs = [d[4] for d in data];
+    inverse_waves = ElasticWaveVector(inverse_simulations(0.01));
 
-    # add some error to the boundary data
-    map(y_invs) do y 
-        y[1:2] = y[1:2] + mean(abs.(y[1:2])) .* 0.001 .* (rand(2) .- 0.5) + mean(abs.(y[1:2])) .* 0.001 .* (rand(2) .- 0.5) .* im
-    end;
-
-    BB = vcat(EBs...);
-    DD = vcat(Eds...);
-    YY = vcat(y_invs...);
-
-    cond(BB)
-
-    SM = diagm([4.0 / sum(abs.(BB[:,j])) for j in 1:size(BB,2)])
-    BB = BB * SM
-
-    cond(BB)
-
-    x = BB \ (YY - DD);
-    x = SM * x
-
-    if size(BB,1) < size(BB,2)
-        @error "For the constant speed roller method, we expected the system to recover the Fourier coefficients of the loading profile to be overdetermined, but it is not. Consider using more frequencies."
-    end     
-
-    # This should re-dimenalisation x as it has units of traction
-    λ2μ = bearing.medium.ρ * bearing.medium.cp^2
-
-    loading_profile2 = select_modes(loading_profile, -method.loading_basis_order:method.loading_basis_order)
-    loading_profile2.modes
-    norm(x .* λ2μ - loading_profile2.coefficients[:,1]) / norm(x .* λ2μ)
-
-
-    modes = inverse_sim_copies[1].method.modal_method.modes
-
-    coefficients = Bs[1] * x + ds[1];
-    coefficients = reshape(coefficients,(4,:)) |> transpose |> collect;
-
-    kP = ω / bearing.medium.cp;
-    kS = ω / bearing.medium.cs;
-
-    coefficients = coefficients ./ kP^2
-
-    pressure_coefficients = coefficients[:,1:2] |> transpose
-    shear_coefficients = coefficients[:,3:4] |> transpose
-
-    φ = HelmholtzPotential(bearing.medium.cp, kP, pressure_coefficients, modes)
-    ψ = HelmholtzPotential(bearing.medium.cs, kS, shear_coefficients, modes)
-
-    inverse_wave = ElasticWave(ω, bearing.medium, [φ, ψ], method);
-
-    bd1_inner, bd2_outer = boundary_data(forward_sims[1], inverse_wave);
+    loading_profile2 = select_modes(loading_profile, inverse_waves[1].method.loading_modes)
     
-    norm(bd1_inner.coefficients - forward_sims[1].boundarydata1.coefficients) / norm(forward_sims[1].boundarydata1.coefficients)
+    error = norm(inverse_waves[1].method.loading_coefficients - loading_profile2.coefficients[:,1]) / norm(inverse_waves[1].method.loading_coefficients)
 
+    @test error < 0.065
 
+    # loading_profile_predict = BoundaryData(bc1_forward,
+    #     modes = inverse_waves[1].method.loading_modes,
+    #     coefficients = hcat(
+    #         inverse_waves[1].method.loading_coefficients, 
+    #         ratio_shear_to_normal .* inverse_waves[1].method.loading_coefficients
+    #     )
+    # )
 
+    # θs = 0.0:0.1:(2pi)
+    # loading_profile = fouriermodes_to_fields(loading_profile,θs)
+    # loading_profile_predict = fouriermodes_to_fields(loading_profile_predict,θs)
+
+    # using Plots
+    # gr(size = (320,240), linewidth = 2.0)
+    # plot(bearing)
+
+    # plot(loading_profile.θs, real.(loading_profile.fields[:,1]))
+    # plot!(loading_profile_predict.θs, real.(loading_profile_predict.fields[:,1]), linestyle =:dash)
+    
+ 
+end

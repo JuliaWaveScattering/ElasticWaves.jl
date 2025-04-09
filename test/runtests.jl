@@ -35,3 +35,4 @@ include("source_test.jl")
     
     # tests for the loading profile
     include("loading_profile_tests.jl")
+    include("loading_profile_multiple_frequencies-tests.jl")
