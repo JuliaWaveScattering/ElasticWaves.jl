@@ -226,7 +226,7 @@ function modes_coefficients!(sim::BearingSimulation{ModalMethod})
 end
 
 
-function modes_coefficients!(sim::BearingSimulation{PriorMethod})
+function modes_coefficients!(sim::BearingSimulation{P}) where P <: AbstractPriorMethod
 
     EM_inverse, B_for, d_for, y_inv = prior_and_bias_inverse(sim)
 
@@ -279,10 +279,11 @@ function modes_coefficients!(sims::Vector{B}) where B <: BearingSimulation{Const
     BB = BB * SM
 
     x = BB \ (YY - DD);
-    x = SM * x
     
     boundary_error = norm(BB*x - (YY - DD)) / norm(YY - DD)
     condition_number = cond(BB)
+
+    x = SM * x
 
     for sim in sims 
         method = sim.method
