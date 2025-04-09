@@ -70,7 +70,7 @@ kp * dr
 
     method = ConstantRollerSpeedMethod(
         tol = modal_method.tol, modal_method = modal_method,
-        loading_basis_order = 2,
+        loading_modes = -2:2,
         ratio_shear_to_normal = ratio_shear_to_normal,
     )
 
@@ -97,6 +97,18 @@ kp * dr
     end;
 
     # function ElasticWaves(sims::Vector{B}, method::AbstractPriorMethod) where B <: BearingSimulation
+
+    inverse_waves = ElasticWaveVector(inverse_sims, method);
+
+
+    # This should re-dimenalisation x as it has units of traction
+    λ2μ = bearing.medium.ρ * bearing.medium.cp^2
+
+    loading_profile2 = select_modes(loading_profile, -method.loading_basis_order:method.loading_basis_order)
+    loading_profile2.modes
+    norm(x .* λ2μ - loading_profile2.coefficients[:,1]) / norm(x .* λ2μ)
+
+
 
     inverse_sim_copies = deepcopy.(inverse_sims);
     nondimensionalise!.(inverse_sim_copies);

@@ -54,15 +54,6 @@ struct PriorMethod <: AbstractPriorMethod
     boundary_error::Float64
 end
 
-struct ConstantRollerSpeedMethod <: AbstractPriorMethod
-    tol::Float64
-    modal_method::ModalMethod
-    condition_number::Float64
-    boundary_error::Float64
-    loading_basis_order::Int
-    ratio_shear_to_normal::Float64
-end
-
 function ModalMethod(; 
         tol::Float64 = eps(Float64)^(1/2), 
         only_stable_modes::Bool = true,
@@ -89,15 +80,24 @@ function PriorMethod(;
     PriorMethod(tol, modal_method, condition_number, boundary_error)
 end
 
+struct ConstantRollerSpeedMethod <: AbstractPriorMethod
+    tol::Float64
+    modal_method::ModalMethod
+    condition_number::Float64
+    boundary_error::Float64
+    loading_modes::Vector{Int}
+    loading_coefficients::Vector{Complex{Float64}}
+    ratio_shear_to_normal::Float64
+end
+
 function ConstantRollerSpeedMethod(;
-        loading_basis_order::Int = 2,
-        ratio_shear_to_normal::Float64 = zero(Float64),
         tol::Float64 = eps(Float64)^(1/2), 
-        modes::Vector{Int} = Int[],
         modal_method = ModalMethod(tol = tol, modes = modes),
         condition_number = -one(Float64),
         boundary_error = -one(Float64),
-
+        loading_modes::AbstractVector{Int} = Int[],
+        loading_coefficients::Vector{Complex{Float64}} = Complex{Float64}[],
+        ratio_shear_to_normal::Float64 = zero(Float64)
     )
-    ConstantRollerSpeedMethod(tol, modal_method, condition_number, boundary_error, loading_basis_order, ratio_shear_to_normal)
+    ConstantRollerSpeedMethod(tol, modal_method, condition_number, boundary_error, loading_modes |> collect, loading_coefficients, ratio_shear_to_normal)
 end

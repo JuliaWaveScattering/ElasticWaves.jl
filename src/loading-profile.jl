@@ -50,11 +50,9 @@ end
 
 function BoundaryBasis(ω::Float64, bearing::RollerBearing, method::ConstantRollerSpeedMethod)
 
-    order = method.loading_basis_order
-
     bc = TractionBoundary(inner = bearing.rollers_inside, outer = !bearing.rollers_inside)
 
-    basis = map(-order:order) do n
+    basis = map(method.loading_modes) do n
         fp = [1.0 + 0.0im]
 
         # The representation of the loading itself

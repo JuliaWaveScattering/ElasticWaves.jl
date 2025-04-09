@@ -5,7 +5,7 @@ export ModalMethod, PriorMethod, GapMethod, ConstantRollerSpeedMethod
 export DisplacementType, TractionType
 
 # elasticity.jl
-export Elastic, ElasticWave
+export Elastic, ElasticWave, ElasticWaveVector
 export regular_basis_function, HelmholtzPotential 
 
 # source.jl

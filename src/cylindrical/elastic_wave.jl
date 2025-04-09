@@ -79,7 +79,7 @@ function ElasticWave(sim::BearingSimulation)
     return ElasticWave(ω, bearing.medium, [φ, ψ], method)
 end
 
-function ElasticWaves(sims::Vector{B}, method::ConstantRollerSpeedMethod) where B <: BearingSimulation
+function ElasticWaveVector(sims::Vector{B}, method::ConstantRollerSpeedMethod) where B <: BearingSimulation
 
     bearings = [s.bearing for s in sims];
     non_dims = [s.nondimensionalise for s in sims];
@@ -115,10 +115,10 @@ function ElasticWaves(sims::Vector{B}, method::ConstantRollerSpeedMethod) where 
         pressure_coefficients = coefficients[:,1:2] |> transpose
         shear_coefficients = coefficients[:,3:4] |> transpose
 
-        φ = HelmholtzPotential(bearing.medium.cp, kP, pressure_coefficients, modes_vec[i])
-        ψ = HelmholtzPotential(bearing.medium.cs, kS, shear_coefficients, modes_vec[i])
+        φ = HelmholtzPotential(bearings[i].medium.cp, kP, pressure_coefficients, modes_vec[i])
+        ψ = HelmholtzPotential(bearings[i].medium.cs, kS, shear_coefficients, modes_vec[i])
 
-        ElasticWave(ω, bearing.medium, [φ, ψ], method)
+        ElasticWave(ω, bearings[i].medium, [φ, ψ], method)
     end
 
     return waves
@@ -281,6 +281,7 @@ function modes_coefficients!(sims::Vector{B}, method::ConstantRollerSpeedMethod)
     boundary_error = norm(BB*x - (YY - DD)) / norm(YY - DD)
     condition_number = cond(BB)
 
+    @reset method.loading_coefficients = x
     @reset method.boundary_error = boundary_error
     @reset method.condition_number = condition_number
 
