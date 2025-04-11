@@ -111,7 +111,7 @@ kp * dr
         ratio_shear_to_normal = ratio_shear_to_normal,
     )
 
-    inverse_waves = ElasticWaveVector(inverse_simulations());
+    inverse_waves = ElasticWaveVector(inverse_simulations(method));
 
     loading_profile2 = select_modes(loading_profile, inverse_waves[1].method.loading_modes)
     
@@ -127,7 +127,7 @@ kp * dr
         ratio_shear_to_normal = ratio_shear_to_normal,
     )
 
-    inverse_waves = ElasticWaveVector(inverse_simulations(0.01));
+    inverse_waves = ElasticWaveVector(inverse_simulations(method, 0.01));
 
     loading_profile2 = select_modes(loading_profile, inverse_waves[1].method.loading_modes)
     
