@@ -276,11 +276,16 @@ function modes_coefficients!(sims::Vector{B}) where B <: BearingSimulation{Const
 
     # condition matrix
     SM = diagm([4.0 / sum(abs.(BB[:,j])) for j in 1:size(BB,2)])
-    BB = BB * SM
+    BBSM = BB * SM
 
-    x = BB \ (YY - DD);
+    # x = BB \ (YY - DD);
+
+    # Tikinov
+    δ = sqrt(sims[1].method.tol * norm(YY - DD) /  maximum(size(BB)))
+    bigA = [BBSM; sqrt(δ) * I];
+    x = bigA \ [YY - DD; zeros(size(BB)[2])]
     
-    boundary_error = norm(BB*x - (YY - DD)) / norm(YY - DD)
+    boundary_error = norm(BBSM*x - (YY - DD)) / norm(YY - DD)
     condition_number = cond(BB)
 
     x = SM * x

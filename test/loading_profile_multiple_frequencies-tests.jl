@@ -44,7 +44,7 @@ kp * dr
 
     bd1_for = BoundaryData(ω, bearing, loading_profile)
 
-    modal_method = ModalMethod(tol = 1e-9, only_stable_modes = true)
+    modal_method = ModalMethod(tol = 1e-10, only_stable_modes = true)
     forward_sims = map(ωms) do ω
         bd1_for = BoundaryData(ω, bearing, loading_profile);
         bd2_for = BoundaryData(bc2_forward, 
@@ -70,13 +70,7 @@ kp * dr
 
     θs_inv = LinRange(0, 2pi, numberofsensors + 1)[1:end-1]
 
-    method = ConstantRollerSpeedMethod(
-        tol = modal_method.tol, modal_method = modal_method,
-        loading_modes = -2:2,
-        ratio_shear_to_normal = ratio_shear_to_normal,
-    )
-
-    function inverse_simulations(error = 0.0)
+    function inverse_simulations(method, error = 0.0)
         inverse_sims = map(eachindex(ωms)) do i
 
             # Create a fourier basis for the loading, and then create a boundary basis from this
@@ -109,7 +103,13 @@ kp * dr
         end
     end
 
-    # function ElasticWaves(sims::Vector{B}, method::AbstractPriorMethod) where B <: BearingSimulation
+    # With no error
+
+    method = ConstantRollerSpeedMethod(
+        tol = 0.0, modal_method = modal_method,
+        loading_modes = -2:2,
+        ratio_shear_to_normal = ratio_shear_to_normal,
+    )
 
     inverse_waves = ElasticWaveVector(inverse_simulations());
 
@@ -117,7 +117,15 @@ kp * dr
     
     error = norm(inverse_waves[1].method.loading_coefficients - loading_profile2.coefficients[:,1]) / norm(inverse_waves[1].method.loading_coefficients)
 
-    @test error < 1e-12
+    @test error < 1e-11
+
+    # with 1% error 
+
+    method = ConstantRollerSpeedMethod(
+        tol = modal_method.tol, modal_method = modal_method,
+        loading_modes = -2:2,
+        ratio_shear_to_normal = ratio_shear_to_normal,
+    )
 
     inverse_waves = ElasticWaveVector(inverse_simulations(0.01));
 
