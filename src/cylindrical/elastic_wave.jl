@@ -325,18 +325,18 @@ function prior_and_bias_inverse(sim::BearingSimulation{P}) where P <: AbstractPr
     boundarybasis1 = deepcopy(sim.boundarybasis1)
     boundarybasis2 = deepcopy(sim.boundarybasis2)
 
-    modes = method.modal_method.modes
+    method_modes = method.modal_method.modes
 
     ## The forward problem
-        mode_errors = zeros(T, modes |> length)
-        MSs = [zeros(Complex{T},4,4) for n = modes]
-        Ss = [zeros(Complex{T},4,4) for n = modes]
+        mode_errors = zeros(T, method_modes |> length)
+        MSs = [zeros(Complex{T},4,4) for n = method_modes]
+        Ss = [zeros(Complex{T},4,4) for n = method_modes]
 
         # this sortperm_modes below is now depricated, as all modes arrive at this point already sorted in this order. Will remove 
-        is = sortperm_modes(modes)
+        is = sortperm_modes(method_modes)
 
         for i in is
-            M = boundarycondition_system(ω, bearing, boundarybasis1.basis[1].boundarytype, boundarybasis2.basis[1].boundarytype, modes[i])
+            M = boundarycondition_system(ω, bearing, boundarybasis1.basis[1].boundarytype, boundarybasis2.basis[1].boundarytype, method_modes[i])
 
             S = diagm([T(4) / sum(abs.(M[:,j])) for j in 1:size(M,2)])
             MS = M * S
@@ -346,7 +346,7 @@ function prior_and_bias_inverse(sim::BearingSimulation{P}) where P <: AbstractPr
             Ss[i] = S
 
             if mode_errors[i] > method.modal_method.tol
-                @warn "The relative error for the boundary conditions was $(mode_errors[i]) for (ω,mode) = $((ω,modes[i]))"
+                @warn "The relative error for the boundary conditions was $(mode_errors[i]) for (ω,mode) = $((ω,method_modes[i]))"
                 if method.modal_method.only_stable_modes 
                     mode_errors[i] = zero(T)
                     break 
@@ -367,7 +367,7 @@ function prior_and_bias_inverse(sim::BearingSimulation{P}) where P <: AbstractPr
             MSs = MSs[inds]
             Ss = Ss[inds]
             mode_errors = mode_errors[inds]
-            modes = modes[inds]
+            method_modes = method_modes[inds]
 
             # need to change all the boundarybasis modes if they exist
             basis1 = map(boundarybasis1.basis) do b
@@ -390,7 +390,7 @@ function prior_and_bias_inverse(sim::BearingSimulation{P}) where P <: AbstractPr
         end
         
         @reset method.modal_method.mode_errors = mode_errors
-        @reset method.modal_method.modes = modes
+        @reset method.modal_method.modes = method_modes
 
         sim.method = method
 
@@ -398,7 +398,7 @@ function prior_and_bias_inverse(sim::BearingSimulation{P}) where P <: AbstractPr
         S_forward = BlockDiagonal(Ss)
 
     # calculate the prior matrix and bias vector
-        prior_matrix, bias_vector = prior_and_bias_forward(modes, boundarydata1, boundarydata2, boundarybasis1, boundarybasis2) 
+        prior_matrix, bias_vector = prior_and_bias_forward(method_modes, boundarydata1, boundarydata2, boundarybasis1, boundarybasis2) 
           
     # Define the linear prior matrix B and prior c
         # δ = method.regularisation_parameter
@@ -426,28 +426,14 @@ function prior_and_bias_inverse(sim::BearingSimulation{P}) where P <: AbstractPr
     y1 = sim.boundarydata1.fields
     y2 = sim.boundarydata2.fields
 
-    # the maximum number of measurements for any boundary
-    M1 = size(sim.boundarydata1.fields,1)
-    M2 = size(sim.boundarydata2.fields,1)
-    
-    # M = max(M1,M2)
-
-    # pad boundary data with zeros
-    # y1 = zeros(Complex{T},M,2)
-    # y2 = zeros(Complex{T},M,2)
-
-    # y1[1:M1,:] = sim.boundarydata1.fields
-    # y2[1:M2,:] = sim.boundarydata2.fields
-
-    y_inv = hcat(y1, y2) |> transpose
-    y_inv = y_inv[:]
+    y_inv = vcat(transpose(y1)[:], transpose(y2)[:])
 
     # Use the prior to solve the inverse problem
     Mns = [
         boundarycondition_system(ω, bearing, sim.boundarydata1.boundarytype, sim.boundarydata2.boundarytype, n) 
-    for n in modes]
+    for n in method_modes];
        
-    M_inverse = BlockDiagonal(Mns)
+    # M_inverse = BlockDiagonal(Mns)
 
     # M0_inverse = vcat([sum(M_inverse[(n+1):4:(end),:],dims = 1) for n = 0:3]...);
     # M0_inverse * a
@@ -458,22 +444,22 @@ function prior_and_bias_inverse(sim::BearingSimulation{P}) where P <: AbstractPr
 
 ## Calculate the block matrix E where E * M_inverse * a is how the potentials contribute to the fields of the boundary conditions
 
-    # pad angles and characteristic indicators with zeros
-    # θ1 = zeros(T,M); θ2 = zeros(T,M);
-    # χ1 = zeros(T,M); χ2 = zeros(T,M);
-
     θ1 = sim.boundarydata1.θs;
     θ2 = sim.boundarydata2.θs;
 
     E1s = [
-        exp(im * modes[j] * θ) .* Mns[j][1:2,:]
-    for θ in θ1, j in eachindex(modes)];
+        exp(im * method_modes[j] * θ) .* Mns[j][1:2,:]
+    for θ in θ1, j in eachindex(method_modes)];
+    EE1 = Matrix(mortar(Matrix{Matrix{Complex{T}}}(E1s)));# This is used to deal with an empty matrix
+    EE1 = reshape(EE1, :, length(method_modes) * size(Mns[1],2));
 
     E2s = [
-        exp(im * modes[j] * θ) .* Mns[j][3:4,:]
-    for θ in θ2, j in eachindex(modes)];
+        exp(im * method_modes[j] * θ) .* Mns[j][3:4,:]
+    for θ in θ2, j in eachindex(method_modes)];
+    EE2 = Matrix(mortar(Matrix{Matrix{Complex{T}}}(E2s)));# This is used to deal with an empty matrix
+    EE2 = reshape(EE2, :, length(method_modes) * size(Mns[1],2));
 
-    EM_inverse = Matrix(vcat(mortar(E1s),mortar(E2s))) 
+    EM_inverse = vcat(EE1,EE2);
 
     return EM_inverse, B_for, c_for, y_inv
 end
