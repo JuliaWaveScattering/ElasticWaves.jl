@@ -430,14 +430,14 @@ function prior_and_bias_inverse(sim::BearingSimulation{P}) where P <: AbstractPr
     M1 = size(sim.boundarydata1.fields,1)
     M2 = size(sim.boundarydata2.fields,1)
     
-    M = max(M1,M2)
+    # M = max(M1,M2)
 
     # pad boundary data with zeros
-    y1 = zeros(Complex{T},M,2)
-    y2 = zeros(Complex{T},M,2)
+    # y1 = zeros(Complex{T},M,2)
+    # y2 = zeros(Complex{T},M,2)
 
-    y1[1:M1,:] = sim.boundarydata1.fields
-    y2[1:M2,:] = sim.boundarydata2.fields
+    # y1[1:M1,:] = sim.boundarydata1.fields
+    # y2[1:M2,:] = sim.boundarydata2.fields
 
     y_inv = hcat(y1, y2) |> transpose
     y_inv = y_inv[:]
@@ -459,24 +459,21 @@ function prior_and_bias_inverse(sim::BearingSimulation{P}) where P <: AbstractPr
 ## Calculate the block matrix E where E * M_inverse * a is how the potentials contribute to the fields of the boundary conditions
 
     # pad angles and characteristic indicators with zeros
-    θ1 = zeros(T,M); θ2 = zeros(T,M);
-    χ1 = zeros(T,M); χ2 = zeros(T,M);
+    # θ1 = zeros(T,M); θ2 = zeros(T,M);
+    # χ1 = zeros(T,M); χ2 = zeros(T,M);
 
-    θ1[1:M1] = sim.boundarydata1.θs;
-    θ2[1:M2] = sim.boundarydata2.θs;
+    θ1 = sim.boundarydata1.θs;
+    θ2 = sim.boundarydata2.θs;
 
-    χ1[1:M1] .= one(T)
-    χ2[1:M2] .= one(T)
+    E1s = [
+        exp(im * modes[j] * θ) .* Mns[j][1:2,:]
+    for θ in θ1, j in eachindex(modes)];
 
-    Id = Matrix(one(T)I, 2, 2)
-    Z = zeros(T,2,2)
+    E2s = [
+        exp(im * modes[j] * θ) .* Mns[j][3:4,:]
+    for θ in θ2, j in eachindex(modes)];
 
-    Es = [
-        [Id*χ1[m]*exp(im*n*θ1[m]) Z; 
-        Z Id*χ2[m]*exp(im*n*θ2[m])]
-    for m = 1:M, n in modes];
-
-    EM_inverse = Matrix(mortar(Es)) * M_inverse;
+    EM_inverse = Matrix(vcat(mortar(E1s),mortar(E2s))) 
 
     return EM_inverse, B_for, c_for, y_inv
 end
