@@ -7,16 +7,16 @@ using Test, Statistics, LinearAlgebra, MultipleScattering
 
 include("signal_processing_test.jl")
 
+include("special_functions.jl")
+
 ## Tests for waves in free space
 
 include("source_scattering_test.jl")
 
 ## Tests for translation Matrices
 
-include("source_test.jl")
-
 ## Tests for source_boundarycondition_system
-    include("source_bc_test.jl")
+    include("source_boundarydata_test.jl")
 
 ## Tests for Cylindrical waves
     # an independent check for the formulas of displacement and traction

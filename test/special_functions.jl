@@ -1,40 +1,30 @@
-@testset "Special functions" begin
+@testset "Translation Matrices test" begin
 
-    ω = 5e4
-    ω = 5e3
+    # Test 2D outgoing translation matrix
+    ω = rand() + 0.1
+    medium = Elastic(2; ρ = 1.0, cp = 1.0, cs = 0.5)
+    r = rand(2) - [0.5,0.5];
+    d = rand(2) - [0.5,0.5];
+    d = 10 * d * norm(r) / norm(d)
 
-    steel = Elastic(2; ρ = 7800.0, cp = 5000.0 - 0.1im, cs = 3500.0 - 0.1im)
-    bearing = RollerBearing(medium=steel, r1=1.0, r2=2.0)
+    # Note that to be accurate the order of vs
+    order = 4
+    larger_order = 3order
+    basis_length = 2*larger_order+1
+    
+    U = outgoing_translation_matrix(medium, larger_order, order, ω, d)
 
-    # this non-dimensional number determines what basis_order is neeeded
-    kpa = bearing.outer_radius * ω / steel.cp
-    bearing.inner_radius * ω / steel.cp
-    ksa = bearing.outer_radius * ω / steel.cs
+    vs = regular_basis_function(medium, ω)(larger_order,r)
+    us = outgoing_basis_function(medium, ω)(order,r + d)
 
-    basis_order = Int(round(2.0 * max(abs(kpa),abs(ksa)))) + 1
-    basis_length = basisorder_to_basislength(Acoustic{Float64,2}, basis_order)
+    @test maximum(abs.(U * vs[:] - us[:]) ./ abs.(us[:])) < 1e-9
 
-    rs = LinRange(bearing.inner_radius,bearing.outer_radius,400);
-    ms = 0:2:basis_order
+    V = regular_translation_matrix(medium, larger_order, order, ω, d)
 
-    sqrts = 1 ./ sqrt.(rs .* ω / steel.cp)
-    hs = [hankelh1.(m,rs .* ω / steel.cp) for m in ms]
-    js = [besselj.(m,rs .* ω / steel.cp) for m in ms]
-    hsx = [hankelh1x.(m,rs .* ω / steel.cp) for m in ms]
+    v1s = regular_basis_function(medium, ω)(larger_order,r)
 
-    using Plots
+    v2s = regular_basis_function(medium, ω)(order,r + d)
 
-    plot(rs,abs.(hs[1]))
-    plot!(rs,abs.(hs[2]))
-    plot!(rs,abs.(hs[5]))
-    plot!(rs,abs.(hs[15]))
-
-    plot(rs,abs.(hsx[end]), xlims = (1.0,1.1))
-
-    plot(rs,abs.(hs[4]), xlims = (1.0,1.5))
-    plot(rs,abs.(js[end]))
-
-    hankelh1.(basis_order,rs)
-
+    @test maximum(abs.(V * v1s[:] - v2s[:]) ./ abs.(v2s[:])) < 1e-10
 
 end

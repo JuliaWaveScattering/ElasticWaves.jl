@@ -55,6 +55,11 @@ function plane_z_shear_source(medium::Elastic{3,T}, pos::AbstractArray{T} = zero
     return RegularSource{Elastic{3,T},S}(medium, source_field, spherical_expansion)
 end
 
+"""
+    pressure_point_source
+
+    NOTE: currently untested
+"""
 function pressure_point_source(medium::Elastic{2,T}, source_position::AbstractVector, amplitude::Union{T,Complex{T},Function} = one(T))::RegularSource{Elastic{2,T}} where T <: AbstractFloat
 
     # Convert to SVector for efficiency and consistency
@@ -77,7 +82,12 @@ function pressure_point_source(medium::Elastic{2,T}, source_position::AbstractVe
 
     return RegularSource{Elastic{2,T},WithoutSymmetry{2}}(medium, source_field, source_coef)
 end
- 
+
+"""
+    pressure_point_source
+
+    NOTE: currently untested
+"""
 function shear_point_source(medium::Elastic{2,T}, source_position::AbstractVector, amplitude::Union{T,Complex{T},Function} = one(T))::RegularSource{Elastic{2,T}} where T <: AbstractFloat
 
     # Convert to SVector for efficiency and consistency
@@ -135,7 +145,7 @@ function boundary_data(ω::T, bearing::RollerBearing, boundarytype::BC, p_map::S
             (im/4) * amplitudes_p[i] * vcat(
                 outgoing_basis_function(acoustic_medium, ω)(order, locations_p[i,:]) |> reverse,
                 zeros(ComplexF64, 1, basis_length)
-            ) 
+            )
         for i in 1:number_of_p_sources]
         
         s_coes = [
