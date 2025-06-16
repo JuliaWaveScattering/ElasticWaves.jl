@@ -32,7 +32,8 @@
         # the option only_stable_modes = false means the method will try to solve for modes which are ill posed 
         method = ModalMethod(#regularisation_parameter = δs[i], 
             tol = tol, 
-            only_stable_modes = false 
+            only_stable_modes = false,
+            modes = modes |> collect
         )
         BearingSimulation(ωs[i], bearing, bd1, bd2; 
             method = method,
@@ -45,8 +46,8 @@
     # check that the predicted modes of the traction 
     # note: could just use TractionType() instead of bd1.boundarytype.fieldtype and bd2.boundarytype.fieldtype
     traction_mode_errors = [
-        sum.(abs2,field_modes(wave, bearing.inner_radius, bd1.boundarytype.fieldtype) - bd1.coefficients) + 
-        sum.(abs2,field_modes(wave, bearing.outer_radius, bd2.boundarytype.fieldtype) - bd2.coefficients)
+        sum.(abs2, field_modes(wave, bearing.inner_radius, bd1.boundarytype.fieldtype) - bd1.coefficients) + 
+        sum.(abs2, field_modes(wave, bearing.outer_radius, bd2.boundarytype.fieldtype) - bd2.coefficients)
     for wave in waves];
 
     # as the mode increase, or the frequency decreases, the problem becomes more ill-conditioned
@@ -107,7 +108,7 @@
     )
 
     # include ill posed modes by setting only_stable_modes = false
-    method = ModalMethod(only_stable_modes = false)
+    method = ModalMethod(only_stable_modes = false, modes = modes |> collect)
     sims = [BearingSimulation(ω, bearing, bd1, bd2; method = method) for ω in ωs];
     waves = [ElasticWave(s) for s in sims];
 
@@ -174,7 +175,7 @@
     bd1_inverse = BoundaryData(
         DisplacementBoundary(inner = true);
         coefficients = field_modes(wave, bearing.inner_radius, DisplacementType()),
-        modes = wave.method.modes # need to give correct order of modes! So using modes = modes would be wrong here
+        modes = wave.method.modes # need to use same mode ordering here
     )
     bd2_inverse = BoundaryData(
         DisplacementBoundary(outer = true);
@@ -184,6 +185,9 @@
 
     sim = BearingSimulation(ω, bearing, bd1, bd2; method = method)
     wave_inverse = ElasticWave(sim);
+
+    # check mode ordering is the same
+    @test norm(wave_inverse.method.modes - wave.method.modes) == 0
 
     # we should recover the first wave
     @test maximum(abs.(wave.potentials[2].coefficients - wave_inverse.potentials[2].coefficients)) /  mean(abs.(wave.potentials[2].coefficients)) < 1e-10

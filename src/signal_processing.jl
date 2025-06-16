@@ -7,11 +7,9 @@ function fields_to_fouriermodes(boundarydata::AbstractBoundaryData, modes::Abstr
     
     coefficients = fields_to_fouriermodes(boundarydata.θs, boundarydata.fields, modes)
 
-    is = sortperm_modes(modes);
-    
     # creates a copy of boundarydata
-    @reset boundarydata.coefficients = coefficients[is,:]
-    @reset boundarydata.modes = modes[is] |> collect
+    @reset boundarydata.coefficients = coefficients
+    @reset boundarydata.modes = modes |> collect
     
     return boundarydata
 end

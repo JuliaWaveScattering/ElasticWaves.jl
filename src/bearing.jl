@@ -122,11 +122,6 @@ struct BoundaryData{BC <: BoundaryCondition, T} <: AbstractBoundaryData{BC}
             if size(coefficients,2) != 2
                 @error "the coefficients should have only two columns" 
             end
-    
-            is = sortperm_modes(modes);
-            if modes != modes[is]
-                @warn "A non standard order for the modes has been given. The standard order is assumed to be true by many functions"
-            end    
         end    
     
         if !isempty(fields) 
@@ -156,13 +151,14 @@ function BoundaryData(boundarytype::BC;
             order = basislength_to_basisorder(PhysicalMedium{2,1},size(coefficients,1))
             modes = -order:order
 
+            is = sortperm_modes(modes);
+            modes = modes[is];
+            coefficients = coefficients[is,:]; 
+
         elseif size(coefficients,1) != length(modes)
             @error "the Fourier coefficients should have the same length as modes"
         end
 
-        is = sortperm_modes(modes);
-        modes = modes[is];
-        coefficients = coefficients[is,:]; 
     end   
 
     if !isempty(fields)
@@ -256,7 +252,7 @@ function BoundaryData(bd::BoundaryData{BC,T}, radius::T, wave::ElasticWave{2}) w
 
     # using only the modes which are shared, the others are zero
     modes_intersect = intersect(modes, wave.potentials[1].modes);
-    wave_intersect = select_modes(wave,modes_intersect)
+    wave_intersect = select_modes(wave, modes_intersect)
 
     f_modes = field_modes(wave_intersect, radius, bd.boundarytype.fieldtype)
     f_modes = reshape(f_modes,:,2)
@@ -264,11 +260,12 @@ function BoundaryData(bd::BoundaryData{BC,T}, radius::T, wave::ElasticWave{2}) w
     modes_all = [modes_setdiff; modes_intersect]
     f_modes = vcat(zeros(Complex{T},length(modes_setdiff),2), f_modes)
    
-    inds = sortperm_modes(modes_all)
+    # inds = sortperm_modes(modes_all)
     
     return BoundaryData(bd.boundarytype; 
         θs = θs, fields = Matrix{Complex{T}}(fs), 
-        modes = modes_all[inds], coefficients = Matrix{Complex{T}}(f_modes[inds,:])
+        # modes = modes_all[inds], coefficients = Matrix{Complex{T}}(f_modes[inds,:])
+        modes = modes_all, coefficients = Matrix{Complex{T}}(f_modes)
     )
 end
 
@@ -292,10 +289,14 @@ struct BoundaryBasis{BD <: AbstractBoundaryData}
             add_modes = setdiff(modes, b.modes)
             b_modes = [add_modes; b.modes]
             b_coes = [zeros(Tc, add_modes |> length , 2); b.coefficients]
+
+            # preserve the order given in modes
+            inds = sortperm(b_modes)
+            ind_mods = sortperm(modes);
+            ind_sort = sortperm(ind_mods);
     
-            inds = sortperm_modes(b_modes)
-            @reset b.modes = b_modes[inds]
-            @reset b.coefficients = b_coes[inds,:]
+            @reset b.modes = b_modes[inds[ind_sort]]
+            @reset b.coefficients = b_coes[inds[ind_sort],:]
     
             add_θs = setdiff(θs, b.θs)
             b_θs = [add_θs; b.θs]
@@ -476,8 +477,8 @@ function setup(sim::BearingSimulation{ModalMethod})
         is = findall(abs.(modes) .< max_mode)
         modes = modes[is]
 
-        is = sortperm_modes(modes);
-        modes = modes[is];
+        # is = sortperm_modes(modes);
+        # modes = modes[is];
 
         @reset sim.method.modes = modes
     end
@@ -513,7 +514,7 @@ function setup(sim::BearingSimulation{P}) where P <: AbstractPriorMethod
 
     if isempty(sim.boundarybasis1) && isempty(sim.boundarybasis2)
         error("The PriorMethod requires a boundary basis either for the first boundary (keyword 'boundary_basis1') or the second boundary (keyword 'boundary_basis2') ")
-    end    
+    end
 
     # we need the fields of the boundary data for the PriorMethod
     if isempty(sim.boundarydata1.fields) && isempty(sim.boundarydata2.fields)

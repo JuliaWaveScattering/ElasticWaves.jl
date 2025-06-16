@@ -25,13 +25,13 @@ struct ModalMethod <: SolutionMethod
     modes::Vector{Int}
     mode_errors::Vector{Float64}
 
-    function ModalMethod(tol::Float64, only_stable_modes::Bool, maximum_mode::Int, modes::Vector{Int}, mode_errors::Vector{Float64})
+    function ModalMethod(tol::Float64, only_stable_modes::Bool, maximum_mode::Int, modes::AbstractVector{Int}, mode_errors::Vector{Float64})
 
         is = findall(abs.(modes) .< maximum_mode)
-        modes = modes[is]
+        modes = modes[is] |> collect
 
-        is = sortperm_modes(modes);
-        modes = modes[is]
+        # is = sortperm_modes(modes);
+        # modes = modes[is]
 
         if !isempty(mode_errors)
             if length(mode_errors) != length(modes)
@@ -58,7 +58,7 @@ function ModalMethod(;
         tol::Float64 = eps(Float64)^(1/2), 
         only_stable_modes::Bool = true,
         maximum_mode::Int = 160,
-        modes::Vector{Int} = Int[],
+        modes::AbstractVector{Int} = Int[],
         mode_errors::Vector = Float64[]
     )
 

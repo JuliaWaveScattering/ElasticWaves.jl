@@ -61,7 +61,7 @@
 
     # Solve the whole field for the forward problem        
         # the method specifies to use only stable modes.
-        modal_method = ModalMethod(tol = 1e-6, only_stable_modes = true)
+        modal_method = ModalMethod(tol = 1e-6, only_stable_modes = true, modes = modes |> collect)
         forward_sim = BearingSimulation(ω, bearing, bd1_for, bd2_for; 
             method = modal_method,
             nondimensionalise = true);

@@ -33,7 +33,7 @@ struct HelmholtzPotential{T}
 
     function HelmholtzPotential(wavespeed::Complex{T}, wavenumber::Complex{T},  coefficients::AbstractMatrix{Complex{T}}, modes::AbstractVector{Int}) where {T}
         
-        is = sortperm_modes(modes);
+        # is = sortperm_modes(modes);
 
         if size(coefficients,1) != 2
             @error "the number of columns in coefficients has to match the basis_order given. There should also be two rows, one for besselj coefficients and another for hankelh1"
@@ -43,7 +43,7 @@ struct HelmholtzPotential{T}
             @warn "It is usual to have a wavenumber with a negative imaginary part. Our convention of the Fourier transform implies that this wave is growing exponentially when propagating forward in time."
         end
 
-        new{T}(wavespeed, wavenumber, coefficients[:, is], modes[is] |> collect)
+        new{T}(wavespeed, wavenumber, coefficients, modes |> collect)
     end
 end
 
