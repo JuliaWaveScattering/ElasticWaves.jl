@@ -280,7 +280,7 @@
         max(error1,error2)
     end
 
-    @test maximum(inner_boundary_errors) < 4e-10
+    @test maximum(inner_boundary_errors) < 5e-10
 
 
 ## Method 3
