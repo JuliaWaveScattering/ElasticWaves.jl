@@ -20,25 +20,20 @@ end
 ## wave types
 
 """
-    HelmholtzPotential{Dim,T}
+    HelmholtzPotential{T}
 
 See [`field(::HelmholtzPotential, ::AbstractVector)`](@ref) for details on how to evaluate the Helmholtz potential.
 """
-struct HelmholtzPotential{Dim,T}
+struct HelmholtzPotential{T}
     wavespeed::Complex{T}
     wavenumber::Complex{T}
     "The first (second) row is for the besselj (hankelh1) fourier coefficients"
     coefficients::Matrix{Complex{T}}
     modes::Vector{Int}
 
-    function HelmholtzPotential{Dim}(wavespeed::Complex{T}, wavenumber::Complex{T},  coefficients::AbstractMatrix{Complex{T}}, modes::AbstractVector{Int}) where {Dim,T}
+    function HelmholtzPotential(wavespeed::Complex{T}, wavenumber::Complex{T},  coefficients::AbstractMatrix{Complex{T}}, modes::AbstractVector{Int}) where {T}
         
-        # if modes |> isempty
-        #     order = basislength_to_basisorder(PhysicalMedium{Dim,1},size(coefficients,2))
-        #     modes = -order:order |> collect
-        # end
-
-        is = sortperm_modes(modes);
+        # is = sortperm_modes(modes);
 
         if size(coefficients,1) != 2
             @error "the number of columns in coefficients has to match the basis_order given. There should also be two rows, one for besselj coefficients and another for hankelh1"
@@ -48,7 +43,7 @@ struct HelmholtzPotential{Dim,T}
             @warn "It is usual to have a wavenumber with a negative imaginary part. Our convention of the Fourier transform implies that this wave is growing exponentially when propagating forward in time."
         end
 
-        new{Dim,T}(wavespeed, wavenumber, coefficients[:, is], modes[is] |> collect)
+        new{T}(wavespeed, wavenumber, coefficients, modes |> collect)
     end
 end
 
@@ -63,12 +58,12 @@ For Dim = 4 the field `potentials` are, in order, the φ pressure, Φ shear,  an
 struct ElasticWave{Dim,M,T}
     ω::T
     medium::Elastic{Dim,T}
-    potentials::Vector{H} where H <:HelmholtzPotential{Dim,T}
+    potentials::Vector{H} where H <:HelmholtzPotential{T}
     method::M
 
     function ElasticWave(ω::T, medium::Elastic{Dim,T}, potentials::Vector{H}, method::M = ModalMethod();
             mode_errors = zeros(T, length(potentials[1].modes))
-        ) where {Dim,T,H <: HelmholtzPotential{Dim,T}, M<:SolutionMethod}
+        ) where {Dim,T,H <: HelmholtzPotential{T}, M<:SolutionMethod}
 
         modes_arr = [p.modes for p in potentials]
         lens = length.(modes_arr)
@@ -162,4 +157,66 @@ function show(io::IO, p::Elastic)
     # Print is the style of the first constructor
     write(io, "Elastic($(p.ρ), $(p.cp),  $(p.cs)) with Dim = $(spatial_dimension(p))")
     return
+end
+
+import MultipleScattering: outgoing_basis_function, regular_basis_function, outgoing_translation_matrix, regular_translation_matrix
+
+function outgoing_basis_function(medium::Elastic{2}, ω::T) where {T<:Number}
+    return function (order::Integer, x::AbstractVector{T})
+        r, θ  = cartesian_to_radial_coordinates(x)
+        kp = ω/medium.cp
+        ks = ω/medium.cs
+        vcat(
+            [hankelh1(m,kp*r)*exp(im*θ*m) for m = -order:order],
+            [hankelh1(m,ks*r)*exp(im*θ*m) for m = -order:order]
+        ) |> transpose
+    end
+end
+
+function regular_basis_function(medium::Elastic{2}, ω::T) where {T<:Number}
+    return function (order::Integer, x::AbstractVector{T})
+        r, θ  = cartesian_to_radial_coordinates(x)
+        kp = ω/medium.cp
+        ks = ω/medium.cs
+        vcat(
+            [besselj(m,kp*r)*exp(im*θ*m) for m = -order:order],
+            [besselj(m,ks*r)*exp(im*θ*m) for m = -order:order]
+        ) |> transpose
+    end
+end
+
+function outgoing_translation_matrix(medium::Elastic{2}, in_order::Integer, out_order::Integer, ω::T, x::AbstractVector{T}) where {T<:Number}
+
+    translation_vec = outgoing_basis_function(medium, ω)(in_order + out_order, x)
+    order = Int(length(translation_vec)/2)
+    
+    translation_vec_p = translation_vec[1:order]
+    translation_vec_s = translation_vec[order+1:end]
+    U_p = [
+        translation_vec_p[n-m + in_order + out_order + 1]
+    for n in -out_order:out_order, m in -in_order:in_order]
+
+    U_s = [
+        translation_vec_s[n-m + in_order + out_order + 1]
+    for n in -out_order:out_order, m in -in_order:in_order]
+
+    U = BlockDiagonal([U_p, U_s])
+    return U
+end
+
+function regular_translation_matrix(medium::Elastic{2}, in_order::Integer, out_order::Integer, ω::T, x::AbstractVector{T}) where {T<:Number}
+    translation_vec = regular_basis_function(medium, ω)(in_order + out_order, x)
+    order = Int(length(translation_vec)/2)
+    translation_vec_p = translation_vec[1:order]
+    translation_vec_s = translation_vec[order+1:end]
+    V_p = [
+        translation_vec_p[n-m + in_order + out_order + 1]
+    for n in -out_order:out_order, m in -in_order:in_order]
+
+    V_s = [
+        translation_vec_s[n-m + in_order + out_order + 1]
+    for n in -out_order:out_order, m in -in_order:in_order]
+
+    V = BlockDiagonal([V_p, V_s])
+    return V
 end

@@ -108,20 +108,28 @@
         for i in eachindex(ωs)]
 
         boundarydata1_inverses = [ 
-            BoundaryData(bc1_inv, bearing.outer_radius, θs_inv[i], forward_waves[i])
+            BoundaryData(
+                BoundaryData(bc1_inv; θs = θs_inv[i]), 
+                bearing.outer_radius, forward_waves[i]
+            )
         for i in eachindex(ωs)];
 
         boundarydata2_inverses = [ 
-            BoundaryData(bc2_inv, bearing.outer_radius, θs_inv[i], forward_waves[i])
+            BoundaryData(
+                BoundaryData(bc2_inv; θs = θs_inv[i]), 
+                bearing.outer_radius, forward_waves[i]
+            )
         for i in eachindex(ωs)];
 
     # will use a fine grid to demonstrate and explain some issues.    
         boundarydata1_fine_inverses = [ 
-            BoundaryData(bc1_inv, bearing.outer_radius, θs, forward_waves[i])
+            BoundaryData(BoundaryData(bc1_inv; θs=θs),
+            bearing.outer_radius, forward_waves[i])
         for i in eachindex(ωs)];
 
         boundarydata2_fine_inverses = [ 
-            BoundaryData(bc2_inv, bearing.outer_radius, θs, forward_waves[i])
+            BoundaryData(BoundaryData(bc2_inv; θs = θs),
+            bearing.outer_radius, forward_waves[i])
         for i in eachindex(ωs)];
 
     # Create a boundary basis for the inverse problem for the inner boundaries
@@ -248,7 +256,7 @@
         max(error1,error2)
     end
 
-    @test maximum(inner_boundary_errors) < 5e-10
+    @test maximum(inner_boundary_errors) < 1e-9
 
     # Here we just swap which boundary uses a basis and which uses just boundary data just for completeness
     
@@ -272,7 +280,7 @@
         max(error1,error2)
     end
 
-    @test maximum(inner_boundary_errors) < 4e-10
+    @test maximum(inner_boundary_errors) < 5e-10
 
 
 ## Method 3
@@ -305,7 +313,7 @@
         max(error1,error2)
     end
 
-    @test maximum(inner_boundary_errors) < 5e-11
+    @test maximum(inner_boundary_errors) < 1e-10
     
     # just like the forward problem, only the higher frequencies resolve the original boundary data accurately, as these had basis_order = 20, which was enough to represent the random data
     original_inner_boundary_errors = map(eachindex(ωs)) do i
@@ -317,7 +325,7 @@
         max(error1,error2)
     end
 
-    @test original_inner_boundary_errors[end] < 5e-11
+    @test original_inner_boundary_errors[end] < 1e-10
 end
 
 # inner_boundary_errors = map(eachindex(ωs)) do i

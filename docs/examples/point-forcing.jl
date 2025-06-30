@@ -96,7 +96,7 @@ results = map(eachindex(ωs)) do i
 
     wave.potentials[1].coefficients
 
-    potential = HelmholtzPotential{2}(wave.potentials[1].wavespeed, wave.potentials[1].wavenumber, scale .* wave.potentials[1].coefficients, wave.potentials[1].modes)
+    potential = HelmholtzPotential(wave.potentials[1].wavespeed, wave.potentials[1].wavenumber, scale .* wave.potentials[1].coefficients, wave.potentials[1].modes)
 
     res = field(potential, big_bearing; res = 120)
     # plot(res, ωs[i]; seriestype=:contour)
@@ -185,7 +185,7 @@ gif(anim,"docs/images/time-point-pressure.gif", fps = 7)
         coes = wave.potentials[1].coefficients;
         coes[1,:] .= 0.0 + 0.0im
 
-        potential = HelmholtzPotential{2}(wave.potentials[1].wavespeed, wave.potentials[1].wavenumber, scale .* coes, wave.potentials[1].modes)
+        potential = HelmholtzPotential(wave.potentials[1].wavespeed, wave.potentials[1].wavenumber, scale .* coes, wave.potentials[1].modes)
 
         res = field(potential, bearing; res = 120)
         # plot(res, ωs[i]; seriestype=:contour)
@@ -249,7 +249,7 @@ gif(anim,"docs/images/time-point-pressure.gif", fps = 7)
         coes = wave.potentials[1].coefficients;
         coes[2,:] .= 0.0 + 0.0im
 
-        potential = HelmholtzPotential{2}(wave.potentials[1].wavespeed, wave.potentials[1].wavenumber, scale .* coes, wave.potentials[1].modes)
+        potential = HelmholtzPotential(wave.potentials[1].wavespeed, wave.potentials[1].wavenumber, scale .* coes, wave.potentials[1].modes)
 
         res = field(potential, big_bearing; res = 120)
         # plot(res, ωs[i]; seriestype=:contour)

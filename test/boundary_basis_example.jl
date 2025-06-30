@@ -61,7 +61,7 @@
 
     # Solve the whole field for the forward problem        
         # the method specifies to use only stable modes.
-        modal_method = ModalMethod(tol = 1e-6, only_stable_modes = true)
+        modal_method = ModalMethod(tol = 1e-6, only_stable_modes = true, modes = modes |> collect)
         forward_sim = BearingSimulation(ω, bearing, bd1_for, bd2_for; 
             method = modal_method,
             nondimensionalise = true);
@@ -86,7 +86,7 @@
         θs_inv = LinRange(0, 2pi, numberofsensors + 1)[1:end-1]
 
         # create the data from evaluating the forward problem 
-        bd1_inverse = BoundaryData(bc1_inv, bearing.outer_radius, θs_inv, wave)
+        bd1_inverse = BoundaryData(BoundaryData(bc1_inv; θs = θs_inv), bearing.outer_radius, wave)
         
     # the traction field is known to be zero everywhere. There needs to be enough points sampled here to match the basis_order used, I think. So instead just using the modal representation that was used for the forward problem.
 

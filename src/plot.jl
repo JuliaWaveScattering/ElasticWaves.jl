@@ -25,14 +25,19 @@
         end
     end
 
-    circle_outer = Circle.(bearing.inner_radius)
+    circle_outer = Circle(bearing.inner_radius * 1.0005)
     @series begin
         circle_outer
     end
 
-    circle_outer = Circle.(bearing.outer_radius)
+    circle_outer = Circle(bearing.outer_radius)
     @series begin
         circle_outer
+    end
+
+    shaft = Circle(bearing.inner_radius - 2.001 * bearing.roller_radius)
+    @series begin
+        shaft
     end
 
 end

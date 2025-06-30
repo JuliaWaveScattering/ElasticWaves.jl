@@ -45,7 +45,7 @@ basis_length = 2*basis_order + 1
 #Properties of the bearing
 
 steel = Elastic(2; ρ = 7800.0, cp = 5000.0, cs = 3500.0)
-bearing = RollerBearing(medium=steel, inner_radius=1.0, outer_radius = 2.0, number_of_rollers=1.0)
+bearing = RollerBearing(medium=steel, inner_radius=1.0, outer_radius = 2.0, number_of_rollers=1)
 
 Z=bearing.number_of_rollers
 
@@ -117,7 +117,24 @@ plot(θs, real.(Fp[i]))
 plot!(θs, real.(Fs[i]))
 
 
-sim = BearingSimulation(ωs[i], bearing, bd1_forward[i], bd2_forward; basis_order = basis_order)
+sim = BearingSimulation(ωs[i], bearing, bd1_forward[i], bd2_forward)
+
+using Accessors
+
+function test_reset(sim)
+    method = sim.method
+
+    @reset method.modes = collect(-10:10)
+    
+    sim.method = method
+    println(sim.method.modes)
+
+    return 3
+end
+
+test_reset(sim)
+
+sim.method.modes
 
 wave = ElasticWave(sim)
 
@@ -130,7 +147,7 @@ scale = steel.ρ * ωs[i]^2
 
 wave.potentials[1].coefficients
 
-potential = HelmholtzPotential{2}(wave.potentials[1].wavespeed, wave.potentials[1].wavenumber, scale .* wave.potentials[1].coefficients, wave.potentials[1].modes)
+potential = HelmholtzPotential(wave.potentials[1].wavespeed, wave.potentials[1].wavenumber, scale .* wave.potentials[1].coefficients, wave.potentials[1].modes)
 
 res = field(potential, bearing; res = 120)
 
@@ -216,7 +233,7 @@ scale = steel.ρ * ωs[i]^2
 
 inv_wave.potentials[1].coefficients
 
-potential = HelmholtzPotential{2}(inv_wave.potentials[1].wavespeed, 
+potential = HelmholtzPotential(inv_wave.potentials[1].wavespeed, 
 inv_wave.potentials[1].wavenumber, scale .* inv_wave.potentials[1].coefficients, inv_wave.potentials[1].modes)
 
 res = field(potential, bearing; res = 120)
@@ -310,7 +327,7 @@ scale = steel.ρ * ωs[i]^2
 
 inv_wave.potentials[1].coefficients
 
-potential = HelmholtzPotential{2}(inv_wave.potentials[1].wavespeed, 
+potential = HelmholtzPotential(inv_wave.potentials[1].wavespeed, 
 inv_wave.potentials[1].wavenumber, scale .* inv_wave.potentials[1].coefficients, inv_wave.potentials[1].modes)
 
 res = field(potential, bearing; res = 120)

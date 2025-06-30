@@ -124,7 +124,7 @@ results = map(eachindex(ωs)) do i
 
     wave.potentials[1].coefficients
 
-    potential = HelmholtzPotential{2}(wave.potentials[1].wavespeed, wave.potentials[1].wavenumber, scale .* wave.potentials[1].coefficients, wave.potentials[1].modes)
+    potential = HelmholtzPotential(wave.potentials[1].wavespeed, wave.potentials[1].wavenumber, scale .* wave.potentials[1].coefficients, wave.potentials[1].modes)
 
     res = field(potential, bearing; res = 120)
     # plot(res, ωs[i]; seriestype=:coω_to_t(ωs)ntour)
@@ -242,7 +242,7 @@ results = map(eachindex(ωs)) do i
 
     inv_wave.potentials[1].coefficients
 
-    potential = HelmholtzPotential{2}(inv_wave.potentials[1].wavespeed, 
+    potential = HelmholtzPotential(inv_wave.potentials[1].wavespeed, 
     inv_wave.potentials[1].wavenumber, scale .* inv_wave.potentials[1].coefficients, inv_wave.potentials[1].modes)
 
     res = field(potential, bearing; res = 120)
@@ -426,7 +426,7 @@ results = map(eachindex(ωs)) do i
 
     inv_wave.potentials[1].coefficients
 
-    potential = HelmholtzPotential{2}(inv_wave.potentials[1].wavespeed, 
+    potential = HelmholtzPotential(inv_wave.potentials[1].wavespeed, 
     inv_wave.potentials[1].wavenumber, scale .* inv_wave.potentials[1].coefficients, inv_wave.potentials[1].modes)
 
     res = field(potential, bearing; res = 120)

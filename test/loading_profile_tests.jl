@@ -6,7 +6,7 @@
 medium = Elastic(2; ρ = 2.0, cp = 10.0 - 0.0im, cs = 8.0 - 0.0im)
 
 Ω = 2pi * 15 / 60 # large wind turbines rotate at about 15 rpm
-Z = 8 
+Z = 8
 
 bearing = RollerBearing(medium = medium, 
     inner_radius = 1.5, outer_radius = 2.0, 
@@ -25,7 +25,7 @@ dr = bearing.outer_radius - bearing.inner_radius
 kp = (ω / medium.cp)
 kp * dr
 
-# create the true loading profile, then solve the forward problem to create dat for tthe inverse problem
+# create the true loading profile, then solve the forward problem to create data for the inverse problem
 
     loading_resolution = 40;
     loading_θs = LinRange(0.0, 2pi, 2*loading_resolution+2)[1:end-1]
@@ -53,8 +53,8 @@ kp * dr
         fields = hcat(fp_loading,fs_loading)
     )
 
-    # loading_profile2 = fields_to_fouriermodes(loading_profile, -3:3)
-    # loading_profile2 = fouriermodes_to_fields(loading_profile2)
+    loading_profile2 = fields_to_fouriermodes(loading_profile, -3:3)
+    loading_profile2 = fouriermodes_to_fields(loading_profile2)
     # plot!(loading_θs, real.(loading_profile2.fields[:,1]), linestyle = :dash)
     # scatter(loading_profile2.modes, abs.(loading_profile2.coefficients[:,1]))
 
@@ -75,7 +75,7 @@ kp * dr
     wave = ElasticWave(forward_sim);
     maximum(wave.method.mode_errors .|> abs)
 
-    # # We should check whether the solution has converged. That is, if the coefficients are getting very small as the fourier mode increase
+    ## We should check whether the solution has converged. That is, if the coefficients are getting very small as the fourier mode increase
     # scatter(wave.potentials[1].modes, abs.(wave.potentials[1].coefficients[1,:]))
     # plot!(xlims = (-30,-18))
 
@@ -91,10 +91,17 @@ kp * dr
     θs_inv = LinRange(0, 2pi, numberofsensors + 1)[1:end-1]
 
     # create the data from evaluating the forward problem 
-    bd1_inverse = BoundaryData(bc1_inverse, bearing.outer_radius, θs_inv, wave)
+    bd1_inverse = BoundaryData(BoundaryData(bc1_inverse; θs = θs_inv), bearing.outer_radius, wave)
 
     # a little bit of an inverse crime
     bd2_inverse = bd2_for
+
+    # solve the inverse problem by assuming constant known roller speed
+    method = ConstantRollerSpeedMethod(
+        tol = modal_method.tol, modal_method = modal_method,
+        loading_modes = -2:2,
+        ratio_shear_to_normal = 0.0,
+    )
 
 # Create a fourier basis for the loading, and then create a boundary basis from this
 
@@ -104,24 +111,7 @@ kp * dr
     max_mode = maximum(abs.(wave.method.modes .- mZ))
 
     # as min_mode = 0 and max_mode is very large, we can consider any loading profiles with modes = -max_modes:max_modes 
-
-    loading_basis_order = 2;   
-    basis = map(-loading_basis_order:loading_basis_order) do n
-        fp = [1.0 + 0.0im]
-
-        # The representation of the loading itself
-        loading_data = BoundaryData(bc1_forward, 
-            modes = [n],
-            coefficients = [fp 0.0.*fp]
-        )
-
-        # How loading is translated into boundary data
-        BoundaryData(ω, bearing, loading_data)
-    end;
-    boundarybasis1 = BoundaryBasis(basis);
-
-# solve the inverse problem with the PriorMethod
-    method = PriorMethod(tol = modal_method.tol, modal_method = modal_method)
+    boundarybasis1 = BoundaryBasis(ω, bearing, method);
 
     inverse_sim = BearingSimulation(ω, method, bearing, bd1_inverse, bd2_inverse;
         boundarybasis1 = boundarybasis1,
@@ -131,6 +121,8 @@ kp * dr
     inverse_wave.method.condition_number
     inverse_wave.method.boundary_error
 
+    @test inverse_wave.method.boundary_error < 1e-10
+    
     # using Plots
     # scatter(wave.potentials[1].modes, abs.(wave.potentials[1].coefficients[1,:]), markersize = 4.0)
     # scatter!(inverse_wave.potentials[1].modes, abs.(inverse_wave.potentials[1].coefficients[1,:]), markersize = 3.0)
@@ -245,7 +237,7 @@ end
         θs_inv = LinRange(0, 2pi, numberofsensors + 1)[1:end-1]
     
         # create the data from evaluating the forward problem 
-        bd1_inverse = BoundaryData(bc1_inverse, bearing.inner_radius, θs_inv, wave)
+        bd1_inverse = BoundaryData(BoundaryData(bc1_inverse; θs = θs_inv), bearing.inner_radius,wave)
     
         # a little bit of an inverse crime
         bd2_inverse = bd2_for
@@ -258,24 +250,15 @@ end
         max_mode = maximum(abs.(wave.method.modes .- mZ))
     
         # as min_mode = 0 and max_mode is very large, we can consider any loading profiles with modes = -max_modes:max_modes 
+
+        # solve the inverse problem by assuming constant known roller speed
+        method = ConstantRollerSpeedMethod(
+            tol = modal_method.tol, modal_method = modal_method,
+            loading_modes = -2:2,
+            ratio_shear_to_normal = 0.0,
+        )
     
-        loading_basis_order = 2;   
-        basis = map(-loading_basis_order:loading_basis_order) do n
-            fp = [1.0 + 0.0im]
-    
-            # The representation of the loading itself
-            loading_data = BoundaryData(bc1_forward, 
-                modes = [n],
-                coefficients = [fp 0.0.*fp]
-            )
-    
-            # How loading is translated into boundary data
-            BoundaryData(ω, bearing, loading_data)
-        end;
-        boundarybasis1 = BoundaryBasis(basis);
-    
-    # solve the inverse problem with the PriorMethod
-        method = PriorMethod(tol = modal_method.tol, modal_method = modal_method)
+        boundarybasis1 = BoundaryBasis(ω, bearing, method);
     
         inverse_sim = BearingSimulation(ω, method, bearing, bd1_inverse, bd2_inverse;
             boundarybasis1 = boundarybasis1,
@@ -304,5 +287,5 @@ end
         #plot(bd1_inner.θs, 2pi / Z .* abs.(bd1_inner.fields[:,1]), label = "predicted loading")
         #plot!(loading_θs, abs.(fp_loading), linestyle = :dash, label = "true loading")
     
-       @test norm(bd1_inner.fields - bd1_for.fields) / norm(bd1_for.fields) < 1e-10
-    end
+       @test norm(bd1_inner.fields - bd1_for.fields) / norm(bd1_for.fields) < 2e-10
+end

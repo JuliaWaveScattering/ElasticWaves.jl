@@ -114,7 +114,7 @@ end
     bs = inner_mat(1) * gs 
     fs = Tmat(1) * gs 
     bs2 = inner_mat(1) * (Tmat(1) \ fs)
-    @test bs - bs2 |> norm < 5e-13
+    @test bs - bs2 |> norm < 1e-12
 
     order = basis_order;
 

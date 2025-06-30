@@ -8,17 +8,17 @@
 
     pcoes = (rand(2,2basis_order + 1) .- 0.5) + (rand(2,2basis_order + 1) .- 0.5) .* im
     pcoes = [pcoes[i] * basis_scaling[i[2]] for i in CartesianIndices(pcoes)]
-    pressure = HelmholtzPotential{2}(medium.cp, ω / medium.cp, pcoes, -basis_order:basis_order)
+    pressure = HelmholtzPotential(medium.cp, ω / medium.cp, pcoes, -basis_order:basis_order)
     
     scoes = (rand(2,2basis_order + 1) .- 0.5) + (rand(2,2basis_order + 1) .- 0.5) .* im
     scoes = [scoes[i] * basis_scaling[i[2]] for i in CartesianIndices(pcoes)]
    
-    shear = HelmholtzPotential{2}(medium.cs, ω / medium.cs, scoes, -basis_order:basis_order)
+    shear = HelmholtzPotential(medium.cs, ω / medium.cs, scoes, -basis_order:basis_order)
 
     wave = ElasticWave(ω, medium, [pressure, shear])
 
     # Let us implement an approximation for the displacement u = ∇φ + ∇x[0,0,ψ]
-    # field(potential::HelmholtzPotential{Dim}, x::AbstractVector{T})
+    # field(potential::HelmholtzPotential, x::AbstractVector{T})
 
     
     function grad_pressure(pot::HelmholtzPotential, rθs::Vector; dr=1e-8, dθ=1e-8)

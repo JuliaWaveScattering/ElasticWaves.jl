@@ -1,5 +1,5 @@
 using ElasticWaves
-using Test, Statistics, LinearAlgebra, MultipleScattering
+using Test, Statistics, LinearAlgebra, MultipleScattering, SpecialFunctions
 
 # need a test to check that the equations for displacement and traction were written correctly. One possible test is to check one version of the integral form of the principal of virtual work. For example, we could check that
 # \int_{\mathcal B} \rho_0 \ddot u d V = \int_{\partial \mathcal B} \tau d A
@@ -7,9 +7,16 @@ using Test, Statistics, LinearAlgebra, MultipleScattering
 
 include("signal_processing_test.jl")
 
+include("special_functions.jl")
+
 ## Tests for waves in free space
 
 include("source_scattering_test.jl")
+
+## Tests for translation Matrices
+
+## Tests for source_boundarycondition_system
+    include("source_boundarydata_test.jl")
 
 ## Tests for Cylindrical waves
     # an independent check for the formulas of displacement and traction
@@ -20,6 +27,7 @@ include("source_scattering_test.jl")
 
     # tests that the boundary conditions are formed correctly, and uniqueness
     include("inverse_problems_test.jl")
+    include("steel_defect_test.jl")
     
     # tests for the PriorMethod that uses a basis for the solution
     include("boundary_basis_example.jl")
@@ -27,3 +35,4 @@ include("source_scattering_test.jl")
     
     # tests for the loading profile
     include("loading_profile_tests.jl")
+    include("loading_profile_multiple_frequencies-tests.jl")
