@@ -142,36 +142,47 @@ function boundary_data(ω::T, bearing::RollerBearing, boundarytype::BC, p_map::S
     # I checked the expersions below against Jess's
     if boundarytype.inner == true
         p_coes = [
-            (im/4) * amplitudes_p[i] * vcat(
-                outgoing_basis_function(acoustic_medium, ω)(order, locations_p[i,:]) |> reverse,
+            (-im/4) * amplitudes_p[i] * vcat(
+                outgoing_translation_matrix(acoustic_medium, order, 0, ω, -locations_p[i,:]) ,
                 zeros(ComplexF64, 1, basis_length)
             )
         for i in 1:number_of_p_sources]
         
         s_coes = [
-            (im/4) * amplitudes_s[i] * vcat(
-                outgoing_basis_function(shear_medium, ω)(order, locations_s[i,:])  |> reverse,
+            (-im/4) * amplitudes_s[i] * vcat(
+                outgoing_translation_matrix(shear_medium, order, 0, ω, -locations_s[i,:])  ,
                 zeros(ComplexF64, 1, basis_length)
             ) 
         for i in 1:number_of_s_sources]
     else    
         p_coes = [
-            (im/4) * amplitudes_p[i] * vcat(
+            (-im/4) * amplitudes_p[i] * vcat(
                 zeros(ComplexF64, 1, basis_length),
-                regular_basis_function(acoustic_medium, ω)(order, locations_p[i,:]) |> reverse
+                regular_translation_matrix(acoustic_medium, order, 0, ω, -locations_p[i,:]) 
             ) 
         for i in 1:number_of_p_sources]
         
         s_coes = [
-            (im/4)*amplitudes_s[i] * vcat(
+            (-im/4) * amplitudes_s[i] * vcat(
                 zeros(ComplexF64, 1, basis_length),
-                regular_basis_function(shear_medium, ω)(order, locations_s[i,:])  |> reverse,
+                regular_translation_matrix(shear_medium, order, 0, ω, -locations_s[i,:])  
             ) 
         for i in 1:number_of_s_sources]
     end
 
-    p_coes = sum(p_coes)
-    s_coes = sum(s_coes)
+    p_coes = sum(p_coes) 
+    s_coes = sum(s_coes) 
+
+    #is=sortperm_modes(modes)
+
+    #modes=modes[is]
+
+    #p_coes[1,:]=p_coes[1,:][is]
+    #p_coes[2,:]=p_coes[2,:][is]
+ 
+    #s_coes[1,:]=s_coes[1,:][is]
+    #s_coes[2,:]=s_coes[2,:][is]
+    
 
     ϕ = HelmholtzPotential(bearing.medium.cp, ω / bearing.medium.cp, p_coes, modes)
     ψ = HelmholtzPotential(bearing.medium.cs, ω / bearing.medium.cs, s_coes, modes)
@@ -180,10 +191,11 @@ function boundary_data(ω::T, bearing::RollerBearing, boundarytype::BC, p_map::S
     wave = ElasticWave(ω, bearing.medium, [ϕ, ψ], method)
     
     r = boundarytype.inner ? bearing.inner_radius : bearing.outer_radius
-    xs = [r*[cos(θ), sin(θ)] for θ in θs]
-    data = hcat([field(wave, x, boundarytype.fieldtype) for x in xs]...) |> transpose
+   # xs = [r*[cos(θ), sin(θ)] for θ in θs]
+    #data =0.0* hcat([field(wave, x, boundarytype.fieldtype) for x in xs]...) |> transpose
 
-    coefficients = field_modes(wave, r, boundarytype.fieldtype)
+    #coefficients = field_modes(wave, r, boundarytype.fieldtype)
+    coefficients = field_modes(wave, r, boundarytype.fieldtype, boundarytype)
 
-    return BoundaryData(boundarytype; θs=θs, fields = Matrix{ComplexF64}(data), coefficients = coefficients, modes = modes)
+    return BoundaryData(boundarytype; θs=θs, fields = fouriermodes_to_fields(θs,coefficients,modes), coefficients = coefficients, modes = modes)
 end
