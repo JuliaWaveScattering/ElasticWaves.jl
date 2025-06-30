@@ -1,5 +1,5 @@
 using ElasticWaves
-using Test, Statistics, LinearAlgebra, MultipleScattering
+using Test, Statistics, LinearAlgebra, MultipleScattering, SpecialFunctions
 
 # need a test to check that the equations for displacement and traction were written correctly. One possible test is to check one version of the integral form of the principal of virtual work. For example, we could check that
 # \int_{\mathcal B} \rho_0 \ddot u d V = \int_{\partial \mathcal B} \tau d A
