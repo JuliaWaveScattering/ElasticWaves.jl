@@ -156,13 +156,15 @@ end
     ro = rand(bearing.inner_radius:0.01:bearing.outer_radius)
     xo, yo = radial_to_cartesian_coordinates([ro,θo])
     source_location = [xo,yo]
-    p_maps = [ SourceMap(source_location |> transpose,(ωs[i]/medium.cp)^0*[1.0]) for i in eachindex(ωs)]
-    s_maps = [SourceMap(source_location |> transpose, (ωs[i]/medium.cp)^0*[0.0]) for i in eachindex(ωs)]
+    p_maps = [ SourceMap(source_location |> transpose,(ωs[i]/medium.cp)^2*[1.0]) for i in eachindex(ωs)]
+    s_maps = [SourceMap(source_location |> transpose, (ωs[i]/medium.cp)^2*[0.0]) for i in eachindex(ωs)]
 
     # Defining modes to be used
     basis_order =5
     sequecence = reshape(hcat([-(1:basis_order |> collect), 1:basis_order |> collect]...) |> transpose, 2*basis_order)
     modes = vcat([[0], sequecence]...)
+
+    
 
     # Defining basic matrices to be used
     Mfor = [boundarycondition_system(ωs[i], non_dimensional_bearings[i], TractionBoundary(inner=true), TractionBoundary(outer=true), mode) for mode in modes, i in eachindex(ωs)]
@@ -191,8 +193,13 @@ end
     p_medium_scaled = Acoustic(2; ρ = non_dimensional_bearings[j].medium.ρ, c = non_dimensional_bearings[j].medium.cp)
     s_medium_scaled = Acoustic(2; ρ = non_dimensional_bearings[j].medium.ρ, c = non_dimensional_bearings[j].medium.cs)
 
-    #maximum(abs.(hcat([regular_translation_matrix(p_medium, n, 0, ωs[j], [-xo,-yo])[1,:] .- [besselj.(i, kps[j]*ro) .* exp.(-1im*i*θo) for i in -n:n ] for j in eachindex(ωs) ]...)))
+    maximum(abs.(hcat([regular_translation_matrix(p_medium, n, 0, ωs[j], [-xo,-yo])[1,:] .- [besselj.(i, kps[j]*ro) .* exp.(-1im*i*θo) for i in -n:n ] for j in eachindex(ωs) ]...)))
 
+    
+    #@test maximum(abs.(regular_translation_matrix(p_medium, n, 0, ωs[j], [-xo,-yo])[1,:] .- [besselj.(i, kps[j]*ro) .* exp.(-1im*i*θo) for i in -n:n ]) ) < 1e-7
+
+    #@test maximum(abs.(outgoing_translation_matrix(p_medium, n, 0, ωs[j], [-xo,-yo])[1,:] .- [hankelh1.(i, kps[j]*ro) .* exp.(-1im*i*θo) for i in -n:n])) <1e-7
+    
     @test maximum(abs.(regular_translation_matrix(p_medium_scaled, n, 0, ωs[j], [-xo,-yo])[1,:] .- [besselj.(i, ro) .* exp.(-1im*i*θo) for i in -n:n])) < 1e-7
 
     @test maximum(abs.(outgoing_translation_matrix(p_medium_scaled, n, 0, ωs[j], [-xo,-yo])[1,:] .- [hankelh1.(i, ro) .* exp.(-1im*i*θo) for i in -n:n])) <1e-7
@@ -205,7 +212,7 @@ end
     U2=vcat(U2...) |>transpose
 
 
-    source_coeffs = (-im/4).* [hcat(U[:,i], V[:,i], zeros(length(modes)),  zeros(length(modes))) for i in eachindex(ωs)]
+    source_coeffs = (-im/4).* [(ωs[i]/medium.cp)^2 .*hcat(U[:,i], V[:,i], zeros(length(modes)),  zeros(length(modes))) for i in eachindex(ωs)]
 
     tractions = [hcat([Ts[i,j]*source_coeffs[j][i,:] for i in eachindex(modes)]...) |> transpose for j in eachindex(ωs)]
 
@@ -221,8 +228,6 @@ end
     #tractions_bd = [hcat(bd2[i],bd1[i]) for i in eachindex(ωs)]
 
     @test maximum([maximum(abs,tractions_bd[i] .- tractions[i]) for i in eachindex(ωs)]) <1e-7
-
-    @test maximum([maximum(abs,tractions_bd[1] .- tractions[1]) for i in eachindex(ωs)]) <1e-7
 
     maximum(abs,tractions_bd[1])
 
