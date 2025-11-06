@@ -282,7 +282,7 @@ function modes_coefficients!(sims::Vector{B}) where B <: BearingSimulation{Const
 
     # Tikinov
     δ = sqrt(sims[1].method.tol * norm(YY - DD) /  maximum(size(BB)))
-    bigA = [BBSM; sqrt(δ) * I];
+    bigA = [BBSM; δ * I];
     x = bigA \ [YY - DD; zeros(size(BB)[2])]
     
     boundary_error = norm(BBSM*x - (YY - DD)) / norm(YY - DD)
