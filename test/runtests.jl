@@ -7,6 +7,7 @@ using Test, Statistics, LinearAlgebra, MultipleScattering, SpecialFunctions
 
 include("signal_processing_test.jl")
 
+# includes addition translation matrix tests
 include("special_functions.jl")
 
 ## Tests for waves in free space
