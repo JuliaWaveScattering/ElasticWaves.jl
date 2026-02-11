@@ -41,9 +41,6 @@ export estimate_basisorder # soon to be removed
 # cylindrical/elastic_wave.jl
 export boundarycondition_mode, boundarycondition_system, modes_coefficients!, source_boundarycondition_mode, source_boundarycondition_system 
 
-#cylindrical/t-matrix.jl
-export t_matrix, modal_system
-
 # source.jl
 export SourceMap
 export boundary_data, outgoing_basis_function, regular_basis_function, outgoing_translation_matrix, regular_translation_matrix
@@ -74,7 +71,7 @@ include("spherical/t-matrix.jl")
 include("cylindrical/utils.jl")
 include("cylindrical/elastic_wave.jl")
 include("cylindrical/fields.jl")
-
+include("cylindrical/t-matrix.jl")
 include("plot.jl")
 
 end # module
