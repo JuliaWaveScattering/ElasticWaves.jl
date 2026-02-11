@@ -239,3 +239,35 @@ end
     @test norm.(internal_fields - external_fields) |> maximum < 1e-13
 
 end
+
+@testset "2D T-matrix" begin
+    ω = 1.2
+    basis_order = 9
+    field_type = TractionType()
+    order = basis_order
+    T = Float64
+
+    medium = Elastic(2; ρ = 1.0, cp = 1.0, cs = 1.0 ./ 1.2)
+    ks = ω / medium.cs
+    kp = ω / medium.cp
+
+    #centre = [3.0, -3.0, 5.0]
+    centre = [0.0, 0.0]
+
+    particle_medium = Elastic(2; ρ = 0.6, cp = 2.6, cs = 2.7 ./ 1.2)
+    particle_shape = Sphere(centre,1.0)
+    particle = Particle(particle_medium, particle_shape)
+
+    T=t_matrix(particle, medium, ω, basis_order)
+    modes=-basis_order:basis_order
+
+    # The incident field coefficients for a plane wave in the x direction is given by i^n, where n is the mode number. 
+    incident_coefficients = [[ComplexF64(im)^n, ComplexF64(im)^n] for n in modes]
+    incident_coefficients = vcat(incident_coefficients...)
+
+    scattered_coefficients = T * incident_coefficients
+
+    m13, m24 = modal_system(particle, medium, ω, basis_order)
+
+    @test maximum(abs.(m13 * incident_coefficients + m24 * scattered_coefficients)) < 1e-13
+end
