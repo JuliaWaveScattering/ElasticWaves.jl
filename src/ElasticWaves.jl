@@ -2,7 +2,7 @@ module ElasticWaves
 
 # types.jl
 export ModalMethod, PriorMethod, GapMethod, ConstantRollerSpeedMethod
-export DisplacementType, TractionType
+export DisplacementType, TractionType, PotentialType
 
 # elasticity.jl
 export Elastic, ElasticWave, ElasticWaveVector
@@ -50,8 +50,7 @@ using SpecialFunctions
 using Accessors
 using LinearAlgebra
 using StaticArrays: SVector
-using BlockArrays, BlockDiagonals
-
+using BlockArrays, BlockDiagonals, FillArrays
 
 # for ploting recipes
 using RecipesBase

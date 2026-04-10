@@ -1,14 +1,87 @@
-# function field(wave::ElasticWave{3}, x::AbstractVector{T}, field_type::FieldType) where T <: AbstractFloat
+# below are the basis for the potentials used essentially only for addition translation matrices.
 
-#     # pressure_regular_basis, shearΦ_regular_basis, shearχ_regular_basis
+function pressure_regular_basis(ω::AbstractFloat, x::AbstractVector{T}, medium::Elastic{3}, basis_order::Int, ::PotentialType) where T
+    
+    rθφ = cartesian_to_radial_coordinates(x)
+    r, θ, φ = rθφ
 
-#     ω = 1.1
-#     basis_order = 8
+    kp = ω / medium.cp;
+    kpr = kp * r
 
-#     # medium = Elastic(3; ρ = 0.5, cp = 1.1, cs = 0.9)
+    Ys = spherical_harmonics(basis_order, θ, φ)
+    js = [sbesselj(l, kpr) for l = 0:basis_order]
+
+    lm_to_n = lm_to_spherical_harmonic_index
+
+    ps = [Ys[lm_to_n(l,m)] * js[l+1] for l = 0:basis_order for m = -l:l]
+
+    return ps
+end
+
+function pressure_outgoing_basis(ω::AbstractFloat, x::AbstractVector{T}, medium::Elastic{3}, basis_order::Int, ::PotentialType) where T
+    
+    rθφ = cartesian_to_radial_coordinates(x)
+    r, θ, φ = rθφ
+
+    kp = ω / medium.cp;
+    kpr = kp * r
+
+    Ys = spherical_harmonics(basis_order, θ, φ)
+    js = [shankelh1(l, kpr) for l = 0:basis_order]
+
+    lm_to_n = lm_to_spherical_harmonic_index
+
+    ps = [Ys[lm_to_n(l,m)] * js[l+1] for l = 0:basis_order for m = -l:l]
+
+    return ps
+end
+
+function shearΦ_regular_basis(ω::AbstractFloat, x::AbstractVector{T}, medium::Elastic{3}, basis_order::Int, ::PotentialType) where T
+    
+    rθφ = cartesian_to_radial_coordinates(x)
+    r, θ, φ = rθφ
+
+    ks = ω / medium.cs;
+    kpr = ks * r
+
+    Ys = spherical_harmonics(basis_order, θ, φ)
+    js = [sbesselj(l, kpr) for l = 0:basis_order]
+
+    lm_to_n = lm_to_spherical_harmonic_index
+
+    ps = [Ys[lm_to_n(l,m)] * js[l+1] for l = 0:basis_order for m = -l:l]
+
+    return ps
+end
 
 
-# end
+function shearΦ_outgoing_basis(ω::AbstractFloat, x::AbstractVector{T}, medium::Elastic{3}, basis_order::Int, ::PotentialType) where T
+    
+    rθφ = cartesian_to_radial_coordinates(x)
+    r, θ, φ = rθφ
+
+    ks = ω / medium.cs;
+    ksr = ks * r
+
+    Ys = spherical_harmonics(basis_order, θ, φ)
+    js = [shankelh1(l, ksr) for l = 0:basis_order]
+
+    lm_to_n = lm_to_spherical_harmonic_index
+
+    ps = [Ys[lm_to_n(l,m)] * js[l+1] for l = 0:basis_order for m = -l:l]
+
+    return ps
+end
+
+function shearχ_regular_basis(ω::AbstractFloat, x::AbstractVector, medium::Elastic{3}, basis_order::Int, ::PotentialType)
+
+    return shearΦ_regular_basis(ω, x, medium, basis_order, PotentialType())
+end
+
+function shearχ_outgoing_basis(ω::AbstractFloat, x::AbstractVector, medium::Elastic{3}, basis_order::Int, ::PotentialType)
+
+    return shearΦ_outgoing_basis(ω, x, medium, basis_order, PotentialType())
+end
 
 ## TractionType fields
 

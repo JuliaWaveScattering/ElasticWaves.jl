@@ -116,29 +116,46 @@ The T-matrix for a 3D spherical elastic particle in a 3D elastic medium. This t-
 """
 function t_matrix(p::Particle{3,Elastic{3,T},Sphere{T,3}}, outer_medium::Elastic{3,T}, ω::T, basis_order::Integer) where T <: AbstractFloat
 
-    # @warn "There is a unit test to show that this T-matrix satisfies displacement boundary conditions but have not yet tested the traction boundary."
-    
     MGφΦs, MGχs = modal_system(p, outer_medium, ω, basis_order) 
 
-    function Tmat(l)
-        TφΦ = (MGφΦs[l+1][1] \ MGφΦs[l+1][2])[[1,3],:]
-        Tχ  = (MGχs[l+1][1] \ MGχs[l+1][2])[1]
-        return [TφΦ zeros(T,2); T(0) T(0) Tχ]
-    end
-
-    function Tmat0()
-        Tφφ = (MGφΦs[1][1][1:2,1:2] \ MGφΦs[1][2][1:2,1])[1]
-        return [Tφφ zeros(T,1,2); zeros(T,2,3)]
-    end
-
-    Tmats = Tmat.(1:basis_order)
+    TmatφΦ(l) = (MGφΦs[l+1][1] \ MGφΦs[l+1][2])[[1,3],:]
+    Tmatχ(l) = (MGχs[l+1][1] \ MGχs[l+1][2])[1]
+    Tmatφφ0() = (MGφΦs[1][1][1:2,1:2] \ MGφΦs[1][2][1:2,1])[1]
 
     len(order::Int) = basisorder_to_basislength(PhysicalMedium{3,1},order)
-    T_vec = [Tmat0(),
-        vcat([repeat(Tmats[l:l],len(l)-len(l-1)) for l = 1:basis_order]...)...
-    ]
 
-    return BlockDiagonal(T_vec)
+    Tχs = vcat([repeat([Tmatχ(l)],len(l)-len(l-1)) for l in 1:basis_order]...)
+    blockcorner = Diagonal(Tχs)
+
+    TmatφΦs = TmatφΦ.(1:basis_order)
+
+    Ts_arr = map(CartesianIndices(TmatφΦs[1])) do inds
+        Ts = map(1:basis_order) do l
+            repeat([TmatφΦs[l][inds]],len(l)-len(l-1))
+        end
+        Ts = vcat(Ts...)
+    end
+    L = length(Ts_arr[1])
+    TφΦs_mat = reshape(Ts_arr,2,2)
+    DφΦs_mat = Diagonal.(TφΦs_mat)
+
+    Ds = AbstractMatrix{Complex{T}}[Zeros{Complex{T}}(L,L) for i = 1:3, j = 1:3]
+    Ds[1:2,1:2] .= DφΦs_mat
+    Ds[3,3] = blockcorner
+
+    blocks = map(Ds) do D
+        block = Matrix{AbstractMatrix{ComplexF64}}(undef, 2, 2)
+        block[1,1] = reshape([zero(Complex{T})],1,1)
+        block[1,2] = Zeros{Complex{T}}(1, L)
+        block[2,1] = Zeros{Complex{T}}(L, 1)
+        block[2,2] = D
+
+        return mortar(block)
+    end
+    # Only the pressure wave has a monopole term, so only the top left corner of the first block is nonzero.
+    blocks[1][1,1] = Tmatφφ0()
+
+    return mortar(blocks)
 end
 
 """
@@ -150,25 +167,50 @@ function internal_matrix(p::Particle{3,Elastic{3,T},Sphere{T,3}}, outer_medium::
 
     MGφΦs, MGχs = modal_system(p, outer_medium, ω, basis_order) 
 
-    function inner_mat(l)
+    function ImatφΦ(l)
         TφΦ = (MGφΦs[l+1][1] \ MGφΦs[l+1][2])[[2,4],:]
+    end
+
+    function Imatχ(l)
         Tχ  = (MGχs[l+1][1] \ MGχs[l+1][2])[2]
-        return [TφΦ zeros(T,2); T(0) T(0) Tχ]
     end
 
-    function inner_mat0()
+    function Imatφφ0()
         Tφφ = (MGφΦs[1][1][1:2,1:2] \ MGφΦs[1][2][1:2,1])[2]
-        return [Tφφ zeros(T,1,2); zeros(T,2,3)]
     end
-
-    inner_mats = inner_mat.(1:basis_order)
 
     len(order::Int) = basisorder_to_basislength(PhysicalMedium{3,1},order)
-    T_vec = [inner_mat0(),
-        vcat(
-            [repeat(inner_mats[l:l],len(l)-len(l-1)) for l = 1:basis_order]...
-        )...
-    ]
 
-    return BlockDiagonal(T_vec)
+    Tχs = vcat([repeat([Imatχ(l)],len(l)-len(l-1)) for l in 1:basis_order]...)
+    blockcorner = Diagonal(Tχs)
+
+    TmatφΦs = ImatφΦ.(1:basis_order)
+
+    Ts_arr = map(CartesianIndices(TmatφΦs[1])) do inds
+        Ts = map(1:basis_order) do l
+            repeat([TmatφΦs[l][inds]],len(l)-len(l-1))
+        end
+        Ts = vcat(Ts...)
+    end
+    L = length(Ts_arr[1])
+    TφΦs_mat = reshape(Ts_arr,2,2)
+    DφΦs_mat = Diagonal.(TφΦs_mat)
+
+    Ds = AbstractMatrix{Complex{T}}[Zeros{Complex{T}}(L,L) for i = 1:3, j = 1:3]
+    Ds[1:2,1:2] .= DφΦs_mat
+    Ds[3,3] = blockcorner
+
+    blocks = map(Ds) do D
+        block = Matrix{AbstractMatrix{ComplexF64}}(undef, 2, 2)
+        block[1,1] = reshape([zero(Complex{T})],1,1)
+        block[1,2] = Zeros{Complex{T}}(1, L)
+        block[2,1] = Zeros{Complex{T}}(L,1)
+        block[2,2] = D
+
+        return mortar(block)
+    end
+    # Only the pressure wave has a monopole term, so only the top left corner of the first block is nonzero.
+    blocks[1][1,1] = Imatφφ0()
+
+    return mortar(blocks)
 end

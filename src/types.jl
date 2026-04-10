@@ -10,6 +10,9 @@ abstract type FieldType end
 struct DisplacementType <: FieldType end
 struct TractionType <: FieldType end
 
+# PotentialType is for working in the Helmholtz potentials, without specifying a physical field.
+struct PotentialType <: FieldType end
+
 ## methods to solve for waves in bearings 
 
 abstract type SolutionMethod end

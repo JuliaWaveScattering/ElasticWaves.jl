@@ -87,6 +87,7 @@ end
 
 
 import MultipleScattering: name, basisorder_to_basislength, basislength_to_basisorder, regular_basis_function, regular_radial_basis, outgoing_basis_function, outgoing_radial_basis, internal_field
+import MultipleScattering: outgoing_translation_matrix, regular_translation_matrix
 
 name(a::Elastic{Dim}) where Dim = "$(Dim)D Elastic"
 
@@ -104,8 +105,7 @@ function regular_basis_function(medium::Elastic{3,T}, ω::T, field_type::FieldTy
         χbasis = shearχ_regular_basis(ω, x, medium, order, field_type) 
 
         # the order in each row is first iteration over p, Φ, χ, then increase basis order
-        return reshape([pbasis Φbasis χbasis] |> transpose,3,:)
-        
+        return [pbasis; Φbasis; χbasis] |> transpose
     end
 end
 
@@ -116,7 +116,7 @@ function outgoing_basis_function(medium::Elastic{3,T}, ω::T, field_type::FieldT
         Φbasis = shearΦ_outgoing_basis(ω, x, medium, order, field_type)
         χbasis = shearχ_outgoing_basis(ω, x, medium, order, field_type)
 
-        return reshape([pbasis Φbasis χbasis] |> transpose,3,:)
+        return [pbasis; Φbasis; χbasis] |> transpose
     end
 end
 
@@ -142,9 +142,18 @@ function internal_field(x::AbstractVector{T}, p::Particle{Dim,Elastic{Dim,T}}, s
         in_mat = internal_matrix(p, source.medium, ω, order)
 
         # need to seperate the l=0 case
-        internal_coef0 = [in_mat[1] * (t_mat[1] \ fs[1]), zero(Complex{T}), zero(Complex{T})]
-        
-        internal_coefs = [internal_coef0; in_mat[4:end,4:end] * (t_mat[4:end,4:end] \ fs[4:end])]
+        L = length(fs)
+        internal_coef0 = in_mat[1,1] * (t_mat[1,1] \ fs[1])
+
+        # and now remove the l=0 cases
+        inds = [1, (order+1)^2 + 1, 2*(order+1)^2 + 1]
+        in_mat = in_mat[setdiff(1:end, inds), setdiff(1:end, inds)]
+        t_mat = t_mat[setdiff(1:end, inds), setdiff(1:end, inds)]
+        fs = fs[setdiff(1:end, inds)]
+
+        internal_coefs = zeros(Complex{T}, L)
+        internal_coefs[setdiff(1:end, inds)] .= in_mat * (t_mat \ fs)
+        internal_coefs[1] = internal_coef0
 
         inner_basis = regular_basis_function(p.medium, ω, field_type)
 
@@ -159,9 +168,7 @@ function show(io::IO, p::Elastic)
     return
 end
 
-import MultipleScattering: outgoing_basis_function, regular_basis_function, outgoing_translation_matrix, regular_translation_matrix
-
-function outgoing_basis_function(medium::Elastic{2}, ω::T) where {T<:Number}
+function outgoing_basis_function(medium::Elastic{2}, ω::T, ::PotentialType) where {T<:Number}
     return function (order::Integer, x::AbstractVector{T})
         r, θ  = cartesian_to_radial_coordinates(x)
         kp = ω/medium.cp
@@ -173,7 +180,7 @@ function outgoing_basis_function(medium::Elastic{2}, ω::T) where {T<:Number}
     end
 end
 
-function regular_basis_function(medium::Elastic{2}, ω::T) where {T<:Number}
+function regular_basis_function(medium::Elastic{2}, ω::T, ::PotentialType) where {T<:Number}
     return function (order::Integer, x::AbstractVector{T})
         r, θ  = cartesian_to_radial_coordinates(x)
         kp = ω/medium.cp
@@ -185,37 +192,77 @@ function regular_basis_function(medium::Elastic{2}, ω::T) where {T<:Number}
     end
 end
 
+function outgoing_translation_matrix(medium::Elastic{3}, in_order::Integer, out_order::Integer, ω::T, x::AbstractVector{T}) where {T<:Number}
+
+    # define 2 mediums for pressure and shear potentials 
+    pmedium = ScalarMedium{T,3}(medium.cp)
+    smedium = ScalarMedium{T,3}(medium.cs)
+
+    U_p = outgoing_translation_matrix(pmedium, in_order, out_order, ω, x)
+    U_s = outgoing_translation_matrix(smedium, in_order, out_order, ω, x)
+
+    U = BlockDiagonal([U_p, U_s, U_s])
+    return U
+end
+
+function regular_translation_matrix(medium::Elastic{3}, in_order::Integer, out_order::Integer, ω::T, x::AbstractVector{T}) where {T<:Number}
+
+    # define 2 mediums for pressure and shear potentials 
+    pmedium = ScalarMedium{Float64,3}(medium.cp)
+    smedium = ScalarMedium{Float64,3}(medium.cs)
+
+    V_p = regular_translation_matrix(pmedium, in_order, out_order, ω, x)
+    V_s = regular_translation_matrix(smedium, in_order, out_order, ω, x)
+
+    return BlockDiagonal([V_p, V_s, V_s])
+end
+
 function outgoing_translation_matrix(medium::Elastic{2}, in_order::Integer, out_order::Integer, ω::T, x::AbstractVector{T}) where {T<:Number}
 
-    translation_vec = outgoing_basis_function(medium, ω)(in_order + out_order, x)
-    order = Int(length(translation_vec)/2)
-    
-    translation_vec_p = translation_vec[1:order]
-    translation_vec_s = translation_vec[order+1:end]
-    U_p = [
-        translation_vec_p[n-m + in_order + out_order + 1]
-    for n in -out_order:out_order, m in -in_order:in_order]
+    # define 2 mediums for pressure and shear potentials 
+    pmedium = ScalarMedium{Float64,2}(medium.cp)
+    smedium = ScalarMedium{Float64,2}(medium.cs)
 
-    U_s = [
-        translation_vec_s[n-m + in_order + out_order + 1]
-    for n in -out_order:out_order, m in -in_order:in_order]
+    U_p = outgoing_translation_matrix(pmedium, in_order, out_order, ω, x)
+    U_s = outgoing_translation_matrix(smedium, in_order, out_order, ω, x)
+
+    # translation_vec = outgoing_basis_function(medium, ω)(in_order + out_order, x)
+    # order = Int(length(translation_vec)/2)
+    
+    # translation_vec_p = translation_vec[1:order]
+    # translation_vec_s = translation_vec[order+1:end]
+    # U_p = [
+    #     translation_vec_p[n-m + in_order + out_order + 1]
+    # for n in -out_order:out_order, m in -in_order:in_order]
+
+    # U_s = [
+    #     translation_vec_s[n-m + in_order + out_order + 1]
+    # for n in -out_order:out_order, m in -in_order:in_order]
 
     U = BlockDiagonal([U_p, U_s])
     return U
 end
 
 function regular_translation_matrix(medium::Elastic{2}, in_order::Integer, out_order::Integer, ω::T, x::AbstractVector{T}) where {T<:Number}
-    translation_vec = regular_basis_function(medium, ω)(in_order + out_order, x)
-    order = Int(length(translation_vec)/2)
-    translation_vec_p = translation_vec[1:order]
-    translation_vec_s = translation_vec[order+1:end]
-    V_p = [
-        translation_vec_p[n-m + in_order + out_order + 1]
-    for n in -out_order:out_order, m in -in_order:in_order]
 
-    V_s = [
-        translation_vec_s[n-m + in_order + out_order + 1]
-    for n in -out_order:out_order, m in -in_order:in_order]
+    # define 2 mediums for pressure and shear potentials 
+    pmedium = ScalarMedium{Float64,2}(medium.cp)
+    smedium = ScalarMedium{Float64,2}(medium.cs)
+
+    V_p = regular_translation_matrix(pmedium, in_order, out_order, ω, x)
+    V_s = regular_translation_matrix(smedium, in_order, out_order, ω, x)
+
+    # translation_vec = regular_basis_function(medium, ω)(in_order + out_order, x)
+    # order = Int(length(translation_vec)/2)
+    # translation_vec_p = translation_vec[1:order]
+    # translation_vec_s = translation_vec[order+1:end]
+    # V_p = [
+    #     translation_vec_p[n-m + in_order + out_order + 1]
+    # for n in -out_order:out_order, m in -in_order:in_order]
+
+    # V_s = [
+    #     translation_vec_s[n-m + in_order + out_order + 1]
+    # for n in -out_order:out_order, m in -in_order:in_order]
 
     V = BlockDiagonal([V_p, V_s])
     return V

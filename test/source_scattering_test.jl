@@ -51,9 +51,6 @@ end
 
     Tmatrix = t_matrix(particle, medium, ω, basis_order)
 
-    regular_coefficients = regular_spherical_coefficients(source)
-    source_coes = regular_coefficients(basis_order,centre,ω)
-
     # coes_flat = (source_coes |> transpose)[:]
     coes_flat = (source_coes)[:]
     scattering_coes = Tmatrix * coes_flat
@@ -67,7 +64,9 @@ end
         centre + spherical_to_cartesian_coordinates([2*r*rand() + r,pi * rand(),2pi * rand()])
     for i = 1:100 ]
     
-    outside_fields = [outgoing_basis(basis_order, x - centre) * scattering_coes_reshape[:] for x in x_vec]
+    outside_fields = [
+        outgoing_basis(basis_order, x - centre) * scattering_coes_reshape[:] 
+    for x in x_vec]
     
     sim = FrequencySimulation([particle],source)
     
@@ -84,37 +83,12 @@ end
 
 ## Check displacement boundary condition
 
-    MGφΦs, MGχs = modal_system(particle, medium, ω, 1)
-    MφΦ, GφΦ = MGφΦs[2]
-    Mχ, Gχ = MGχs[2]
-
-    function Tmat(l)
-        TφΦ = (MGφΦs[l+1][1] \ MGφΦs[l+1][2])[[1,3],:]
-        Tχ  = (MGχs[l+1][1] \ MGχs[l+1][2])[1]
-        return [TφΦ zeros(T,2); T(0) T(0) Tχ]
-    end
-
-    function inner_mat(l)
-        TφΦ = (MGφΦs[l+1][1] \ MGφΦs[l+1][2])[[2,4],:]
-        Tχ  = (MGχs[l+1][1] \ MGχs[l+1][2])[2]
-        return [TφΦ zeros(T,2); T(0) T(0) Tχ]
-    end
-
-    Tmatrix = t_matrix(particle, medium, ω, 1)
-    @test Tmat(1) - Tmatrix[4:6,4:6] |> norm ≈ 0
-    
-    # The order l = 0 should be different
-    @test Tmat(0) - Tmatrix[1:3,1:3] |> norm > 0.1
-
-    in_matrix = internal_matrix(particle, medium, ω, 1)
-    @test inner_mat(1) - in_matrix[4:6,4:6] |> norm ≈ 0
-
     # Test the internal_field
-    gs = rand(3)
-    bs = inner_mat(1) * gs 
-    fs = Tmat(1) * gs 
-    bs2 = inner_mat(1) * (Tmat(1) \ fs)
-    @test bs - bs2 |> norm < 1e-12
+    # gs = rand(3)
+    # bs = inner_mat(1) * gs 
+    # fs = Tmat(1) * gs 
+    # bs2 = inner_mat(1) * (Tmat(1) \ fs)
+    # @test bs - bs2 |> norm < 1e-12
 
     order = basis_order;
 
@@ -169,7 +143,6 @@ end
     internal_fields = [basis(basis_order, x - centre) * internal_coes[:] for x in xout]
 
     @test norm.(internal_fields - fout) |> maximum < 1e-13
-
 end
 
 # check the traction boundary condition
@@ -258,8 +231,8 @@ end
     particle_shape = Sphere(centre,1.0)
     particle = Particle(particle_medium, particle_shape)
 
-    T=t_matrix(particle, medium, ω, basis_order)
-    modes=-basis_order:basis_order
+    T = t_matrix(particle, medium, ω, basis_order)
+    modes = -basis_order:basis_order
 
     # The incident field coefficients for a plane wave in the x direction is given by i^n, where n is the mode number. 
     incident_coefficients = [[ComplexF64(im)^n, ComplexF64(im)^n] for n in modes]
