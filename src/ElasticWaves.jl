@@ -50,7 +50,7 @@ using SpecialFunctions
 using Accessors
 using LinearAlgebra
 using StaticArrays: SVector
-using BlockArrays, BlockDiagonals, FillArrays
+using BlockArrays, BlockDiagonals, FillArrays, SparseArrays
 
 # for ploting recipes
 using RecipesBase

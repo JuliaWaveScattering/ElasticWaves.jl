@@ -26,7 +26,9 @@ end
 @testset "Scattering" begin
 
     ω = 1.2
+    ω = 0.01
     basis_order = 9
+    basis_order = 6
     field_type = DisplacementType()
     order = basis_order
     T = Float64
@@ -36,8 +38,6 @@ end
     kp = ω / medium.cp
 
     centre = [3.0, -3.0, 5.0]
-    # centre = [0.0, 0.0, 0.0]
-
     source = plane_z_shear_source(medium)
 
     regular_coefficients = regular_spherical_coefficients(source)
@@ -46,6 +46,11 @@ end
     particle_medium = Elastic(3; ρ = 0.6, cp = 2.6, cs = 2.7 ./ 1.2)
     particle_shape = Sphere(centre,1.0)
     particle = Particle(particle_medium, particle_shape)
+
+    particle_medium2 = Elastic(3; ρ = 1.6, cp = 1.6, cs = 0.9)
+    centre2 = [0.0, 0.0, 0.0]
+    particle_shape2 = Sphere(centre2,0.7)
+    particle2 = Particle(particle_medium2, particle_shape2)
 
 ## Check scattered wave matches result from MultipleScattering
 
@@ -119,13 +124,15 @@ end
     r = outer_radius(particle) - 10eps(T)
     xin = [
         centre + spherical_to_cartesian_coordinates([r, i * 2pi / 100, i * 7pi / 100]) 
-    for i = 1:100] 
+    for i = 1:100]
     
-    # xs = [centre + spherical_to_cartesian_coordinates([r,pi / 2,pi /2])] 
+    # Need to include the source this time. Will also use two particles to check multiple scattering is working correctly.
+    particles = [particle, particle2] 
+    sim = FrequencySimulation(particles,sourceΦ)
 
-    # Need to include the source this time. 
-    sim = FrequencySimulation([particle],sourceΦ)
-    
+    # U = outgoing_translation_matrix(medium, basis_order, basis_order, ω, xout[1])
+    # transpose(U) * Tmatrix
+
     result = run(sim,xout,ω; basis_order = basis_order)
     fout = field(result)
 
@@ -136,7 +143,6 @@ end
 
     # Alternative to calculate the field inside the particlce 
     in_matrix = internal_matrix(particle, medium, ω, basis_order)
-
     internal_coes = in_matrix * source_coes[:]
 
     basis = regular_basis_function(particle.medium, ω, DisplacementType())
@@ -157,12 +163,15 @@ end
 
     medium = Elastic(3; ρ = 1.0, cp = 1.0, cs = 1.0 ./ 1.2)
 
-    centre = [3.0, -3.0, 5.0]
     centre = [0.0, 0.0, 0.0]
-
     particle_medium = Elastic(3; ρ = 0.6, cp = 2.6, cs = 2.7 ./ 1.2)
     particle_shape = Sphere(centre,1.0)
     particle = Particle(particle_medium, particle_shape)
+    
+    particle_medium2 = Elastic(3; ρ = 1.6, cp = 1.6, cs = 0.9)
+    centre = [3.0, -3.0, 5.0]
+    particle_shape2 = Sphere(centre,0.7)
+    particle2 = Particle(particle_medium2, particle_shape2)
 
     order = basis_order;
 

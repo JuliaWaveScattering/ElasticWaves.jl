@@ -201,8 +201,29 @@ function outgoing_translation_matrix(medium::Elastic{3}, in_order::Integer, out_
     U_p = outgoing_translation_matrix(pmedium, in_order, out_order, ω, x)
     U_s = outgoing_translation_matrix(smedium, in_order, out_order, ω, x)
 
-    U = BlockDiagonal([U_p, U_s, U_s])
+    np,mp = size(U_p) 
+    ns,ms = size(U_s)
+
+    # we need to use a block array to multiply with the t_matrix.
+    Us = Matrix{AbstractMatrix{Complex{T}}}(undef, 3, 3)
+    Us[1,1] = U_p
+    Us[1,2] = Zeros{Complex{T}}(np, ms)
+    Us[1,3] = Zeros{Complex{T}}(np, ms)
+    
+    Us[2,2] = U_s
+    Us[2,1] = Zeros{Complex{T}}(ns, mp)
+    Us[2,3] = Zeros{Complex{T}}(ns, ms)
+
+    Us[3,1] = Zeros{Complex{T}}(ns, mp)
+    Us[3,2] = Zeros{Complex{T}}(ns, ms)
+    Us[3,3] = U_s
+
+    U = sparse(mortar(Us))
+
     return U
+
+    #previously:
+    # return BlockDiagonal([U_p, U_s, U_s])
 end
 
 function regular_translation_matrix(medium::Elastic{3}, in_order::Integer, out_order::Integer, ω::T, x::AbstractVector{T}) where {T<:Number}
@@ -214,7 +235,25 @@ function regular_translation_matrix(medium::Elastic{3}, in_order::Integer, out_o
     V_p = regular_translation_matrix(pmedium, in_order, out_order, ω, x)
     V_s = regular_translation_matrix(smedium, in_order, out_order, ω, x)
 
-    return BlockDiagonal([V_p, V_s, V_s])
+    np,mp = size(V_p)
+    ns,ms = size(V_s)
+
+    # we need to use a block array to multiply with the t_matrix.
+    Vs = Matrix{AbstractMatrix{Complex{T}}}(undef, 3, 3)
+    Vs[1,1] = V_p
+    Vs[1,2] = Zeros{Complex{T}}(np, ms)
+    Vs[1,3] = Zeros{Complex{T}}(np, ms)
+    
+    Vs[2,2] = V_s
+    Vs[2,1] = Zeros{Complex{T}}(ns, mp)
+    Vs[2,3] = Zeros{Complex{T}}(ns, ms)
+
+    Vs[3,1] = Zeros{Complex{T}}(ns, mp)
+    Vs[3,2] = Zeros{Complex{T}}(ns, ms)
+    Vs[3,3] = V_s
+
+    return sparse(mortar(Vs))
+    # return BlockDiagonal([V_p, V_s, V_s])
 end
 
 function outgoing_translation_matrix(medium::Elastic{2}, in_order::Integer, out_order::Integer, ω::T, x::AbstractVector{T}) where {T<:Number}
