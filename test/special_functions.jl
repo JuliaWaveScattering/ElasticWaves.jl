@@ -43,6 +43,13 @@ end
     larger_order = 3*order
     basis_length = 2*larger_order+1
     
+    # note the north pole is not well defined for spherical coordinates.
+    basis = outgoing_basis_function(medium, ω, TractionType())
+    @test_throws ArgumentError basis(order, [0.0,0.0,1.0])
+    
+    basis = regular_basis_function(medium, ω, DisplacementType())
+    @test_throws ArgumentError basis(order, [0.0,0.0,1.0])
+
     # Test 3D outgoing translation matrix
     U = outgoing_translation_matrix(medium, larger_order, order, ω, d)
 

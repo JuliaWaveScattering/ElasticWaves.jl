@@ -212,5 +212,5 @@ function internal_matrix(p::Particle{3,Elastic{3,T},Sphere{T,3}}, outer_medium::
     # Only the pressure wave has a monopole term, so only the top left corner of the first block is nonzero.
     blocks[1][1,1] = Imatφφ0()
 
-    return mortar(blocks)
+    return sparse(mortar(blocks))
 end

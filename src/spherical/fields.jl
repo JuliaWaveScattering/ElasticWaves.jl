@@ -364,7 +364,7 @@ function pressure_outgoing_basis(ω::AbstractFloat, x::AbstractVector{T}, medium
     ps = [
         transpose(
             M * [
-                kp * Ys[lm_to_n(l,m)] * djs[l+1], 
+                kp * Ys[lm_to_n(l,m)] * djs[l+1],
                 js[l+1] * dYs[lm_to_n(l,m)] / r, 
                 im * m * cscθ * js[l+1] * Ys[lm_to_n(l,m)] / r
             ]
@@ -372,7 +372,7 @@ function pressure_outgoing_basis(ω::AbstractFloat, x::AbstractVector{T}, medium
     for l = 0:basis_order for m = -l:l]
 
     return vcat(ps...)
-end    
+end
 
 function shearΦ_regular_basis(ω::AbstractFloat, x::AbstractVector{T}, medium::Elastic{3}, basis_order::Int, ::DisplacementType) where T
     

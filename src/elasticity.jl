@@ -100,6 +100,10 @@ basislength_to_basisorder(::Type{P},len::Int) where {T, P<:Elastic{2,T}} = Int(T
 function regular_basis_function(medium::Elastic{3,T}, ω::T, field_type::FieldType = DisplacementType()) where T
 
     return function (order::Integer, x::AbstractVector{T})
+        if norm(x - [0.0,0.0,1.0]) < 1e-10
+            throw(ArgumentError("The fields at the north pole of the sphere are not well defined in spherical coordinates."))
+            return zeros(Complex{T}, 1, basisorder_to_basislength(Elastic{3,T}, order))
+        end
         pbasis = pressure_regular_basis(ω, x, medium, order, field_type) 
         Φbasis = shearΦ_regular_basis(ω, x, medium, order, field_type) 
         χbasis = shearχ_regular_basis(ω, x, medium, order, field_type) 
@@ -112,6 +116,10 @@ end
 function outgoing_basis_function(medium::Elastic{3,T}, ω::T, field_type::FieldType = DisplacementType()) where T
 
     return function (order::Integer, x::AbstractVector{T})
+        if norm(x - [0.0,0.0,1.0]) < 1e-10
+            throw(ArgumentError("The fields at the north pole of the sphere are not well defined in spherical coordinates."))
+            return zeros(Complex{T}, 1, basisorder_to_basislength(Elastic{3,T}, order))
+        end
         pbasis = pressure_outgoing_basis(ω, x, medium, order, field_type)
         Φbasis = shearΦ_outgoing_basis(ω, x, medium, order, field_type)
         χbasis = shearχ_outgoing_basis(ω, x, medium, order, field_type)
