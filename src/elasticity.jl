@@ -200,7 +200,97 @@ function regular_basis_function(medium::Elastic{2}, ω::T, ::PotentialType) wher
     end
 end
 
-function outgoing_translation_matrix(medium::Elastic{3}, in_order::Integer, out_order::Integer, ω::T, x::AbstractVector{T}) where {T<:Number}
+function outgoing_translation_matrix(medium::Elastic{3}, in_order::Integer, out_order::Integer, ω::T, x::AbstractVector{T},::DisplacementType) where {T<:Number}
+
+    # define 2 mediums for pressure and shear potentials 
+    pmedium = ScalarMedium{T,3}(medium.cp)
+    up = outgoing_basis_function(pmedium, ω)(in_order + out_order,x)
+    U_p = outgoing_translation_matrix(pmedium, in_order, out_order, ω, x)
+
+    smedium = ScalarMedium{T,3}(medium.cs)
+    us = outgoing_basis_function(smedium, ω)(in_order + out_order,x)
+    c = gaunt_coefficient
+
+    # auxiliary function to calculate the translation of the shear potentials
+        λup(l,m) = sqrt((l-m)*(l+m+1))
+        λdown(l,m) = λup(l,-m)
+        
+        α0(l,m) = sqrt((l+m+1)*(l-m+1)/((2l+1)*(2l+3)))
+        β0(l,m) = -sqrt((l-m)*(l+m)/((2l-1)*(2l+1)))
+        
+        αup(l,m) = -sqrt((l+m+2)*(l-m+1)/((2l+1)*(2l+3)))
+        βup(l,m) = -sqrt((l-m)*(l-m-1)/((2l-1)*(2l+1)))
+
+        αdown(l,m) = - αup(l,-m)
+        βdown(l,m) = - βup(l,-m)
+
+
+    # the equivalent of the gaunt coefficients for the shear displacement.
+        C(ld,md,l,m,l1) = (
+            λup(ld,md) * λdown(l,m) * c(ld,md+1,l,m-1,l1) + λdown(ld,md) * λup(l,m) * c(ld,md-1,l,m+1,l1) + 2m * md * c(ld,md,l,m,l1)
+        ) / (2l * (l+1))
+
+        B(ld,md,l,m,l1) = (
+            λdown(ld,md) * (l * αup(l,m) * c(ld,md-1,l+1,m,l1)     - (l+1) * βup(l,m)   * c(ld,md-1,l-1,m,l1)) + 
+            λup(ld,md)   * (l * αdown(l,m) * c(ld,md+1,l+1,m-1,l1) - (l+1) * βdown(l,m) * c(ld,md+1,l-1,m,l1)) -
+            2md * (l * α0(l,m) * c(ld,md,l+1,m,l1) - (l+1) * β0(l,m) * c(ld,md,l-1,m,l1))
+        ) * 1.0im / (2l * (l+1))
+
+    
+    # the addition translation for each displacement potential 
+        U_s = [
+            begin
+                i1 = abs(l-dl) == 0 ? 1 : basisorder_to_basislength(ScalarMedium{T,3},abs(l-dl)-1) + 1
+                i2 = basisorder_to_basislength(ScalarMedium{T,3},l+dl)
+    
+                cs = [ (m1 == dm - m) ? C(dl,dm,l,m,l1) : 0.0im for l1 = abs(l-dl):(l+dl) for m1 = -l1:l1]
+                bs = [ (m1 == dm - m) ? B(dl,dm,l,m,l1) : 0.0im for l1 = abs(l-dl):(l+dl) for m1 = -l1:l1]
+                sum(us[i1:i2] .* cs) 
+                sum(us[i1:i2] .* bs)
+            end
+        for dl = 0:in_order for dm = -dl:dl for l = 0:out_order for m = -l:l];
+
+    ind(order::Int) = basisorder_to_basislength(Acoustic{T,3},order)
+    U = [
+        begin
+            i1 = abs(l-dl) == 0 ? 1 : ind(abs(l-dl)-1) + 1
+            i2 = ind(l+dl)
+
+            cs = [c(T,l,m,dl,dm,l1,m1) for l1 = abs(l-dl):(l+dl) for m1 = -l1:l1]
+            sum(us[i1:i2] .* cs)
+        end
+    for dl = 0:in_order for dm = -dl:dl for l = 0:out_order for m = -l:l];
+    # U = [
+    #     [(l,m),(dl,dm)]
+    # for dl = 0:order for dm = -dl:dl for l = 0:order for m = -l:l]
+
+    U = reshape(U, ((out_order+1)^2, (in_order+1)^2))
+    
+    np,mp = size(U_p) 
+
+    # we need to use a block array to multiply with the t_matrix.
+    Us = Matrix{AbstractMatrix{Complex{T}}}(undef, 3, 3)
+    Us[1,1] = U_p
+    Us[1,2] = Zeros{Complex{T}}(np, ms)
+    Us[1,3] = Zeros{Complex{T}}(np, ms)
+    
+    Us[2,2] = U_s
+    Us[2,1] = Zeros{Complex{T}}(ns, mp)
+    Us[2,3] = Zeros{Complex{T}}(ns, ms)
+
+    Us[3,1] = Zeros{Complex{T}}(ns, mp)
+    Us[3,2] = Zeros{Complex{T}}(ns, ms)
+    Us[3,3] = U_s
+
+    U = sparse(mortar(Us))
+
+    return U
+
+    #previously:
+    # return BlockDiagonal([U_p, U_s, U_s])
+end
+
+function outgoing_translation_matrix(medium::Elastic{3}, in_order::Integer, out_order::Integer, ω::T, x::AbstractVector{T},::PotentialType) where {T<:Number}
 
     # define 2 mediums for pressure and shear potentials 
     pmedium = ScalarMedium{T,3}(medium.cp)
