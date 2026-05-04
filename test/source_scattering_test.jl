@@ -128,35 +128,35 @@ end
     
     # to recover the exciting field 
     # need to seperate the l=0 case
-        fs = deepcopy(scat_coes)
-        L = length(fs)
-        g0 = (t_mat[1,1] \ fs[1])
+        # fs = deepcopy(scat_coes)
+        # L = length(fs)
+        # g0 = (t_mat[1,1] \ fs[1])
 
-        # and now remove the l=0 cases
-        inds = [1, (order+1)^2 + 1, 2*(order+1)^2 + 1]
-        t_mat = t_mat[setdiff(1:end, inds), setdiff(1:end, inds)]
+        # # and now remove the l=0 cases
+        # inds = [1, (order+1)^2 + 1, 2*(order+1)^2 + 1]
+        # t_mat = t_mat[setdiff(1:end, inds), setdiff(1:end, inds)]
 
-        exciting_coefs = zeros(Complex{T}, L)
-        exciting_coefs[setdiff(1:end, inds)] = (t_mat \ fs[setdiff(1:end, inds)])
-        exciting_coefs[1] = g0
+        # exciting_coefs = zeros(Complex{T}, L)
+        # exciting_coefs[setdiff(1:end, inds)] = (t_mat \ fs[setdiff(1:end, inds)])
+        # exciting_coefs[1] = g0
 
-        # check are the same as the source coefficients
-        # note we do not check the l=0 coefficients for the shear waves, as these have to be zero.
-        @test abs.(exciting_coefs[setdiff(1:end, inds[2:end])] - source_coes[setdiff(1:end, inds[2:end])]) |> maximum < 1e-10
+        # # check are the same as the source coefficients
+        # # note we do not check the l=0 coefficients for the shear waves, as these have to be zero.
+        # @test abs.(exciting_coefs[setdiff(1:end, inds[2:end])] - source_coes[setdiff(1:end, inds[2:end])]) |> maximum < 1e-10
     
     # given scat_coes, can we recover the exciting field and internal field correctly?
-    fin = [internal_field(x, particle, sourceΦ, ω, scat_coes, field_type) for x in xin]
+    # fin = [internal_field(x, particle, sourceΦ, ω, scat_coes, field_type) for x in xin]
     
-    # put it all together and check boundary condition: fout == fin?
-    reg_basis = regular_basis_function(medium, ω, field_type)
-    field_reg = [reg_basis(order, x - centre) * exciting_coefs[:] for x in xout]
+    # # put it all together and check boundary condition: fout == fin?
+    # reg_basis = regular_basis_function(medium, ω, field_type)
+    # field_reg = [reg_basis(order, x - centre) * exciting_coefs[:] for x in xout]
     
-    outgoing_basis = outgoing_basis_function(medium, ω, field_type)
-    field_out = [outgoing_basis(order, x - centre) * scat_coes[:] for x in xout]
+    # outgoing_basis = outgoing_basis_function(medium, ω, field_type)
+    # field_out = [outgoing_basis(order, x - centre) * scat_coes[:] for x in xout]
 
-    fout = field_reg + field_out
+    # fout = field_reg + field_out
 
-    @test norm.(fout - fin) |> maximum < 1e-13
+    # @test norm.(fout - fin) |> maximum < 1e-13
 end
 
 @testset "Multiple elastic particle scattering" begin

@@ -109,7 +109,7 @@ function regular_basis_function(medium::Elastic{3,T}, ω::T, field_type::FieldTy
         χbasis = shearχ_regular_basis(ω, x, medium, order, field_type) 
 
         # the order in each row is first iteration over p, Φ, χ, then increase basis order
-        return [pbasis; Φbasis; χbasis] |> transpose
+        return reshape([pbasis Φbasis χbasis] |> transpose,3,:)
     end
 end
 
@@ -124,7 +124,7 @@ function outgoing_basis_function(medium::Elastic{3,T}, ω::T, field_type::FieldT
         Φbasis = shearΦ_outgoing_basis(ω, x, medium, order, field_type)
         χbasis = shearχ_outgoing_basis(ω, x, medium, order, field_type)
 
-        return [pbasis; Φbasis; χbasis] |> transpose
+        return reshape([pbasis Φbasis χbasis] |> transpose,3,:)
     end
 end
 
@@ -149,19 +149,23 @@ function internal_field(x::AbstractVector{T}, p::Particle{Dim,Elastic{Dim,T}}, s
         t_mat = t_matrix(p, source.medium, ω, order)
         in_mat = internal_matrix(p, source.medium, ω, order)
 
-        # need to seperate the l=0 case
-        L = length(fs)
-        internal_coef0 = in_mat[1,1] * (t_mat[1,1] \ fs[1])
+        internal_coef0 = [in_mat[1] * (t_mat[1] \ fs[1]), zero(Complex{T}), zero(Complex{T})]
+        
+        internal_coefs = [internal_coef0; in_mat[4:end,4:end] * (t_mat[4:end,4:end] \ fs[4:end])]
 
-        # and now remove the l=0 cases
-        inds = [1, (order+1)^2 + 1, 2*(order+1)^2 + 1]
-        in_mat = in_mat[setdiff(1:end, inds), setdiff(1:end, inds)]
-        t_mat = t_mat[setdiff(1:end, inds), setdiff(1:end, inds)]
-        fs = fs[setdiff(1:end, inds)]
+        # # need to seperate the l=0 case
+        # L = length(fs)
+        # internal_coef0 = in_mat[1,1] * (t_mat[1,1] \ fs[1])
 
-        internal_coefs = zeros(Complex{T}, L)
-        internal_coefs[setdiff(1:end, inds)] .= in_mat * (t_mat \ fs)
-        internal_coefs[1] = internal_coef0
+        # # and now remove the l=0 cases
+        # inds = [1, (order+1)^2 + 1, 2*(order+1)^2 + 1]
+        # in_mat = in_mat[setdiff(1:end, inds), setdiff(1:end, inds)]
+        # t_mat = t_mat[setdiff(1:end, inds), setdiff(1:end, inds)]
+        # fs = fs[setdiff(1:end, inds)]
+
+        # internal_coefs = zeros(Complex{T}, L)
+        # internal_coefs[setdiff(1:end, inds)] .= in_mat * (t_mat \ fs)
+        # internal_coefs[1] = internal_coef0
 
         inner_basis = regular_basis_function(p.medium, ω, field_type)
 
@@ -200,14 +204,17 @@ function regular_basis_function(medium::Elastic{2}, ω::T, ::PotentialType) wher
     end
 end
 
-function outgoing_translation_matrix(medium::Elastic{3}, in_order::Integer, out_order::Integer, ω::T, x::AbstractVector{T},::DisplacementType) where {T<:Number}
+outgoing_translation_matrix(medium::Elastic{3}, in_order::Integer, out_order::Integer, ω::T, x::AbstractVector{T}) where T = outgoing_translation_matrix(medium, in_order, out_order, ω, x, DisplacementType())
+
+function regular_translation_matrix(medium::Elastic{3}, in_order::Integer, out_order::Integer, ω::T, x::AbstractVector{T},::DisplacementType) where {T<:Number}
 
     # define 2 mediums for pressure and shear potentials 
     pmedium = ScalarMedium{T,3}(medium.cp)
-    up = outgoing_basis_function(pmedium, ω)(in_order + out_order,x)
-    
+    vp = regular_basis_function(pmedium, ω)(in_order + out_order,x)
+
     smedium = ScalarMedium{T,3}(medium.cs)
-    us = outgoing_basis_function(smedium, ω)(in_order + out_order,x)
+    vs = regular_basis_function(smedium, ω)(in_order + out_order + 1,x)
+    
     c(ld,md,l,m,l1) = gaunt_coefficient(T,ld,md,l,m,l1,md-m)
 
     # auxiliary function to calculate the translation of the shear potentials
@@ -217,7 +224,7 @@ function outgoing_translation_matrix(medium::Elastic{3}, in_order::Integer, out_
         α0(l,m) = sqrt((l+m+1)*(l-m+1)/((2l+1)*(2l+3)))
         β0(l,m) = -sqrt((l-m)*(l+m)/((2l-1)*(2l+1)))
         
-        αup(l,m) = -sqrt((l+m+2)*(l-m+1)/((2l+1)*(2l+3)))
+        αup(l,m) = -sqrt((l+m+2)*(l+m+1)/((2l+1)*(2l+3)))
         βup(l,m) = -sqrt((l-m)*(l-m-1)/((2l-1)*(2l+1)))
 
         αdown(l,m) = - αup(l,-m)
@@ -225,86 +232,95 @@ function outgoing_translation_matrix(medium::Elastic{3}, in_order::Integer, out_
 
 
     # the equivalent of the gaunt coefficients for the shear displacement.
-    function C(ld,md,l,m,l1)
-    (
-        λup(ld,md) * λdown(l,m) * c(ld,md+1,l,m-1,l1) + λdown(ld,md) * λup(l,m) * c(ld,md-1,l,m+1,l1) + 2m * md * c(ld,md,l,m,l1)
-    ) / (2l * (l+1))
+    function C(l,m,dl,dm,l1)
+        sumC = zero(Complex{T})
+        if abs(m + 1) <= l && abs(dm + 1) <= dl
+            sumC += λup(l,m) * λup(l,m) * c(l,m+1,dl,dm+1,l1)
+        end
+        if abs(m - 1) <= l && abs(dm - 1) <= dl
+            sumC += λdown(l,m) * λdown(l,m) * c(l,m-1,dl,dm-1,l1)
+        end
+        if abs(m) <= l && abs(dm) <= dl && dm != 0 && m != 0
+            sumC += 2dm * m * c(l,m,dl,dm,l1)
+        end
+        sumC = sumC / (2dl * (dl+1))
+
+        return sumC
     end
 
     function B(ld,md,l,m,l1)
-    (
-        λdown(ld,md) * (l * αup(l,m) * c(ld,md-1,l+1,m,l1)     - (l+1) * βup(l,m)   * c(ld,md-1,l-1,m,l1)) + 
-        λup(ld,md)   * (l * αdown(l,m) * c(ld,md+1,l+1,m-1,l1) - (l+1) * βdown(l,m) * c(ld,md+1,l-1,m,l1)) -
-        2md * (l * α0(l,m) * c(ld,md,l+1,m,l1) - (l+1) * β0(l,m) * c(ld,md,l-1,m,l1))
-    ) * 1.0im / (2l * (l+1))
+        sumB = zero(Complex{T})
+        if l == 0 
+            return sumB
+        else
+            if abs(md - 1) <= ld  
+                λnd = λdown(ld,md) 
+                if abs(m - 1) <= l + 1
+                    sumB +=  -λnd * l * αdown(l,m) * c(ld,md-1,l+1,m-1,l1)
+                end    
+                if abs(m - 1) <= l - 1
+                    sumB +=  λnd * (l+1) * βdown(l,m) * c(ld,md-1,l-1,m-1,l1)
+                end
+            end 
+            if abs(md + 1) <= ld
+                λnd = λup(ld,md)
+                if abs(m + 1) <= l + 1
+                    sumB += -λnd * l * αup(l,m) * c(ld,md+1,l+1,m+1,l1)
+                end
+                if abs(m + 1) <= l - 1
+                    sumB += λnd * (l+1) * βup(l,m) * c(ld,md+1,l-1,m+1,l1)
+                end
+            end
+            if abs(md) <= ld && md != 0
+                if abs(m) <= l + 1
+                    sumB -= 2md * l * α0(l,-m) * c(ld,md,l+1,m,l1)
+                end
+                if abs(m) <= l - 1
+                    sumB += 2md * (l+1) * β0(l,-m) * c(ld,md,l-1,m,l1)
+                end
+            end
+        end
+        sumB = sumB * im / (2l * (l+1))
+
+        return sumB
     end
     
     # the addition translation for each displacement potential 
     ind(order::Int) = basisorder_to_basislength(ScalarMedium{T,3},order)
-    U_s = [
+    U_arr = [
         begin
-            i1 = abs(l-dl) == 0 ? 1 : ind(abs(l-dl)-1) + 1
-            i2 = ind(l+dl)
+            i1 = ind(abs(l-dl)-1) + 1;
+            i2 = ind(l+dl);
 
             cs = [
-                 (m1 == m - dm && iseven(l1)) ? c(l,m,dl,dm,l1,m1) : 0.0im 
-            for l1 = abs(l-dl):(l+dl) for m1 = -l1:l1]
+                 (m1 == m - dm && iseven(l1)) ? c(l,m,dl,dm,l1) : 0.0im 
+            for l1 = abs(l-dl):(l+dl) for m1 = -l1:l1];
 
             Cs = [ 
-                (m1 == dm - m && iseven(l1)) ? C(dl,dm,l,m,l1) : 0.0im 
-            for l1 = abs(l-dl):(l+dl) for m1 = -l1:l1]
+                (m1 == m - dm && iseven(l1) && dl > 0) ? C(l,m,dl,dm,l1) : 0.0im 
+            for l1 = abs(l-dl):(l+dl) for m1 = -l1:l1];
 
-            minl1 = min(abs(l-dl+1),abs(l+dl-1))
-            maxl1 = l+dl+1
-            Bs = [ 
-                (m1 == dm - m && isodd(l1)) ? B(dl,dm,l,m,l1) : 0.0im 
-            for l1 = minl1:maxl1 for m1 = -l1:l1]
+            minl1 = min(abs(l-dl+1),abs(l+dl-1));
+            maxl1 = l+dl+1;
+            Bs = [
+                (m1 == m - dm && isodd(l1) && dl > 0) ? B(l,m,dl,dm,l1) : 0.0im 
+            for l1 = minl1:maxl1 for m1 = -l1:l1];
 
-            Upp = sum(up[i1:i2] .* cs)
-            Uss = sum(us[i1:i2] .* Cs) 
-            Us  = sum(us[i1:i2] .* Bs)
-            [Upp 0.0im 0.0im; 0.0im Uss Us; Us Uss 0.0im]
+            Upp = sum(vp[i1:i2] .* cs)
+            Uss = sum(vs[i1:i2] .* Cs)
+
+            i1 = ind(abs(minl1)-1) + 1;
+            i2 = ind(maxl1);
+            Us  = sum(vs[i1:i2] .* Bs)
+
+            [Upp 0.0im 0.0im; 0.0im Uss Us; 0.0im Us Uss]
         end
     for dl = 0:in_order for dm = -dl:dl for l = 0:out_order for m = -l:l];
 
-
-    U = [
-        begin
-            i1 = abs(l-dl) == 0 ? 1 : ind(abs(l-dl)-1) + 1
-            i2 = ind(l+dl)
-
-            cs = [c(l,m,dl,dm,l1,m1) for l1 = abs(l-dl):(l+dl) for m1 = -l1:l1]
-            sum(us[i1:i2] .* cs)
-        end
-    for dl = 0:in_order for dm = -dl:dl for l = 0:out_order for m = -l:l];
-    # U = [
-    #     [(l,m),(dl,dm)]
-    # for dl = 0:order for dm = -dl:dl for l = 0:order for m = -l:l]
-
-    U = reshape(U, ((out_order+1)^2, (in_order+1)^2))
-    
-    np,mp = size(U_p) 
-
-    # we need to use a block array to multiply with the t_matrix.
-    Us = Matrix{AbstractMatrix{Complex{T}}}(undef, 3, 3)
-    Us[1,1] = U_p
-    Us[1,2] = Zeros{Complex{T}}(np, ms)
-    Us[1,3] = Zeros{Complex{T}}(np, ms)
-    
-    Us[2,2] = U_s
-    Us[2,1] = Zeros{Complex{T}}(ns, mp)
-    Us[2,3] = Zeros{Complex{T}}(ns, ms)
-
-    Us[3,1] = Zeros{Complex{T}}(ns, mp)
-    Us[3,2] = Zeros{Complex{T}}(ns, ms)
-    Us[3,3] = U_s
-
-    U = sparse(mortar(Us))
+    Ublocks = reshape(U_arr, ((out_order+1)^2, (in_order+1)^2))
+    U = sparse(mortar(Ublocks))
 
     return U
-
-    #previously:
-    # return BlockDiagonal([U_p, U_s, U_s])
 end
 
 function outgoing_translation_matrix(medium::Elastic{3}, in_order::Integer, out_order::Integer, ω::T, x::AbstractVector{T},::PotentialType) where {T<:Number}

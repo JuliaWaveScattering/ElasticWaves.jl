@@ -140,6 +140,7 @@ function t_matrix(p::Particle{3,Elastic{3,T},Sphere{T,3}}, outer_medium::Elastic
 
     return BlockDiagonal(T_vec)
 end
+
 function t_matrix(p::Particle{3,Elastic{3,T},Sphere{T,3}}, outer_medium::Elastic{3,T}, ω::T, basis_order::Integer, ::PotentialType) where T <: AbstractFloat
 
     MGφΦs, MGχs = modal_system(p, outer_medium, ω, basis_order) 
