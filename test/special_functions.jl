@@ -32,33 +32,20 @@ end
 
 @testset "Translation 3D Matrices test" begin
 
-    field_type = DisplacementType()
-    # d = [2.0,2.0,1.0]
-    # U = outgoing_translation_matrix(medium, 1, 1, 1.0, d, field_type);
-
-    # l1 = 1; l2 =1;
-    # len1 = (l1+1)^2
-    # len2 = (l2+1)^2
-
-    # dl = 1; dm = -1; l = 1; m = 1;
-    # U[len1:(len1+2),len2:(len2+2)]
-
-
     ω = rand() + 0.2
-    ω = 1.0;
     medium = Elastic(3; ρ = 1.0, cp = 1.0, cs = 1.0)
     r = rand(3) - [0.5,0.5,0.5];
     d = rand(3) - [0.5,0.5,0.5];
     d = 10 * d * norm(r) / norm(d)
 
+    # ω = 1.0;
+    # r = [-0.16760003217875297,-0.35146260115553596,-0.2124509700641245];
+    # d = [-2.9010760893418666, -3.353041498826335,0.12643092521032334];
+
     # Note that to be accurate the order of vs
     order = 4
-    larger_order = 3*order
+    larger_order = 4*order
     basis_length = 2*larger_order+1
-    
-    # order = 2
-    # larger_order = 2order
-    # basis_length = larger_order+1
     
     # note the north pole is not well defined for spherical coordinates.
     basis = outgoing_basis_function(medium, ω, TractionType())
@@ -67,36 +54,21 @@ end
     basis = regular_basis_function(medium, ω, DisplacementType())
     @test_throws ArgumentError basis(order, [0.0,0.0,1.0])
 
-    #NOTE: we found that the regular basis in Mathematica is a bit different to the one in Julia. This needs checking next.
-    # see test-addition-vector.jl
     # Test 3D outgoing translation matrix
     field_type = DisplacementType()
+
     V = regular_translation_matrix(medium, larger_order, order, ω, d, field_type)
     vs_in = regular_basis_function(medium, ω, field_type)(larger_order,r)
-    vs_out = outgoing_basis_function(medium, ω, field_type)(order,r + d)
+    vs_out = regular_basis_function(medium, ω, field_type)(order,r + d)
 
-    V[end-2:end,1:3]
+    @test maximum(abs.(V * transpose(vs_in) - transpose(vs_out))) < 1e-14
+    @test norm(V * transpose(vs_in) - transpose(vs_out)) / norm(transpose(vs_out)) < 1e-14
 
-    # fs = rand(3 * (larger_order+1)^2)
-    # vs * transpose(U) * fs
-    # us * fs
-
-    V * transpose(vs_in) - transpose(vs_out)
-    
-
-    field_type = PotentialType()
     U = outgoing_translation_matrix(medium, larger_order, order, ω, d, field_type)
+    vs_in = regular_basis_function(medium, ω, field_type)(larger_order,r)
+    us_out = outgoing_basis_function(medium, ω, field_type)(order,r + d)
 
-    vs = regular_basis_function(medium, ω, field_type)(larger_order,r)
-    us = outgoing_basis_function(medium, ω, field_type)(order,r + d)
-
-    @test maximum(abs.(U * vs[:] - us[:]) ./ abs.(us[:])) < 1e-9
-
-    # Test 3D regular translation matrix
-    V = regular_translation_matrix(medium, larger_order, order, ω, d, field_type)
-
-    v1s = regular_basis_function(medium, ω, field_type)(larger_order,r)
-    v2s = regular_basis_function(medium, ω, field_type)(order,r + d)
-
-    @test maximum(abs.(V * v1s[:] - v2s[:]) ./ abs.(v2s[:])) < 1e-10
+    @test maximum(abs.(U * transpose(vs_in) - transpose(us_out))) < 1e-13
+    @test norm(U * transpose(vs_in) - transpose(us_out)) / norm(transpose(us_out)) < 1e-12
+    
 end

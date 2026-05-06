@@ -206,6 +206,8 @@ end
 
 outgoing_translation_matrix(medium::Elastic{3}, in_order::Integer, out_order::Integer, ω::T, x::AbstractVector{T}) where T = outgoing_translation_matrix(medium, in_order, out_order, ω, x, DisplacementType())
 
+regular_translation_matrix(medium::Elastic{3}, in_order::Integer, out_order::Integer, ω::T, x::AbstractVector{T}) where T = regular_translation_matrix(medium, in_order, out_order, ω, x, DisplacementType())
+
 function regular_translation_matrix(medium::Elastic{3}, in_order::Integer, out_order::Integer, ω::T, x::AbstractVector{T},::DisplacementType) where {T<:Number}
 
     # define 2 mediums for pressure and shear potentials 
@@ -235,10 +237,10 @@ function regular_translation_matrix(medium::Elastic{3}, in_order::Integer, out_o
     function C(l,m,dl,dm,l1)
         sumC = zero(Complex{T})
         if abs(m + 1) <= l && abs(dm + 1) <= dl
-            sumC += λup(l,m) * λup(l,m) * c(l,m+1,dl,dm+1,l1)
+            sumC += λup(dl,dm) * λup(l,m) * c(l,m+1,dl,dm+1,l1)
         end
         if abs(m - 1) <= l && abs(dm - 1) <= dl
-            sumC += λdown(l,m) * λdown(l,m) * c(l,m-1,dl,dm-1,l1)
+            sumC += λdown(dl,dm) * λdown(l,m) * c(l,m-1,dl,dm-1,l1)
         end
         if abs(m) <= l && abs(dm) <= dl && dm != 0 && m != 0
             sumC += 2dm * m * c(l,m,dl,dm,l1)
@@ -293,17 +295,134 @@ function regular_translation_matrix(medium::Elastic{3}, in_order::Integer, out_o
             i2 = ind(l+dl);
 
             cs = [
-                 (m1 == m - dm && iseven(l1)) ? c(l,m,dl,dm,l1) : 0.0im 
+                 (m1 == m - dm && iseven(l1+l+dl)) ? c(l,m,dl,dm,l1) : 0.0im 
             for l1 = abs(l-dl):(l+dl) for m1 = -l1:l1];
 
             Cs = [ 
-                (m1 == m - dm && iseven(l1) && dl > 0) ? C(l,m,dl,dm,l1) : 0.0im 
+                (m1 == m - dm && iseven(l1+l+dl) && dl > 0) ? C(l,m,dl,dm,l1) : 0.0im 
             for l1 = abs(l-dl):(l+dl) for m1 = -l1:l1];
 
             minl1 = min(abs(l-dl+1),abs(l+dl-1));
             maxl1 = l+dl+1;
             Bs = [
-                (m1 == m - dm && isodd(l1) && dl > 0) ? B(l,m,dl,dm,l1) : 0.0im 
+                (m1 == m - dm && isodd(l1+l+dl) && dl > 0) ? B(l,m,dl,dm,l1) : 0.0im 
+            for l1 = minl1:maxl1 for m1 = -l1:l1];
+
+            Upp = sum(vp[i1:i2] .* cs)
+            Uss = sum(vs[i1:i2] .* Cs)
+
+            i1 = ind(abs(minl1)-1) + 1;
+            i2 = ind(maxl1);
+            Us  = sum(vs[i1:i2] .* Bs)
+
+            [Upp 0.0im 0.0im; 0.0im Uss Us; 0.0im Us Uss]
+        end
+    for dl = 0:in_order for dm = -dl:dl for l = 0:out_order for m = -l:l];
+
+    Ublocks = reshape(U_arr, ((out_order+1)^2, (in_order+1)^2))
+    U = sparse(mortar(Ublocks))
+
+    return U
+end
+
+function outgoing_translation_matrix(medium::Elastic{3}, in_order::Integer, out_order::Integer, ω::T, x::AbstractVector{T},::DisplacementType) where {T<:Number}
+
+    # define 2 mediums for pressure and shear potentials 
+    pmedium = ScalarMedium{T,3}(medium.cp)
+    vp = outgoing_basis_function(pmedium, ω)(in_order + out_order,x)
+
+    smedium = ScalarMedium{T,3}(medium.cs)
+    vs = outgoing_basis_function(smedium, ω)(in_order + out_order + 1,x)
+    
+    c(ld,md,l,m,l1) = gaunt_coefficient(T,ld,md,l,m,l1,md-m)
+
+    # auxiliary function to calculate the translation of the shear potentials
+        λup(l,m) = sqrt((l-m)*(l+m+1))
+        λdown(l,m) = λup(l,-m)
+        
+        α0(l,m) = sqrt((l+m+1)*(l-m+1)/((2l+1)*(2l+3)))
+        β0(l,m) = -sqrt((l-m)*(l+m)/((2l-1)*(2l+1)))
+        
+        αup(l,m) = -sqrt((l+m+2)*(l+m+1)/((2l+1)*(2l+3)))
+        βup(l,m) = -sqrt((l-m)*(l-m-1)/((2l-1)*(2l+1)))
+
+        αdown(l,m) = - αup(l,-m)
+        βdown(l,m) = - βup(l,-m)
+
+
+    # the equivalent of the gaunt coefficients for the shear displacement.
+    function C(l,m,dl,dm,l1)
+        sumC = zero(Complex{T})
+        if abs(m + 1) <= l && abs(dm + 1) <= dl
+            sumC += λup(dl,dm) * λup(l,m) * c(l,m+1,dl,dm+1,l1)
+        end
+        if abs(m - 1) <= l && abs(dm - 1) <= dl
+            sumC += λdown(dl,dm) * λdown(l,m) * c(l,m-1,dl,dm-1,l1)
+        end
+        if abs(m) <= l && abs(dm) <= dl && dm != 0 && m != 0
+            sumC += 2dm * m * c(l,m,dl,dm,l1)
+        end
+        sumC = sumC / (2dl * (dl+1))
+
+        return sumC
+    end
+
+    function B(ld,md,l,m,l1)
+        sumB = zero(Complex{T})
+        if l == 0 
+            return sumB
+        else
+            if abs(md - 1) <= ld  
+                λnd = λdown(ld,md) 
+                if abs(m - 1) <= l + 1
+                    sumB +=  -λnd * l * αdown(l,m) * c(ld,md-1,l+1,m-1,l1)
+                end    
+                if abs(m - 1) <= l - 1
+                    sumB +=  λnd * (l+1) * βdown(l,m) * c(ld,md-1,l-1,m-1,l1)
+                end
+            end 
+            if abs(md + 1) <= ld
+                λnd = λup(ld,md)
+                if abs(m + 1) <= l + 1
+                    sumB += -λnd * l * αup(l,m) * c(ld,md+1,l+1,m+1,l1)
+                end
+                if abs(m + 1) <= l - 1
+                    sumB += λnd * (l+1) * βup(l,m) * c(ld,md+1,l-1,m+1,l1)
+                end
+            end
+            if abs(md) <= ld && md != 0
+                if abs(m) <= l + 1
+                    sumB -= 2md * l * α0(l,-m) * c(ld,md,l+1,m,l1)
+                end
+                if abs(m) <= l - 1
+                    sumB += 2md * (l+1) * β0(l,-m) * c(ld,md,l-1,m,l1)
+                end
+            end
+        end
+        sumB = sumB * im / (2l * (l+1))
+
+        return sumB
+    end
+    
+    # the addition translation for each displacement potential 
+    ind(order::Int) = basisorder_to_basislength(ScalarMedium{T,3},order)
+    U_arr = [
+        begin
+            i1 = ind(abs(l-dl)-1) + 1;
+            i2 = ind(l+dl);
+
+            cs = [
+                 (m1 == m - dm && iseven(l1+l+dl)) ? c(l,m,dl,dm,l1) : 0.0im 
+            for l1 = abs(l-dl):(l+dl) for m1 = -l1:l1];
+
+            Cs = [ 
+                (m1 == m - dm && iseven(l1+l+dl) && dl > 0) ? C(l,m,dl,dm,l1) : 0.0im 
+            for l1 = abs(l-dl):(l+dl) for m1 = -l1:l1];
+
+            minl1 = min(abs(l-dl+1),abs(l+dl-1));
+            maxl1 = l+dl+1;
+            Bs = [
+                (m1 == m - dm && isodd(l1+l+dl) && dl > 0) ? B(l,m,dl,dm,l1) : 0.0im 
             for l1 = minl1:maxl1 for m1 = -l1:l1];
 
             Upp = sum(vp[i1:i2] .* cs)
@@ -357,7 +476,7 @@ function outgoing_translation_matrix(medium::Elastic{3}, in_order::Integer, out_
     # return BlockDiagonal([U_p, U_s, U_s])
 end
 
-function regular_translation_matrix(medium::Elastic{3}, in_order::Integer, out_order::Integer, ω::T, x::AbstractVector{T}) where {T<:Number}
+function regular_translation_matrix(medium::Elastic{3}, in_order::Integer, out_order::Integer, ω::T, x::AbstractVector{T},::PotentialType) where {T<:Number}
 
     # define 2 mediums for pressure and shear potentials 
     pmedium = ScalarMedium{Float64,3}(medium.cp)

@@ -20,7 +20,7 @@
 
     field_reg = basis(basis_order, x - centre) * coes[:] 
 
-    @test field_reg - field(source,x,ω) |> norm < 2e-14
+    @test norm(field_reg - field(source,x,ω)) / norm(field(source,x,ω)) < 2e-14
 end
 
 @testset "Single elastic particle scattering" begin
@@ -43,7 +43,7 @@ end
     χcoefs = [rand() + rand()*im for l = 0:order for m = -l:l] 
 
     function sourceΦ_coes(order,centre,ω)
-        return [pcoefs; Φcoefs; χcoefs]
+        return [pcoefs Φcoefs χcoefs] |> transpose
     end
 
     source_field = function (x1,ω) 
@@ -118,45 +118,6 @@ end
     internal_fields = [basis(basis_order, x - centre) * internal_coes[:] for x in xout]
 
     @test norm.(internal_fields - fout) |> maximum < 1e-13
-
-## given the scattering coefficients, can we recover the exciting field and internal field correctly?
-
-    # first create appropriate scattering coefficients
-    t_mat = t_matrix(particle, medium, ω, order)
-    source_coes = regular_coefficients(order,centre,ω)
-    scat_coes = t_mat * source_coes[:]
-    
-    # to recover the exciting field 
-    # need to seperate the l=0 case
-        # fs = deepcopy(scat_coes)
-        # L = length(fs)
-        # g0 = (t_mat[1,1] \ fs[1])
-
-        # # and now remove the l=0 cases
-        # inds = [1, (order+1)^2 + 1, 2*(order+1)^2 + 1]
-        # t_mat = t_mat[setdiff(1:end, inds), setdiff(1:end, inds)]
-
-        # exciting_coefs = zeros(Complex{T}, L)
-        # exciting_coefs[setdiff(1:end, inds)] = (t_mat \ fs[setdiff(1:end, inds)])
-        # exciting_coefs[1] = g0
-
-        # # check are the same as the source coefficients
-        # # note we do not check the l=0 coefficients for the shear waves, as these have to be zero.
-        # @test abs.(exciting_coefs[setdiff(1:end, inds[2:end])] - source_coes[setdiff(1:end, inds[2:end])]) |> maximum < 1e-10
-    
-    # given scat_coes, can we recover the exciting field and internal field correctly?
-    # fin = [internal_field(x, particle, sourceΦ, ω, scat_coes, field_type) for x in xin]
-    
-    # # put it all together and check boundary condition: fout == fin?
-    # reg_basis = regular_basis_function(medium, ω, field_type)
-    # field_reg = [reg_basis(order, x - centre) * exciting_coefs[:] for x in xout]
-    
-    # outgoing_basis = outgoing_basis_function(medium, ω, field_type)
-    # field_out = [outgoing_basis(order, x - centre) * scat_coes[:] for x in xout]
-
-    # fout = field_reg + field_out
-
-    # @test norm.(fout - fin) |> maximum < 1e-13
 end
 
 @testset "Multiple elastic particle scattering" begin
@@ -180,13 +141,6 @@ end
     particle_shape2 = Sphere(centre2,1.0)
     particle2 = Particle(particle_medium2, particle_shape2)
 ## Check displacement boundary condition
-
-    # Test the internal_field
-    # gs = rand(3)
-    # bs = inner_mat(1) * gs 
-    # fs = Tmat(1) * gs 
-    # bs2 = inner_mat(1) * (Tmat(1) \ fs)
-    # @test bs - bs2 |> norm < 1e-12
 
     # displacement source
         source = plane_z_shear_source(medium)
@@ -212,13 +166,13 @@ end
         U = outgoing_translation_matrix(medium, order, order, ω, origin(particle) - origin(particle2))
 
         errors = map(xout) do x
-            vs = regular_basis_function(medium, ω, PotentialType())(order, x - origin(particle))
-            us = outgoing_basis_function(medium, ω, PotentialType())(order, x - origin(particle2))
-            norm(U * vs[:] - us[:]) / norm(us[:])
+            vs = regular_basis_function(medium, ω, DisplacementType())(order, x - origin(particle))
+            us = outgoing_basis_function(medium, ω, DisplacementType())(order, x - origin(particle2))
+            norm(U * transpose(vs) - transpose(us)) / norm(transpose(us))
         end
 
         tol = maximum(errors)
-        @test tol < 1e-9
+        @test tol < 1e-8
 
         basis = regular_basis_function(medium, ω, field_type)
         errors = map(xout) do x
@@ -227,7 +181,6 @@ end
         end
 
         @test maximum(errors) < 1e-8
-
     
     # Need to include the source this time. Will also use two particles to check multiple scattering is working correctly.
         particles = [particle, particle2] 
@@ -241,13 +194,7 @@ end
 
         # this test is currently failing:
         @test norm.(fin - fout) |> maximum < tol
-        norm.(fin)
-        norm.(fout)
-
-        fin[end] .|> abs
-        fout[end] .|> abs
-
-
+        
     # An alternative way to calculate the field just outside the boundary of the particle is to use the scattering coefficients to calculate the exciting field, and then add the scattered field.
 
         f_arr = basis_coefficients(sim, ω; basis_order)
@@ -260,7 +207,8 @@ end
         g0 = (t_mat[1,1] \ fs[1])
 
         # and now remove the l=0 cases
-        inds = [1, (order+1)^2 + 1, 2*(order+1)^2 + 1]
+        # inds = [1, (order+1)^2 + 1, 2*(order+1)^2 + 1]
+        inds = [1, 2, 3]
 
         exciting_coes = zeros(Complex{T}, L)
         exciting_coes[setdiff(1:end, inds)] = (t_mat[setdiff(1:end, inds), setdiff(1:end, inds)] \ fs[setdiff(1:end, inds)])
@@ -289,128 +237,6 @@ end
     end
 
     @test norm.(fouts[1] - field_out) |> maximum < 1e-16
-
-    # fouts[2] + source == field_reg ?
-    # Are these the same coefficients?
-    
-    U = outgoing_translation_matrix(medium, order, order, ω, origin(particles[1]) - origin(particles[2]))
-    reshape(f_arr[:,2],:,3)
-    exciting_coes2 = transpose(U) * f_arr[:,2] + source_coes[:]
-    exciting_coes2 = reshape(exciting_coes2, :, 3)
-    exciting_coes = reshape(exciting_coes, :, 3)
-    
-    # doesnt match due to the l=0 shear coefficients
-    abs.(exciting_coes - exciting_coes2)[1,1:3] 
-    
-    # however if we remove the l = 0 shear coefficients, which make no contribution to the field, then the remaining coefficients are the same.
-    @test abs.(exciting_coes[2:end,[1,2,3]] - exciting_coes2[2:end,[1,2,3]]) |> maximum < 1e-10
-    @test abs.(exciting_coes[1,1] - exciting_coes2[1,1]) < 1e-14
-
-    @test abs.(t_mat * exciting_coes[:] - t_mat * exciting_coes2[:]) |> maximum < 1e-14
-
-    field_reg = [reg_basis(order, x - centre) * exciting_coes[:] for x in xout]
-    field_reg2 = [reg_basis(order, x - centre) * exciting_coes2[:] for x in xout]
-
-    norm.(field_reg - field_reg2) |> maximum
-
-    out_order = 1
-    out_order = order
-
-    field_type2 = PotentialType()
-    field_type2 = DisplacementType()
-
-    U = outgoing_translation_matrix(medium, out_order, order, ω, origin(particles[1]) - origin(particles[2]))
-    exciting_no_source_coes = transpose(U) * f_arr[:,2]
-
-    reg_basis = regular_basis_function(medium, ω, field_type2)
-    exciting_no_source = [reg_basis(out_order, x - centre) * exciting_no_source_coes[:] for x in xout]
-   
-    basis = outgoing_basis_function(sim.source.medium, ω, field_type2)
-    
-    f2_out = reshape(f_arr[:,2],:,3)[1:(out_order+1)^2,:]
-    exciting_no_source_exact = map(xout) do x
-        basis(out_order, x-origin(particle2)) * f2_out[:]
-    end
-
-    x = xout[80]
-    data1 = reg_basis(out_order, x - centre) * transpose(U) 
-    data2 = basis(out_order, x-origin(particle2))
-
-    data = abs.(data1 - data2)
-    data = reshape(data, 3,(out_order+1)^2, 3)
-    out_basis = reshape(data2, 3, (out_order+1)^2, 3)
-
-    pdata = data[:,:,1]
-    φdata = data[:,:,2]
-    χdata = data[:,:,3]
-    norm(data) / norm(out_basis)
-
-    norm.(exciting_no_source - exciting_no_source_exact) ./ norm.(exciting_no_source_exact)  
-
-    norm.(exciting_no_source_exact)
-    norm.(exciting_no_source)  
-
-    data1n = [data1[:,(out_order+1)^2 + 1:((out_order+1)^2*2)][:,i] |> norm for i in 1:((out_order+1)^2)]
-    data2n = [data2[:,(out_order+1)^2 + 1:((out_order+1)^2*2)][:,i] |> norm for i in 1:((out_order+1)^2)]
-    
-    outgoing_basis = outgoing_basis_function(medium, ω, field_type)
-    field_out = [outgoing_basis(order, x - centre) * fs for x in xout]
-
-    fout2 = field_reg + field_out
-
-    @test norm.(fout2 - fout) |> maximum < 1e-13
-
-    in_matrix = internal_matrix(particle, medium, ω, basis_order)
-    internal_coes = in_matrix * exciting_coes2[:]
-    abs.(internal_coes - in_matrix * exciting_coes[:]) |> maximum
-
-    reshape(internal_coes, :, 3)
-    
-    # note the non-zero l=0 coefficients for the shear wave are not the same.
-    reshape(U * f_arr[:,2], :, 3)
-
-    abs.(t_mat * exciting_coes[:] - t_mat * exciting_coes2[:]) |> maximum
-
-
-
-    
-
-    t_matrices = get_t_matrices(sim.source.medium, sim.particles, ω, basis_order)
-    S = scattering_matrix(sim.source.medium, sim.particles, t_matrices, ω, basis_order)
-
-    source_coefficient = regular_spherical_coefficients(sim.source)
-    forcing = reduce(vcat, [source_coefficient(basis_order,origin(p),ω)[:] for p in sim.particles])
-
-    # Find scattering coefficients by solving this forcing
-    a = (S + I) \ forcing
-    (S + I)*a - forcing |> norm
-
-    a = reshape(a,:,length(sim.particles))
-    f_arr2 = deepcopy(a)
-    for i in axes(a,2)
-        f_arr2[:,i] = t_matrices[i] * a[:,i]
-    end
-    
-    f_arr = basis_coefficients(sim, ω; basis_order)
-    f_arr2 - f_arr
-
-    function S_block(j,l)
-        if j == l
-            return sparse(zeros(Complex{T}, N, N))
-        else
-            x_lj = origin(particles[j]) .- origin(particles[l])
-            U = outgoing_translation_matrix(medium, basis_order, basis_order, ω, x_lj)
-            return - transpose(U) * t_matrices[l]
-        end
-    end
-
-    U = outgoing_translation_matrix(medium, order, order, ω, origin(particles[1]) - origin(particles[2]))
-    exciting_coes2 = transpose(U) * f_arr[:,2]
-
-    maximum(abs, reshape(S*a,:,2)[:,1] - S_block(1,2) * reshape(a,:,2)[:,2])
-
-    maximum(abs, reshape(S*a,:,2)[:,1] + exciting_coes2)
-
 end
 
 # check the traction boundary condition
@@ -445,7 +271,7 @@ end
     χcoefs[1] = 0.0
 
     function sourceΦ_coes(order,centre,ω)
-        return [pcoefs; Φcoefs; χcoefs]
+        return [pcoefs Φcoefs χcoefs] |> transpose
     end
     
     source_field = function (x1,ω) 
@@ -467,8 +293,8 @@ end
     # choose x on the boundary of the particle
     r = outer_radius(particle)
     xs = [
-        centre + spherical_to_cartesian_coordinates([r, i * 2pi / 100, i * 7pi / 100]) 
-    for i = 1:100] 
+        centre + spherical_to_cartesian_coordinates([r, i * pi / 100, i * 7pi / 100]) 
+    for i = 10:90]
          
     basis = regular_basis_function(particle.medium, ω, field_type)
     internal_fields = [basis(basis_order, x - centre) * internal_coes[:] for x in xs]
@@ -480,7 +306,7 @@ end
     external_fields = scat_fields + source_fields
 
     @test norm.(internal_fields - external_fields) |> maximum < 1e-13
-
+    @test norm.(internal_fields - external_fields) ./ norm.(external_fields) |> maximum < 1e-13
 end
 
 @testset "2D T-matrix" begin

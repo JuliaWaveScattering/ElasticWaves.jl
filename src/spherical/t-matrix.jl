@@ -138,7 +138,7 @@ function t_matrix(p::Particle{3,Elastic{3,T},Sphere{T,3}}, outer_medium::Elastic
         vcat([repeat(Tmats[l:l],len(l)-len(l-1)) for l = 1:basis_order]...)...
     ]
 
-    return BlockDiagonal(T_vec)
+    return blockdiag(sparse.(T_vec)...)
 end
 
 function t_matrix(p::Particle{3,Elastic{3,T},Sphere{T,3}}, outer_medium::Elastic{3,T}, ω::T, basis_order::Integer, ::PotentialType) where T <: AbstractFloat
