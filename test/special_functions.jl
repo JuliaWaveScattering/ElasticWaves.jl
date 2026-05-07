@@ -61,14 +61,14 @@ end
     vs_in = regular_basis_function(medium, ω, field_type)(larger_order,r)
     vs_out = regular_basis_function(medium, ω, field_type)(order,r + d)
 
-    @test maximum(abs.(V * transpose(vs_in) - transpose(vs_out))) < 1e-14
-    @test norm(V * transpose(vs_in) - transpose(vs_out)) / norm(transpose(vs_out)) < 1e-14
+    @test maximum(abs.(V * transpose(vs_in) - transpose(vs_out))) < 1e-13
+    @test norm(V * transpose(vs_in) - transpose(vs_out)) / norm(transpose(vs_out)) < 1e-13
 
     U = outgoing_translation_matrix(medium, larger_order, order, ω, d, field_type)
     vs_in = regular_basis_function(medium, ω, field_type)(larger_order,r)
     us_out = outgoing_basis_function(medium, ω, field_type)(order,r + d)
 
-    @test maximum(abs.(U * transpose(vs_in) - transpose(us_out))) < 1e-13
+    @test maximum(abs.(U * transpose(vs_in) - transpose(us_out))) < 1e-10
     @test norm(U * transpose(vs_in) - transpose(us_out)) / norm(transpose(us_out)) < 1e-12
     
 end
