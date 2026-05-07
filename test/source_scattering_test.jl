@@ -21,6 +21,19 @@
     field_reg = basis(basis_order, x - centre) * coes[:] 
 
     @test norm(field_reg - field(source,x,ω)) / norm(field(source,x,ω)) < 2e-14
+
+    # a monopoly source
+    pos = [0.0, 0.0, 0.0]
+    source =  regular_spherical_source(medium, rand(3); position = pos)
+
+    regular_coefficients = regular_spherical_coefficients(source)
+    coes = regular_coefficients(basis_order,centre,ω)
+    
+    basis = regular_basis_function(medium, ω, field_type)
+
+    field_reg = basis(basis_order, x - centre) * coes[:] 
+
+    @test norm(field_reg - field(source,x,ω)) / norm(field(source,x,ω)) < 2e-14
 end
 
 @testset "Single elastic particle scattering" begin

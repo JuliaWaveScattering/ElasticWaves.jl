@@ -7,9 +7,12 @@ export DisplacementType, TractionType, PotentialType
 # elasticity.jl
 export Elastic, ElasticWave, ElasticWaveVector
 export regular_basis_function, HelmholtzPotential 
+export basislength_to_basisorder, basisorder_to_basislength
+export boundary_data, outgoing_basis_function, regular_basis_function, outgoing_translation_matrix, regular_translation_matrix
 
 # source.jl
-export plane_z_shear_source
+export SourceMap
+export plane_z_shear_source, regular_spherical_source
 
 # bearing.jl
 export RollerBearing, BoundaryCondition, DisplacementBoundary, TractionBoundary
@@ -40,10 +43,6 @@ export estimate_basisorder # soon to be removed
 
 # cylindrical/elastic_wave.jl
 export boundarycondition_mode, boundarycondition_system, modes_coefficients!, source_boundarycondition_mode, source_boundarycondition_system 
-
-# source.jl
-export SourceMap
-export boundary_data, outgoing_basis_function, regular_basis_function, outgoing_translation_matrix, regular_translation_matrix
 
 using MultipleScattering
 using SpecialFunctions
