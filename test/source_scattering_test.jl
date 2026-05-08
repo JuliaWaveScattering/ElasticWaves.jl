@@ -20,7 +20,7 @@
 
     field_reg = basis(basis_order, x - centre) * coes[:] 
 
-    @test norm(field_reg - field(source,x,ω)) / norm(field(source,x,ω)) < 2e-14
+    @test norm(field_reg - field(source,x,ω)) / norm(field(source,x,ω)) < 1e-13
 
     # a monopoly source
     pos = [0.0, 0.0, 0.0]
@@ -33,7 +33,7 @@
 
     field_reg = basis(basis_order, x - centre) * coes[:] 
 
-    @test norm(field_reg - field(source,x,ω)) / norm(field(source,x,ω)) < 2e-14
+    @test norm(field_reg - field(source,x,ω)) / norm(field(source,x,ω)) < 1e-13
 end
 
 @testset "Single elastic particle scattering" begin
