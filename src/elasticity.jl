@@ -13,9 +13,14 @@ struct Elastic{Dim,T} <: PhysicalMedium{Dim,Dim}
 end
 
 # Constructor which supplies the dimension without explicitly mentioning type
-function Elastic(Dim::Integer; ρ::T = 0.0, cp::Union{T,Complex{T}} = 0.0, cs::Union{T,Complex{T}} = 0.0) where {T<:Number}
-     Elastic{Dim,T}(ρ,Complex{T}(cp),Complex{T}(cs))
+function Elastic(Dim::Integer; ρ::T = 0.0, 
+        μ::Union{T,Complex{T}} = 0.0, λ::Union{T,Complex{T}} = 0.0, 
+        cp::Union{T,Complex{T}} = sqrt((λ + 2μ) / ρ), cs::Union{T,Complex{T}} = sqrt(μ / ρ)
+    ) where {T<:Number}
+
+    return Elastic{Dim,T}(ρ,Complex{T}(cp),Complex{T}(cs))
 end
+
 
 ## wave types
 
@@ -91,11 +96,11 @@ import MultipleScattering: outgoing_translation_matrix, regular_translation_matr
 
 name(a::Elastic{Dim}) where Dim = "$(Dim)D Elastic"
 
-basisorder_to_basislength(::Type{P}, order::Int) where {T, P<:Elastic{3,T}} = 3 * (order+1)^2
-basisorder_to_basislength(::Type{P}, order::Int) where {T, P<:Elastic{2,T}} = 2 * (2*order + 1)
+basisorder_to_basislength(::Type{P}, order::Int) where {P<:Elastic{3}} = 3 * (order+1)^2
+basisorder_to_basislength(::Type{P}, order::Int) where {P<:Elastic{2}} = 2 * (2*order + 1)
 
-basislength_to_basisorder(::Type{P},len::Int) where {T, P<:Elastic{3,T}} = Int(sqrt(len / 3) - 1)
-basislength_to_basisorder(::Type{P},len::Int) where {T, P<:Elastic{2,T}} = Int(T(len / 2 - 1) / T(2.0))
+basislength_to_basisorder(::Type{P},len::Int) where {P<:Elastic{3}} = Int(sqrt(len / 3) - 1)
+basislength_to_basisorder(::Type{P},len::Int) where {P<:Elastic{2}} = Int((len / 2 - 1) / 2.0)
 
 function regular_basis_function(medium::Elastic{3,T}, ω::T, field_type::FieldType = DisplacementType()) where T
 

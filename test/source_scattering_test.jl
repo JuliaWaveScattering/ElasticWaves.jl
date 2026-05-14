@@ -39,12 +39,51 @@ end
 @testset "Single elastic particle scattering" begin
 
     ω = 1.2
-    basis_order = 6
+    basis_order = 5
     order = basis_order
     field_type = DisplacementType()
     order = basis_order
     T = Float64
 
+## comapre acoustic and elastic scattering for a pressure only source
+    acoustic = Acoustic(3; ρ = 1.0, c = 1.0)
+    medium = Elastic(3; ρ = 1.0, cp = 1.0, cs = 1e-8)
+    ks = ω / medium.cs; kp = ω / medium.cp;
+
+    centre = [0.0, 0.0, 0.0]
+    particle_medium = Elastic(3; ρ = 0.1, cp = 0.4, cs = 1e-8)
+    particle_shape = Sphere(centre,1.0)
+    particle = Particle(particle_medium, particle_shape)
+    
+    particle_medium = Acoustic(3; ρ = 0.1, c = 0.4)
+    particle_acoustic = Particle(particle_medium, particle_shape)
+
+    # a pressure only source
+    pos = [0.0, 0.0, 0.0]
+    len = 3*(basis_order+1)^2
+    # len = basisorder_to_basislength(Elastic{3}, basis_order)
+
+    psource_coes = rand(Int(len/3));
+    source_coes = [[c; 0.0; 0.0] for c in psource_coes];
+    source_coes = vcat(source_coes...)
+
+    Tmatrix = t_matrix(particle, medium, ω, basis_order)
+    scat_coes = Tmatrix * source_coes
+    
+    Tmatrix = t_matrix(particle_acoustic, acoustic, ω, basis_order)
+    scat_acoustic_coes = Tmatrix * psource_coes
+
+    scat_acoustic_coes = [[c; 0.0; 0.0] for c in scat_acoustic_coes];
+    scat_acoustic_coes = vcat(scat_acoustic_coes...)
+
+    # convergence to a pure acoustic response is slow as cs -> 0, and leads to numerical instability. Essentially some shear waves get excited.
+    @test norm(scat_acoustic_coes - scat_coes) / norm(scat_acoustic_coes) < 0.4
+
+    # however the scattered acoustic waves are the same.
+    @test norm(scat_acoustic_coes[1:3:end] - scat_coes[1:3:end]) / norm(scat_acoustic_coes[1:3:end]) < 5e-7
+    @test norm(scat_acoustic_coes[1:3:12] - scat_coes[1:3:12]) / norm(scat_acoustic_coes[1:3:12]) < 5e-9
+
+## test boundaru condition for general elastic source and particle
     medium = Elastic(3; ρ = 1.0, cp = 1.0, cs = 1.0 ./ 1.2)
     ks = ω / medium.cs; kp = ω / medium.cp;
 
