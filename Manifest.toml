@@ -2,7 +2,7 @@
 
 julia_version = "1.10.10"
 manifest_format = "2.0"
-project_hash = "d2c41c7c4c267e39cb7393c08e20ad32f7f3ad77"
+project_hash = "b49a4b2885a9494315b83d7520f1af0aed41fb93"
 
 [[deps.Accessors]]
 deps = ["CompositionsBase", "ConstructionBase", "Dates", "InverseFunctions", "LinearAlgebra", "MacroTools", "Markdown", "Test"]
@@ -279,9 +279,9 @@ version = "2023.1.10"
 
 [[deps.MultipleScattering]]
 deps = ["AssociatedLegendrePolynomials", "GSL", "LinearAlgebra", "OffsetArrays", "Printf", "ProgressMeter", "Random", "RecipesBase", "SparseArrays", "SpecialFunctions", "StaticArrays", "Statistics", "WignerSymbols"]
-path = "/home/artur/.julia/dev/MultipleScattering"
+git-tree-sha1 = "bb955f9bf6360f27c7fd5ec234672667c834367d"
 uuid = "80a8ab25-5750-5d93-a6d7-4adc97cdd5fb"
-version = "0.1.22"
+version = "0.1.23"
 
 [[deps.NetworkOptions]]
 uuid = "ca575930-c2e3-43a9-ace4-1e988b2c1908"
