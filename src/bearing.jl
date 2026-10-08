@@ -1,3 +1,18 @@
+"""
+    RollerBearing(; medium::Elastic{2}, inner_radius, outer_radius, number_of_rollers = 8, rollers_inside = true, angular_speed = 1.0, kws...)
+
+A roller bearing raceway: the region between two concentric circles with radius `inner_radius` and `outer_radius`, filled with the elastic `medium`.
+
+The rollers are in contact with the inner boundary of the raceway if `rollers_inside = true`, and otherwise with the outer boundary. The rollers are equally spaced and move around the raceway with `angular_speed`. The `roller_radius` and `roller_separation` can also be given, but need to be compatible with the `number_of_rollers` and the geometry of the raceway.
+
+To solve for the elastic waves in the raceway see [`BearingSimulation`](@ref).
+
+# Examples
+```julia
+steel = Elastic(2; ρ = 7800.0, cp = 5000.0, cs = 3500.0)
+bearing = RollerBearing(medium = steel, inner_radius = 1.0, outer_radius = 2.0)
+```
+"""
 struct RollerBearing{T <: AbstractFloat}
     medium::Elastic{2,T} # defining medium
     inner_radius::Union{T,Complex{T}} # due to nondimensionalisation radius might be complex
@@ -65,6 +80,11 @@ end
 
 ## a type to represent one of the Boundary condtions
 
+"""
+    BoundaryCondition{FT<:FieldType}
+
+Represents which field is given, either the traction or the displacement, on one of the boundaries of a [`RollerBearing`](@ref). Use [`TractionBoundary`](@ref) or [`DisplacementBoundary`](@ref) to create one.
+"""
 struct BoundaryCondition{FT<:FieldType}
     fieldtype::FT
     inner::Bool
@@ -75,6 +95,11 @@ BoundaryConditions = Vector{BC} where BC <: BoundaryCondition
 
 # Art NOTE: we should create a type called BearingSystem, which holds both the forcing and the BCs.
 
+"""
+    DisplacementBoundary(; inner = false, outer = false)
+
+A [`BoundaryCondition`](@ref) where the displacement is given on either the inner or the outer boundary of a [`RollerBearing`](@ref). For example `DisplacementBoundary(outer = true)`.
+"""
 function DisplacementBoundary(; inner::Bool = false, outer::Bool = false)
     if inner == outer
         @error "this type represents only one boundary, either the inner or outer boundary, and not both or neither."
@@ -83,6 +108,11 @@ function DisplacementBoundary(; inner::Bool = false, outer::Bool = false)
     return BoundaryCondition{DisplacementType}(DisplacementType(),inner,outer)
 end
 
+"""
+    TractionBoundary(; inner = false, outer = false)
+
+A [`BoundaryCondition`](@ref) where the traction is given on either the inner or the outer boundary of a [`RollerBearing`](@ref). For example `TractionBoundary(inner = true)`.
+"""
 function TractionBoundary(; inner::Bool = false, outer::Bool = false)
     if inner == outer
         @error "this type represents only one boundary, either the inner or outer boundary, and not both or neither."
@@ -94,9 +124,11 @@ end
 abstract type AbstractBoundaryData{BC <: BoundaryCondition} end   
 
 """
-    BoundaryData{BC <: BoundaryCondition, T}
+    BoundaryData(boundarytype::BoundaryCondition; θs = [], fields = [], coefficients = [], modes = [])
 
-Gives all the information on one boundery of a `RollerBearing`. You can specify the forcing either be giving the `coefficients`, or by specifying the `fields`. The `fields` represent either the displacement or traction when varying the polar angle `θs`.
+Gives all the information on one boundary of a [`RollerBearing`](@ref). You can specify the forcing either by giving the Fourier `coefficients`, or by specifying the `fields`. The `fields` represent either the displacement or traction when varying the polar angle `θs`.
+
+Both `fields` and `coefficients` are matrices with two columns. The first column is the radial component, and the second column is the angular component, of the displacement or traction.
 
 The relationship between the `fields` and the `coefficients` is given by ``f_{j}(\\theta) = \\sum_m \\text{mode}_{mj} e^{i \\theta m}``, where ``f`` represents the `fields`. To calculate the `fields` from the `coefficients` we can use:
 ```julia
@@ -214,7 +246,7 @@ function select_modes(wave::ElasticWave, modes::AbstractVector{Int})
 end
 
 """
-    BoundaryData(wave::ElasticWave{2}, radius, wave::ElasticWave{2})
+    BoundaryData(boundarycondition::BoundaryCondition, radius, wave::ElasticWave{2})
 
 A convenience function to predict the boundary data  according to the solution 'wave' using the modes only.    
 """
@@ -269,6 +301,13 @@ function BoundaryData(bd::BoundaryData{BC,T}, radius::T, wave::ElasticWave{2}) w
     )
 end
 
+"""
+    BoundaryBasis(basis::Vector{BoundaryData})
+
+A basis for the data on one boundary of a [`RollerBearing`](@ref). Each element of `basis` is a [`BoundaryData`](@ref) for the same boundary.
+
+Passing a `BoundaryBasis` to a [`BearingSimulation`](@ref) means that the data on that boundary is assumed to be a linear combination of the elements of the basis. This is the prior knowledge used by the [`PriorMethod`](@ref).
+"""
 struct BoundaryBasis{BD <: AbstractBoundaryData}
     basis::Vector{BD}
 
@@ -331,6 +370,32 @@ isempty(bb::BoundaryBasis) = all([isempty(bd) for bd in bb.basis])
 # """
 # EmptyBoundaryBasis(bd::BoundaryData) =  BoundaryBasis(bd[])
 
+"""
+    BearingSimulation(ω, bearing::RollerBearing, boundarydata1::BoundaryData, boundarydata2::BoundaryData; method = ModalMethod(), nondimensionalise = true, kws...)
+    BearingSimulation(ω, method, bearing, boundarydata1, boundarydata2; kws...)
+
+Holds everything needed to calculate the elastic waves with angular frequency `ω` in a [`RollerBearing`](@ref). Two [`BoundaryData`](@ref) are needed, and these can be on the same boundary. For example, giving the traction on both the inner and outer boundary is a forward problem, whereas giving both the traction and the displacement on the outer boundary can be used to predict the traction on the inner boundary.
+
+The `method` is either a [`ModalMethod`](@ref) or a [`PriorMethod`](@ref). The `PriorMethod` needs a [`BoundaryBasis`](@ref) for one of the boundaries, given by the keyword `boundarybasis1` or `boundarybasis2`.
+
+To solve the simulation use [`ElasticWave(::BearingSimulation)`](@ref).
+
+# Examples
+```julia
+steel = Elastic(2; ρ = 7800.0, cp = 5000.0, cs = 3500.0)
+bearing = RollerBearing(medium = steel, inner_radius = 1.0, outer_radius = 2.0)
+
+θs = LinRange(0, 2pi, 41)[1:end-1]
+pressure = exp.(-20 .* (θs .- pi) .^ 2)
+shear = zeros(length(θs))
+
+bd1 = BoundaryData(TractionBoundary(inner = true); θs = θs, fields = hcat(pressure, shear))
+bd2 = BoundaryData(TractionBoundary(outer = true); θs = θs, fields = zeros(length(θs), 2))
+
+sim = BearingSimulation(4e4, bearing, bd1, bd2; method = ModalMethod())
+wave = ElasticWave(sim)
+```
+"""
 mutable struct BearingSimulation{M <: SolutionMethod, BC1 <: BoundaryCondition, BC2 <: BoundaryCondition, BD1 <: BoundaryData, BD2 <: BoundaryData, T}
     ω::T
     method::M
@@ -357,7 +422,7 @@ end
 
 import MultipleScattering: boundary_data
 """
-    boundary_data(wave::ElasticWave{2}, sim::BearingSimulation)
+    boundary_data(sim::BearingSimulation, wave::ElasticWave{2})
 
 A convenience function to calculate the boundary data of 'sim' according to the solution 'wave'.    
 """

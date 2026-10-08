@@ -289,3 +289,48 @@ end
     
        @test norm(bd1_inner.fields - bd1_for.fields) / norm(bd1_for.fields) < 2e-10
 end
+
+@testset "Point contact boundary data" begin
+
+    steel = Elastic(2; ρ = 7800.0, cp = 5000.0, cs = 3500.0)
+    bearing = RollerBearing(medium = steel, inner_radius = 1.0, outer_radius = 2.0, number_of_rollers = 6)
+    Z = bearing.number_of_rollers
+
+    basis_order = 3
+    friction_coefficient = 0.3
+    θs = LinRange(0.0, 2pi, 200)[1:end-1] |> collect
+
+    bd = point_contact_boundary_data(θs, bearing, TractionBoundary(inner = true), basis_order, friction_coefficient)
+
+    # One point of contact for each roller is a sum of Dirac deltas. The Fourier coefficients of this sum are Z / 2π for the modes that are a multiple of Z, and are zero for all other modes.
+    @test sort(bd.modes) == -basis_order*Z:basis_order*Z
+
+    inds = findall(m -> mod(m, Z) == 0, bd.modes)
+    @test length(inds) == 2basis_order + 1
+    @test all(bd.coefficients[inds,1] .≈ Z / 2pi)
+    @test norm(bd.coefficients[setdiff(eachindex(bd.modes), inds),:]) == 0
+
+    # the shear traction is due to friction
+    @test bd.coefficients[:,2] ≈ friction_coefficient .* bd.coefficients[:,1]
+
+    # each roller applies a unit force, so the integral of the normal traction over θ is the number of rollers
+    i0 = findfirst(bd.modes .== 0)
+    @test 2pi * bd.coefficients[i0,1] ≈ Z
+
+    # check that this boundary data can be used to solve for the waves in the bearing
+    ω = 4e4
+    bd_outer = BoundaryData(TractionBoundary(outer = true);
+        coefficients = zeros(Complex{Float64}, length(bd.modes), 2),
+        modes = bd.modes
+    )
+
+    sim = BearingSimulation(ω, bearing, bd, bd_outer; method = ModalMethod(only_stable_modes = false))
+    wave = ElasticWave(sim)
+
+    inner_modes = field_modes(wave, bearing.inner_radius, TractionType())
+    outer_modes = field_modes(wave, bearing.outer_radius, TractionType())
+
+    @test wave.method.modes == bd.modes
+    @test norm(inner_modes - bd.coefficients) / norm(bd.coefficients) < 1e-10
+    @test norm(outer_modes) / norm(bd.coefficients) < 1e-10
+end

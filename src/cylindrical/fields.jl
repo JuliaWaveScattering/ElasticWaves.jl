@@ -54,6 +54,11 @@ function field_modes(wave::ElasticWave{2}, r::T, FT::FieldType,  boundarytype::B
     return transpose(pmodes + smodes) |> collect
 end
 
+"""
+    field(wave::ElasticWave{2}, bearing::RollerBearing, fieldtype::FieldType; res = 20, kws...)
+
+Evaluates the `wave` on a grid of points that covers the raceway of the `bearing`. Returns a `FrequencySimulationResult`, from the package MultipleScattering, which can be plotted. The number of grid points along each axis is given by `res`.
+"""
 function field(wave::ElasticWave{2}, bearing::RollerBearing, fieldtype::FieldType; kws...)
 
     inner_circle = Circle(bearing.inner_radius)
@@ -80,6 +85,13 @@ function field(wave::ElasticWave{2}, sh::Shape, fieldtype::FieldType; kws...)
 end
 
 
+"""
+    field(wave::ElasticWave{2}, x::AbstractVector, fieldtype::FieldType)
+
+Returns the field of the `wave` at the point `x`, given in Cartesian coordinates. The result is a vector with the polar components of the field.
+
+For `DisplacementType()` the result is the radial and angular displacement ``(u_r, u_\\theta)``. For `TractionType()` the result is the stress components ``(\\sigma_{rr}, \\sigma_{r\\theta})``, which is the traction on a circle centred at the origin that passes through `x`.
+"""
 function field(wave::ElasticWave{2}, x::AbstractVector{T}, field_type::FieldType) where T 
 
     r, θ = cartesian_to_radial_coordinates(x)

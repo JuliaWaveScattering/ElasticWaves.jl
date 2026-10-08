@@ -3,6 +3,12 @@ function fields_to_fouriermodes(boundarydata::AbstractBoundaryData, basis_order:
     fields_to_fouriermodes(boundarydata, -basis_order:basis_order)
 end
 
+"""
+    fields_to_fouriermodes(boundarydata::BoundaryData, modes::AbstractVector{Int})
+    fields_to_fouriermodes(θs, fields, modes)
+
+Calculates the Fourier coefficients of the `fields`, which are sampled at the angles `θs`, for the given `modes`. When given a [`BoundaryData`](@ref), a copy with these `coefficients` and `modes` is returned. See also [`fouriermodes_to_fields`](@ref).
+"""
 function fields_to_fouriermodes(boundarydata::AbstractBoundaryData, modes::AbstractVector{Int})
     
     coefficients = fields_to_fouriermodes(boundarydata.θs, boundarydata.fields, modes)
@@ -14,6 +20,12 @@ function fields_to_fouriermodes(boundarydata::AbstractBoundaryData, modes::Abstr
     return boundarydata
 end
 
+"""
+    fouriermodes_to_fields(boundarydata::BoundaryData, θs = boundarydata.θs)
+    fouriermodes_to_fields(θs, coefficients, modes)
+
+Evaluates the Fourier series, with the given `coefficients` and `modes`, at the angles `θs`. When given a [`BoundaryData`](@ref), a copy with these `fields` and `θs` is returned. See also [`fields_to_fouriermodes`](@ref).
+"""
 function fouriermodes_to_fields(boundarydata::AbstractBoundaryData, θs::AbstractVector = boundarydata.θs)
 
     if θs |> isempty  

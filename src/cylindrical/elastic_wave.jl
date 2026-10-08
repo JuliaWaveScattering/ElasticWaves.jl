@@ -46,6 +46,15 @@ function source_boundarycondition_system(ω::AbstractFloat, bearing::RollerBeari
     return vcat(first_boundary, second_boundary)
 end
 
+"""
+    ElasticWave(sim::BearingSimulation)
+
+Solves the [`BearingSimulation`](@ref) and returns the [`ElasticWave`](@ref) in the raceway of the bearing. The method used to solve is given by `sim.method`.
+
+The field `potentials` of the wave returned holds first the pressure and then the shear [`HelmholtzPotential`](@ref). The field `method` holds information on how accurate the solution is, see [`ModalMethod`](@ref) and [`PriorMethod`](@ref).
+
+To evaluate the wave use [`displacement`](@ref), [`traction`](@ref), or [`field`](@ref).
+"""
 function ElasticWave(sim::BearingSimulation)
 
     # using the bearing properties before nondimensionalise
@@ -79,6 +88,11 @@ function ElasticWave(sim::BearingSimulation)
     return ElasticWave(ω, bearing.medium, [φ, ψ], method)
 end
 
+"""
+    ElasticWaveVector(sims::Vector{BearingSimulation{ConstantRollerSpeedMethod}})
+
+Solves several [`BearingSimulation`](@ref) together, one for each frequency, and returns a vector with an [`ElasticWave`](@ref) for each. All the simulations share the same unknown loading profile, see [`ConstantRollerSpeedMethod`](@ref).
+"""
 function ElasticWaveVector(sims::Vector{B}) where {B <: BearingSimulation{ConstantRollerSpeedMethod}}
 
     bearings = [s.bearing for s in sims];

@@ -1,10 +1,20 @@
 import MultipleScattering: field
 import MultipleScattering: Shape
 
+"""
+    displacement(wave::ElasticWave, x::Vector)
+
+Returns the displacement of the `wave` at the point `x`. Shorthand for `field(wave, x, DisplacementType())`.
+"""
 function displacement(wave::ElasticWave, x::Vector{T}) where T <: AbstractFloat
     field(wave, x, DisplacementType())
 end
 
+"""
+    traction(wave::ElasticWave, x::Vector)
+
+Returns the traction of the `wave` at the point `x`. Shorthand for `field(wave, x, TractionType())`.
+"""
 function traction(wave::ElasticWave, x::Vector{T}) where T <: AbstractFloat
     field(wave, x, TractionType())
 end

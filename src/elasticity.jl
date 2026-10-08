@@ -1,10 +1,17 @@
 """
-    Elastic{Dim,T<:AbstractFloat}(ρ::T, c::Complex{T})
-    Elastic(ρ::T, c::Union{T,Complex{AbstractFloat}}, Dim::Integer)
+    Elastic(Dim::Integer; ρ, cp, cs)
+    Elastic(Dim::Integer; ρ, λ, μ)
 
-Physical properties for a homogenous isotropic elastic medium with wavespeed (c) and density (ρ)
+Physical properties of a homogeneous isotropic elastic medium in `Dim` spatial dimensions, with density `ρ`, pressure wavespeed `cp`, and shear wavespeed `cs`. The wavespeeds can be complex to model attenuation.
 
-Simulations in this medium produce scalar (Dim) fields in Dim dimensions. In general we use the Debye potentials to describe the field.
+Instead of the wavespeeds, the Lamé parameters `λ` and `μ` can be given, in which case `cp = sqrt((λ + 2μ) / ρ)` and `cs = sqrt(μ / ρ)`.
+
+Simulations in this medium produce vector fields with `Dim` components. For `Dim = 3` we use the Debye potentials to describe the fields.
+
+# Examples
+```julia
+steel = Elastic(2; ρ = 7800.0, cp = 5000.0, cs = 3500.0)
+```
 """
 struct Elastic{Dim,T} <: PhysicalMedium{Dim,Dim}
     ρ::T # Density (use \greekletter+tab to get the greek letter!)
@@ -58,7 +65,7 @@ end
 
 A type to store an elastic wave expanded in some modal basis. The only basis used in this package is a regular radial expansion, which is needed for scattering and waves within a sphere or cylinder.
 
-For Dim = 4 the field `potentials` are, in order, the φ pressure, Φ shear,  and χ shear, where Φ and χ are the Debye potentials such that the displacement is given by: `u = ∇φ + ∇x∇x(Φ .* r) + ∇x∇x∇x(χ .* r) ./ kS`, where `kS` is the shear wavenumber and `r` is a vector pointing in the radial direction, that is `r = (x,y,z)` in Cartesian coordinates.
+For Dim = 3 the field `potentials` are, in order, the φ pressure, Φ shear,  and χ shear, where Φ and χ are the Debye potentials such that the displacement is given by: `u = ∇φ + ∇x∇x(Φ .* r) + ∇x∇x∇x(χ .* r) ./ kS`, where `kS` is the shear wavenumber and `r` is a vector pointing in the radial direction, that is `r = (x,y,z)` in Cartesian coordinates.
 """
 struct ElasticWave{Dim,M,T}
     ω::T
@@ -102,6 +109,15 @@ basisorder_to_basislength(::Type{P}, order::Int) where {P<:Elastic{2}} = 2 * (2*
 basislength_to_basisorder(::Type{P},len::Int) where {P<:Elastic{3}} = Int(sqrt(len / 3) - 1)
 basislength_to_basisorder(::Type{P},len::Int) where {P<:Elastic{2}} = Int((len / 2 - 1) / 2.0)
 
+"""
+    regular_basis_function(medium::Elastic{3}, ω, field_type::FieldType = DisplacementType())
+
+Returns a function `(order, x) -> basis` which gives the regular spherical waves, up to the basis `order`, evaluated at the point `x`.
+
+The `basis` is a matrix with three rows, one for each Cartesian component of the field given by `field_type`. The columns are ordered by the spherical harmonics, and for each spherical harmonic there are three columns: first for the pressure potential φ, and then for the two shear Debye potentials Φ and χ. If `coefficients` is a vector with the coefficients of a regular wave in this same order, then the field at `x` is `basis * coefficients`.
+
+See also [`outgoing_basis_function`](@ref).
+"""
 function regular_basis_function(medium::Elastic{3,T}, ω::T, field_type::FieldType = DisplacementType()) where T
 
     return function (order::Integer, x::AbstractVector{T})
@@ -118,6 +134,11 @@ function regular_basis_function(medium::Elastic{3,T}, ω::T, field_type::FieldTy
     end
 end
 
+"""
+    outgoing_basis_function(medium::Elastic{3}, ω, field_type::FieldType = DisplacementType())
+
+Returns a function `(order, x) -> basis` which gives the outgoing spherical waves, up to the basis `order`, evaluated at the point `x`. The `basis` has the same format as given by [`regular_basis_function`](@ref).
+"""
 function outgoing_basis_function(medium::Elastic{3,T}, ω::T, field_type::FieldType = DisplacementType()) where T
 
     return function (order::Integer, x::AbstractVector{T})

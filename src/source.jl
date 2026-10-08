@@ -2,9 +2,9 @@
 import MultipleScattering: point_source, AbstractSource
 
 """
-    plane_z_source(medium::Elastic{3,T}, pos::AbstractArray{T}, amplitude::Union{T,Complex{T}}
+    plane_z_shear_source(medium::Elastic{3,T}, pos::AbstractArray{T} = zeros(T,3), amplitude::Union{T,Complex{T}} = one(T))
 
-Creates an incident plane wave for the displacement in the form ``A e^{i k z} (0,1,0)``. The coefficients of the Debye potentials which correspond to this plane wave are given in "Resonance theory of elastic waves ultrasonically scattered from an elastic sphere - 1987".
+Creates an incident plane shear wave which propagates along the z-axis and is polarised along the x-axis. That is, the displacement has the form ``A e^{i k_s (z - z_0)} (1,0,0)``, where ``A`` is the `amplitude`, ``k_s`` is the shear wavenumber, and ``z_0`` is the last component of `pos`. The coefficients of the Debye potentials which correspond to this plane wave are given in "Resonance theory of elastic waves ultrasonically scattered from an elastic sphere - 1987".
 """
 function plane_z_shear_source(medium::Elastic{3,T}, pos::AbstractArray{T} = zeros(T,3),
             amplitude::Union{T,Complex{T}} = one(T)
@@ -84,7 +84,7 @@ function pressure_point_source(medium::Elastic{2,T}, source_position::AbstractVe
 end
 
 """
-    pressure_point_source
+    shear_point_source
 
     NOTE: currently untested
 """

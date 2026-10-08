@@ -112,7 +112,7 @@ end
 """
     t_matrix(Particle{3,Elastic{3,T},Sphere{T,3}}, Elastic{3,T}, ω, order)
 
-The T-matrix for a 3D spherical elastic particle in a 3D elastic medium. This t-matrix `T` has the diagonal matrices of the form `T = diag(T1,T2,...)`. Let `gn = [gφn; gΦn; gχn]` be the coefficients of a regular spherical expansion for the pressure potential φ, and two Debye potentials Φ and χ. See [ElasticSphereScattering.pdf](../../docs/theory/ElasticSphereScattering.pdf) for details. Multiply the matrix with the regular coefficients `Tn * gn` returns the scattering coefficients for the potentials.
+The T-matrix for a 3D spherical elastic particle in a 3D elastic medium. This t-matrix `T` has the diagonal matrices of the form `T = diag(T1,T2,...)`. Let `gn = [gφn; gΦn; gχn]` be the coefficients of a regular spherical expansion for the pressure potential φ, and two Debye potentials Φ and χ. See [ElasticSphereScattering.pdf](https://github.com/JuliaWaveScattering/ElasticWaves.jl/blob/main/docs/theory/ElasticSphereScattering.pdf) for details. Multiply the matrix with the regular coefficients `Tn * gn` returns the scattering coefficients for the potentials.
 """
 function t_matrix(p::Particle{3,Elastic{3,T},Sphere{T,3}}, outer_medium::Elastic{3,T}, ω::T, basis_order::Integer) where T <: AbstractFloat
 

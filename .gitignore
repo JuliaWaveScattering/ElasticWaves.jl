@@ -19,3 +19,8 @@
 
 docs/build
 docs/site
+
+# the Manifest should not be part of a package, as users get the versions resolved from Project.toml
+Manifest.toml
+
+.DS_Store

@@ -38,9 +38,6 @@ export field_modes, displacement, traction, pressure_field_mode, shear_field_mod
 # signal_processing.jl
 export fouriermodes_to_fields, fields_to_fouriermodes, sortperm_modes, is_standard_order, normalize!
 
-# cylindrical/utils.jl
-export estimate_basisorder # soon to be removed
-
 # cylindrical/elastic_wave.jl
 export boundarycondition_mode, boundarycondition_system, modes_coefficients!, source_boundarycondition_mode, source_boundarycondition_system 
 
@@ -66,7 +63,6 @@ include("signal_processing.jl")
 include("spherical/fields.jl")
 include("spherical/t-matrix.jl")
 
-include("cylindrical/utils.jl")
 include("cylindrical/elastic_wave.jl")
 include("cylindrical/fields.jl")
 include("cylindrical/t-matrix.jl")

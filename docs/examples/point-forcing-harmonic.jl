@@ -12,7 +12,6 @@ ksa = bearing.outer_radius * ω / steel.cs
 # estimate the largest basis_order that a wave scattered from the inner boundary can be measured at the outer boundary
 
 basis_order = 10
-# basis_order = estimate_basisorder(ω,bearing; tol =1e-5)
 basis_length = basisorder_to_basislength(Acoustic{Float64,2}, basis_order)
 
 # 0.0 and 2pi are the same point

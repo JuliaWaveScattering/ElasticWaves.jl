@@ -1,0 +1,8 @@
+[deps]
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+ElasticWaves = "2059c4e4-f3cf-49e7-a5b5-bbbf8606edbe"
+MultipleScattering = "80a8ab25-5750-5d93-a6d7-4adc97cdd5fb"
+Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
+
+[compat]
+Documenter = "1"

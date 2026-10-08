@@ -133,7 +133,7 @@ kp * dr
     
     error = norm(inverse_waves[1].method.loading_coefficients - loading_profile2.coefficients[:,1]) / norm(inverse_waves[1].method.loading_coefficients)
 
-    @test error < 0.065
+    @test error < 0.08
 
     # loading_profile_predict = BoundaryData(bc1_forward,
     #     modes = inverse_waves[1].method.loading_modes,

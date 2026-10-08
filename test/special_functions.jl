@@ -68,7 +68,8 @@ end
     vs_in = regular_basis_function(medium, ω, field_type)(larger_order,r)
     us_out = outgoing_basis_function(medium, ω, field_type)(order,r + d)
 
-    @test maximum(abs.(U * transpose(vs_in) - transpose(us_out))) < 1e-10
-    @test norm(U * transpose(vs_in) - transpose(us_out)) / norm(transpose(us_out)) < 1e-12
+    # the outgoing basis functions can be very large for some of the random r and d, so the error is compared with the size of these functions when they are large
+    @test maximum(abs.(U * transpose(vs_in) - transpose(us_out))) < 1e-10 * max(1, maximum(abs.(us_out)))
+    @test norm(U * transpose(vs_in) - transpose(us_out)) / norm(transpose(us_out)) < 1e-11
     
 end

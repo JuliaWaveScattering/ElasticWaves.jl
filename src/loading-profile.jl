@@ -103,10 +103,17 @@ function LoadingBoundaryData(ω::Number, bearing::RollerBearing, bd::BoundaryDat
 
 end
 
+"""
+    point_contact_boundary_data(θs::Vector, bearing::RollerBearing, bc::BoundaryCondition{TractionType}, basis_order::Int, friction_coefficient = 1.0)
+
+Returns the [`BoundaryData`](@ref) for when each roller of the `bearing` is in contact with the raceway at only one point, and each roller applies a unit force. 
+
+The normal traction is then a sum of Dirac deltas, one for each roller, which has the Fourier series ``\\frac{Z}{2\\pi} \\sum_n \\mathrm e^{\\mathrm i n Z \\theta}``, where ``Z`` is the number of rollers. This sum is truncated to ``|n| \\leq`` `basis_order`, so the modes of the boundary data returned go from `-basis_order * Z` to `basis_order * Z`. The shear traction is the `friction_coefficient` multiplied by the normal traction.
+"""
 function point_contact_boundary_data(θs::Vector{T}, bearing::RollerBearing, bc ::BoundaryCondition{TractionType}, basis_order::Int, friction_coefficient = 1.0) where{T}
 
     Z = bearing.number_of_rollers
-    # μ=bearing.medium.friction_coefficient
+    μ = friction_coefficient
     n_order = basis_order
 
     size=2*n_order*Z+1 

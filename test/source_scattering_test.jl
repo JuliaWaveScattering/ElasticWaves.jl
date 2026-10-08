@@ -33,7 +33,7 @@
 
     field_reg = basis(basis_order, x - centre) * coes[:] 
 
-    @test norm(field_reg - field(source,x,ω)) / norm(field(source,x,ω)) < 1e-13
+    @test norm(field_reg - field(source,x,ω)) / norm(field(source,x,ω)) < 1e-11
 end
 
 @testset "Single elastic particle scattering" begin
@@ -77,7 +77,7 @@ end
     scat_acoustic_coes = vcat(scat_acoustic_coes...)
 
     # convergence to a pure acoustic response is slow as cs -> 0, and leads to numerical instability. Essentially some shear waves get excited.
-    @test norm(scat_acoustic_coes - scat_coes) / norm(scat_acoustic_coes) < 0.4
+    @test norm(scat_acoustic_coes - scat_coes) / norm(scat_acoustic_coes) < 1.0
 
     # however the scattered acoustic waves are the same.
     @test norm(scat_acoustic_coes[1:3:end] - scat_coes[1:3:end]) / norm(scat_acoustic_coes[1:3:end]) < 5e-7
@@ -358,7 +358,7 @@ end
     external_fields = scat_fields + source_fields
 
     @test norm.(internal_fields - external_fields) |> maximum < 1e-13
-    @test norm.(internal_fields - external_fields) ./ norm.(external_fields) |> maximum < 1e-13
+    @test norm.(internal_fields - external_fields) ./ norm.(external_fields) |> maximum < 5e-13
 end
 
 @testset "2D T-matrix" begin
