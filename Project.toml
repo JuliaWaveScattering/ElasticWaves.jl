@@ -1,7 +1,7 @@
 name = "ElasticWaves"
 uuid = "2059c4e4-f3cf-49e7-a5b5-bbbf8606edbe"
 authors = ["Art Gower <arturgower@gmail.com>", "Jess Kent <rkent2@sheffield.ac.uk>", "Matheus Loures <mdecaravalholoures1@sheffield.ac.uk>"]
-version = "0.2.0"
+version = "0.2.1"
 
 [deps]
 Accessors = "7d9f7c33-5ae7-4f3b-8dc6-eff91059b697"
