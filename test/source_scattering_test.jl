@@ -410,6 +410,71 @@ end
     @test maximum(abs.(Tsp[2:end] ./ Tsp_reference .- 1)) < 1e-10
 end
 
+@testset "Scaled T-matrix for a shear wave" begin
+
+## When the shear wave decays slowly, compare with the T-matrix
+
+    ω = 0.9
+    basis_order = 5
+
+    medium = Elastic(3; ρ = 1.0, cp = 1.0, cs = (1.0 - 0.3im) ./ 1.2)
+    particle_medium = Elastic(3; ρ = 0.6, cp = 2.6, cs = 2.7 ./ 1.2)
+    particle = Particle(particle_medium, Sphere([0.0, 0.0, 0.0],1.0))
+
+    Tmatrix = t_matrix(particle, medium, ω, basis_order)
+    Tps, Tss = t_matrix_shear_scaled(particle, medium, ω, basis_order)
+
+    # the index of the pressure potential for each degree l, which is followed by the shear potential Φ
+    index(l) = basisorder_to_basislength(Elastic{3,Float64}, l - 1) + 1
+    scale = exp(im * ω / medium.cs * outer_radius(particle))
+
+    @test maximum(abs(Tps[l+1] / (scale * Tmatrix[index(l), index(l)+1]) - 1) for l = 1:basis_order) < 1e-10
+    @test maximum(abs(Tss[l+1] / (scale^2 * Tmatrix[index(l)+1, index(l)+1]) - 1) for l = 1:basis_order) < 1e-10
+    @test Tps[1] == 0
+    @test Tss[1] == 0
+
+## A viscous liquid, with a particle whose radius is 2000 times the viscous skin depth
+
+    # Here the T-matrix can not be calculated with Float64, as Tss is of the order 1e1737. The reference values were calculated with 4096 bits of precision, and with no scaling, from the closed forms of the spherical Bessel and Hankel functions.
+    ω = 1.0
+    δ = 5e-4 # the viscous skin depth
+    ν = ω * δ^2 / 2 # the kinematic viscosity
+    liquid = Elastic(3; ρ = 1.0, cp = 1.0, cs = sqrt(-im * ω * ν))
+    particle = Particle(Elastic(3; ρ = 3.95, cp = 6.7, cs = 3.7), Sphere([0.0, 0.0, 0.0],1.0))
+
+    Tps_reference = [
+        -0.00013524900948336976 - 0.0001535614776484156im,
+        0.00016143706895688012 - 0.00015757207570446153im,
+        4.768139852373395e-5 + 4.765376809042435e-5im
+    ]
+    Tss_reference = [
+        0.4997302741941532 - 0.0001858716079561237im,
+        -0.4998104398338971 + 0.0001555727538397442im,
+        0.4992943136354301 - 0.0007031786056854602im
+    ]
+
+    Tps, Tss = t_matrix_shear_scaled(particle, liquid, ω, 3)
+
+    @test maximum(abs.(Tps[2:end] ./ Tps_reference .- 1)) < 1e-10
+    @test maximum(abs.(Tss[2:end] ./ Tss_reference .- 1)) < 1e-10
+
+## The T-matrix is reciprocal
+
+    # the radius of the particle divided by the viscous skin depth
+    for ratio in [2e-2, 2.0, 2e5]
+        δ = outer_radius(particle) / ratio
+        liquid = Elastic(3; ρ = 1.0, cp = 1.0, cs = sqrt(-im * ω * δ^2 / 2))
+
+        kp = ω / liquid.cp
+        ks = ω / liquid.cs
+
+        Tpp, Tsp = t_matrix_pressure_scaled(particle, liquid, ω, 4)
+        Tps, Tss = t_matrix_shear_scaled(particle, liquid, ω, 4)
+
+        @test maximum(abs(Tps[l+1] / (l * (l+1) * (kp / ks) * Tsp[l+1]) - 1) for l = 1:4) < 1e-10
+    end
+end
+
 @testset "2D T-matrix" begin
     ω = 1.2
     basis_order = 9

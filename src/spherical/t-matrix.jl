@@ -185,14 +185,9 @@ function t_matrix(p::Particle{3,Elastic{3,T},Sphere{T,3}}, outer_medium::Elastic
     return sparse(mortar(blocks))
 end
 
-"""
-    t_matrix_pressure_scaled(Particle{3,Elastic{3,T},Sphere{T,3}}, Elastic{3,T}, ω, order)
-
-The part of the T-matrix, for a 3D spherical elastic particle in a 3D elastic medium, which is needed for an incident pressure wave. Returns `(Tpp, Tsp)`, where `Tpp[l+1]` gives how the pressure potential φ of degree `l` scatters into φ, and `Tsp[l+1]` gives how φ scatters into the shear potential Φ, for `l = 0:order`. These are the first two elements of the first column of the block of [`t_matrix`](@ref) for the degree `l`, except that `Tsp` is multiplied by `exp(im * ks * a)`, where `ks = ω / outer_medium.cs` and `a` is the radius of the particle.
-
-Use this function when the shear wave in the outer medium decays quickly, such as in a viscous liquid, which is an elastic medium with the complex shear wave speed `cs = sqrt(-im * ω * ν)` for a kinematic viscosity `ν`. In this case `Tsp` grows like `exp(imag(ks) * a)`, and the spherical Hankel functions of the shear wave decay like `exp(-imag(ks) * a)`, so that [`t_matrix`](@ref) can not be calculated when `imag(ks) * a` is larger than about 700. Here the scattered shear wave is written in terms of `hankelh1x`, which is the Hankel function multiplied by `exp(-im * ks * a)`, and that is the same as solving for `Tsp * exp(im * ks * a)`. There is no approximation, and no term is exponentially large or small.
-"""
-function t_matrix_pressure_scaled(p::Particle{3,Elastic{3,T},Sphere{T,3}}, outer_medium::Elastic{3,T}, ω::T, basis_order::Integer) where T <: AbstractFloat
+# The waves on the surface of the sphere, for the degree l, which are needed by t_matrix_pressure_scaled and t_matrix_shear_scaled. Returns (M, gp, gs), where gp is the incident pressure wave, gs is the incident shear wave, and the columns of M are the scattered pressure wave, the internal pressure wave, the scattered shear wave, and the internal shear wave, where both of the scattered waves have a minus sign. The incident wave plus the scattered waves equals the internal waves on the surface of the sphere, so M \ gp, and M \ gs, are the coefficients of the scattered and internal waves.
+# When the shear wave in the outer medium decays quickly these waves are exponentially large or small. To avoid this, the scattered shear wave is multiplied by exp(-im * as2), and the incident shear wave by exp(-abs(imag(as2))), where as2 is the shear wavenumber of the outer medium multiplied by the radius of the sphere.
+function scaled_modal_system(p::Particle{3,Elastic{3,T},Sphere{T,3}}, outer_medium::Elastic{3,T}, ω::T, l::Integer) where T <: AbstractFloat
 
     # The notation is the same as in modal_system: 1 is for the sphere, and 2 is for the medium outside the sphere.
     a = outer_radius(p)
@@ -208,39 +203,84 @@ function t_matrix_pressure_scaled(p::Particle{3,Elastic{3,T},Sphere{T,3}}, outer
     μ2 = outer_medium.ρ * outer_medium.cs^2
     λ2 = outer_medium.cp^2 * outer_medium.ρ - 2μ2
 
-    # the spherical Hankel function of the first kind multiplied by exp(-im*z)
+    # the spherical Hankel function of the first kind multiplied by exp(-im*z), and the spherical Bessel function multiplied by exp(-abs(imag(z)))
     shankelh1x(l, z) = sqrt(T(pi) / (2z)) * hankelh1x(l + T(1)/2, z)
+    sbesseljx(l, z) = sqrt(T(pi) / (2z)) * besseljx(l + T(1)/2, z)
 
     # The radial displacement, radial traction, tangential displacement, and tangential traction, in this order, on the surface of the sphere. The first is for a pressure potential, and the second for a shear potential Φ, of the degree l. Here f and f1 are a spherical Bessel or Hankel function of the degree l and l+1, both evaluated at x, which is the wavenumber multiplied by the radius.
-    # These are the columns of the matrices, and the vector Gφ, in modal_system, but with no derivatives of f. The derivatives were replaced by using x * f' = l * f - x * f1 and the spherical Bessel equation. This avoids a loss of precision, which is largest for l = 1 and a small x.
+    # These are the columns of the matrices, and the vectors Gφ and GΦ, in modal_system, but with no derivatives of f. The derivatives were replaced by using x * f' = l * f - x * f1 and the spherical Bessel equation. This avoids a loss of precision, which is largest for l = 1 and a small x.
     pressure(f, f1, l, x, λ, μ) = [l * f - x * f1, 2μ * ((l^2 - l - x^2) * f + 2x * f1) - λ * x^2 * f, f, 2μ * ((l - 1) * f - x * f1)]
     shear(f, f1, l, x, μ) = [l * (l+1) * f, 2μ * l * (l+1) * ((l - 1) * f - x * f1), (l + 1) * f - x * f1, μ * ((2 * (l^2 - 1) - x^2) * f + 2x * f1)]
+
+    # the incident, the scattered, and the internal pressure wave
+    gp = pressure(sbesselj(l, ap2), sbesselj(l+1, ap2), l, ap2, λ2, μ2)
+    hp = pressure(shankelh1(l, ap2), shankelh1(l+1, ap2), l, ap2, λ2, μ2)
+    jp = pressure(sbesselj(l, ap1), sbesselj(l+1, ap1), l, ap1, λ1, μ1)
+
+    # the incident shear wave multiplied by exp(-abs(imag(as2))), the scattered shear wave multiplied by exp(-im * as2), and the internal shear wave
+    gs = shear(sbesseljx(l, as2), sbesseljx(l+1, as2), l, as2, μ2)
+    hs = shear(shankelh1x(l, as2), shankelh1x(l+1, as2), l, as2, μ2)
+    js = shear(sbesselj(l, as1), sbesselj(l+1, as1), l, as1, μ1)
+
+    return [-hp jp -hs js], gp, gs
+end
+
+"""
+    t_matrix_pressure_scaled(Particle{3,Elastic{3,T},Sphere{T,3}}, Elastic{3,T}, ω, order)
+
+The part of the T-matrix, for a 3D spherical elastic particle in a 3D elastic medium, which is needed for an incident pressure wave. Returns `(Tpp, Tsp)`, where `Tpp[l+1]` gives how the pressure potential φ of degree `l` scatters into φ, and `Tsp[l+1]` gives how φ scatters into the shear potential Φ, for `l = 0:order`. These are the first two elements of the first column of the block of [`t_matrix`](@ref) for the degree `l`, except that `Tsp` is multiplied by `exp(im * ks * a)`, where `ks = ω / outer_medium.cs` and `a` is the radius of the particle.
+
+Use this function when the shear wave in the outer medium decays quickly, such as in a viscous liquid, which is an elastic medium with the complex shear wave speed `cs = sqrt(-im * ω * ν)` for a kinematic viscosity `ν`. In this case `Tsp` grows like `exp(imag(ks) * a)`, and the spherical Hankel functions of the shear wave decay like `exp(-imag(ks) * a)`, so that [`t_matrix`](@ref) can not be calculated when `imag(ks) * a` is larger than about 700. Here the scattered shear wave is written in terms of `hankelh1x`, which is the Hankel function multiplied by `exp(-im * ks * a)`, and that is the same as solving for `Tsp * exp(im * ks * a)`. There is no approximation, and no term is exponentially large or small.
+"""
+function t_matrix_pressure_scaled(p::Particle{3,Elastic{3,T},Sphere{T,3}}, outer_medium::Elastic{3,T}, ω::T, basis_order::Integer) where T <: AbstractFloat
 
     Tpp = zeros(Complex{T}, basis_order + 1)
     Tsp = zeros(Complex{T}, basis_order + 1)
 
     for l = 0:basis_order
-        # the incident, the scattered, and the internal pressure wave
-        gp = pressure(sbesselj(l, ap2), sbesselj(l+1, ap2), l, ap2, λ2, μ2)
-        hp = pressure(shankelh1(l, ap2), shankelh1(l+1, ap2), l, ap2, λ2, μ2)
-        jp = pressure(sbesselj(l, ap1), sbesselj(l+1, ap1), l, ap1, λ1, μ1)
+        M, gp, _ = scaled_modal_system(p, outer_medium, ω, l)
 
         if l == 0
             # there are no shear waves, and no tangential components, for l = 0
-            Tpp[1] = ([-hp[1:2] jp[1:2]] \ gp[1:2])[1]
+            Tpp[1] = (M[1:2,1:2] \ gp[1:2])[1]
         else
-            # the scattered shear wave multiplied by exp(-im * as2), and the internal shear wave
-            hs = shear(shankelh1x(l, as2), shankelh1x(l+1, as2), l, as2, μ2)
-            js = shear(sbesselj(l, as1), sbesselj(l+1, as1), l, as1, μ1)
-
-            # The incident wave plus the scattered waves equals the internal waves on the surface of the sphere. As hs is multiplied by exp(-im * as2), the coefficient of the scattered shear wave is multiplied by exp(im * as2).
-            coefficients = [-hp jp -hs js] \ gp
+            # As the scattered shear wave is multiplied by exp(-im * as2), the coefficient of the scattered shear wave is multiplied by exp(im * as2).
+            coefficients = M \ gp
             Tpp[l+1] = coefficients[1]
             Tsp[l+1] = coefficients[3]
         end
     end
 
     return Tpp, Tsp
+end
+
+"""
+    t_matrix_shear_scaled(Particle{3,Elastic{3,T},Sphere{T,3}}, Elastic{3,T}, ω, order)
+
+The part of the T-matrix, for a 3D spherical elastic particle in a 3D elastic medium, which is needed for an incident shear wave given by the potential Φ. Returns `(Tps, Tss)`, where `Tps[l+1]` gives how the shear potential Φ of degree `l` scatters into the pressure potential φ, and `Tss[l+1]` gives how Φ scatters into Φ, for `l = 0:order`. These are the first two elements of the second column of the block of [`t_matrix`](@ref) for the degree `l`, except that `Tps` is multiplied by `exp(im * ks * a)`, and `Tss` is multiplied by `exp(2im * ks * a)`, where `ks = ω / outer_medium.cs` and `a` is the radius of the particle. There are no shear waves for `l = 0`, so the first element of both is zero.
+
+Like [`t_matrix_pressure_scaled`](@ref), use this function when the shear wave in the outer medium decays quickly, such as in a viscous liquid. In this case the incident shear wave grows like `exp(imag(ks) * a)` towards the surface of the particle, so that `Tps` grows like `exp(imag(ks) * a)`, and `Tss` grows like `exp(2 * imag(ks) * a)`. Here the incident shear wave is written in terms of `besseljx`, and the scattered shear wave in terms of `hankelh1x`, which is the same as solving for the scaled `Tps` and `Tss`. There is no approximation, and no term is exponentially large or small.
+
+The T-matrix is reciprocal, which implies that `Tps[l+1] = l * (l+1) * (kp / ks) * Tsp[l+1]`, where `kp = ω / outer_medium.cp` and `Tsp` is given by [`t_matrix_pressure_scaled`](@ref).
+"""
+function t_matrix_shear_scaled(p::Particle{3,Elastic{3,T},Sphere{T,3}}, outer_medium::Elastic{3,T}, ω::T, basis_order::Integer) where T <: AbstractFloat
+
+    as2 = outer_radius(p) * ω / outer_medium.cs
+
+    Tps = zeros(Complex{T}, basis_order + 1)
+    Tss = zeros(Complex{T}, basis_order + 1)
+
+    # there are no shear waves for l = 0
+    for l = 1:basis_order
+        M, _, gs = scaled_modal_system(p, outer_medium, ω, l)
+
+        # The incident shear wave is multiplied by exp(-abs(imag(as2))), so both of the coefficients below need to be multiplied by exp(abs(imag(as2))). The scattered shear wave is multiplied by exp(-im * as2), so its coefficient is already multiplied by exp(im * as2). When the shear wave decays, the factor below has an absolute value of 1.
+        coefficients = (M \ gs) .* exp(im * as2 + abs(imag(as2)))
+        Tps[l+1] = coefficients[1]
+        Tss[l+1] = coefficients[3]
+    end
+
+    return Tps, Tss
 end
 
 """
