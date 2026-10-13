@@ -361,6 +361,55 @@ end
     @test norm.(internal_fields - external_fields) ./ norm.(external_fields) |> maximum < 5e-13
 end
 
+@testset "Scaled T-matrix for a pressure wave" begin
+
+## When the shear wave decays slowly, compare with the T-matrix
+
+    ω = 0.9
+    basis_order = 5
+
+    medium = Elastic(3; ρ = 1.0, cp = 1.0, cs = (1.0 - 0.3im) ./ 1.2)
+    particle_medium = Elastic(3; ρ = 0.6, cp = 2.6, cs = 2.7 ./ 1.2)
+    particle = Particle(particle_medium, Sphere([0.0, 0.0, 0.0],1.0))
+
+    Tmatrix = t_matrix(particle, medium, ω, basis_order)
+    Tpp, Tsp = t_matrix_pressure_scaled(particle, medium, ω, basis_order)
+
+    # the index of the pressure potential for each degree l, which is followed by the shear potential Φ
+    index(l) = basisorder_to_basislength(Elastic{3,Float64}, l - 1) + 1
+    scale = exp(im * ω / medium.cs * outer_radius(particle))
+
+    @test maximum(abs(Tpp[l+1] / Tmatrix[index(l), index(l)] - 1) for l = 0:basis_order) < 1e-10
+    @test maximum(abs(Tsp[l+1] / (scale * Tmatrix[index(l)+1, index(l)]) - 1) for l = 1:basis_order) < 1e-10
+    @test Tsp[1] == 0
+
+## A viscous liquid, with a particle whose radius is 2000 times the viscous skin depth
+
+    # Here the T-matrix can not be calculated with Float64, as Tsp is of the order 1e868. The reference values were calculated with 4096 bits of precision, and with no scaling, from the closed forms of the spherical Bessel and Hankel functions.
+    ω = 1.0
+    δ = 5e-4 # the viscous skin depth
+    ν = ω * δ^2 / 2 # the kinematic viscosity
+    liquid = Elastic(3; ρ = 1.0, cp = 1.0, cs = sqrt(-im * ω * ν))
+    particle = Particle(Elastic(3; ρ = 3.95, cp = 6.7, cs = 3.7), Sphere([0.0, 0.0, 0.0],1.0))
+
+    Tpp_reference = [
+        -0.04469168070492261 - 0.20662607381006387im,
+        -0.004074686772821304 + 0.06337341194119954im,
+        -0.00016795887230412323 + 0.012285828223858404im,
+        -9.31774760004688e-7 + 0.0004148485100329559im
+    ]
+    Tsp_reference = [
+        0.018312468165045833 - 0.28881048713178537im,
+        0.10633638155378056 + 0.0012883310841395313im,
+        4.6050722182662606e-6 + 0.01588919443569305im
+    ]
+
+    Tpp, Tsp = t_matrix_pressure_scaled(particle, liquid, ω, 3)
+
+    @test maximum(abs.(Tpp ./ Tpp_reference .- 1)) < 1e-10
+    @test maximum(abs.(Tsp[2:end] ./ Tsp_reference .- 1)) < 1e-10
+end
+
 @testset "2D T-matrix" begin
     ω = 1.2
     basis_order = 9

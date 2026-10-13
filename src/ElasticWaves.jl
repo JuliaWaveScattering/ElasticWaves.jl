@@ -30,7 +30,7 @@ export pressure_regular_basis, shearΦ_regular_basis, shearχ_regular_basis
 export pressure_outgoing_basis, shearΦ_outgoing_basis, shearχ_outgoing_basis
 
 # spherical/t-matrix.jl
-export modal_system, t_matrix, internal_matrix
+export modal_system, t_matrix, t_matrix_pressure_scaled, internal_matrix
 
 # cylindrical/fields.jl
 export field_modes, displacement, traction, pressure_field_mode, shear_field_mode

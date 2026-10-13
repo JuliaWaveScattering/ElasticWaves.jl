@@ -186,6 +186,64 @@ function t_matrix(p::Particle{3,Elastic{3,T},Sphere{T,3}}, outer_medium::Elastic
 end
 
 """
+    t_matrix_pressure_scaled(Particle{3,Elastic{3,T},Sphere{T,3}}, Elastic{3,T}, ω, order)
+
+The part of the T-matrix, for a 3D spherical elastic particle in a 3D elastic medium, which is needed for an incident pressure wave. Returns `(Tpp, Tsp)`, where `Tpp[l+1]` gives how the pressure potential φ of degree `l` scatters into φ, and `Tsp[l+1]` gives how φ scatters into the shear potential Φ, for `l = 0:order`. These are the first two elements of the first column of the block of [`t_matrix`](@ref) for the degree `l`, except that `Tsp` is multiplied by `exp(im * ks * a)`, where `ks = ω / outer_medium.cs` and `a` is the radius of the particle.
+
+Use this function when the shear wave in the outer medium decays quickly, such as in a viscous liquid, which is an elastic medium with the complex shear wave speed `cs = sqrt(-im * ω * ν)` for a kinematic viscosity `ν`. In this case `Tsp` grows like `exp(imag(ks) * a)`, and the spherical Hankel functions of the shear wave decay like `exp(-imag(ks) * a)`, so that [`t_matrix`](@ref) can not be calculated when `imag(ks) * a` is larger than about 700. Here the scattered shear wave is written in terms of `hankelh1x`, which is the Hankel function multiplied by `exp(-im * ks * a)`, and that is the same as solving for `Tsp * exp(im * ks * a)`. There is no approximation, and no term is exponentially large or small.
+"""
+function t_matrix_pressure_scaled(p::Particle{3,Elastic{3,T},Sphere{T,3}}, outer_medium::Elastic{3,T}, ω::T, basis_order::Integer) where T <: AbstractFloat
+
+    # The notation is the same as in modal_system: 1 is for the sphere, and 2 is for the medium outside the sphere.
+    a = outer_radius(p)
+
+    ap1 = a * ω / p.medium.cp
+    as1 = a * ω / p.medium.cs
+    ap2 = a * ω / outer_medium.cp
+    as2 = a * ω / outer_medium.cs
+
+    μ1 = p.medium.ρ * p.medium.cs^2
+    λ1 = p.medium.cp^2 * p.medium.ρ - 2μ1
+
+    μ2 = outer_medium.ρ * outer_medium.cs^2
+    λ2 = outer_medium.cp^2 * outer_medium.ρ - 2μ2
+
+    # the spherical Hankel function of the first kind multiplied by exp(-im*z)
+    shankelh1x(l, z) = sqrt(T(pi) / (2z)) * hankelh1x(l + T(1)/2, z)
+
+    # The radial displacement, radial traction, tangential displacement, and tangential traction, in this order, on the surface of the sphere. The first is for a pressure potential, and the second for a shear potential Φ, of the degree l. Here f and f1 are a spherical Bessel or Hankel function of the degree l and l+1, both evaluated at x, which is the wavenumber multiplied by the radius.
+    # These are the columns of the matrices, and the vector Gφ, in modal_system, but with no derivatives of f. The derivatives were replaced by using x * f' = l * f - x * f1 and the spherical Bessel equation. This avoids a loss of precision, which is largest for l = 1 and a small x.
+    pressure(f, f1, l, x, λ, μ) = [l * f - x * f1, 2μ * ((l^2 - l - x^2) * f + 2x * f1) - λ * x^2 * f, f, 2μ * ((l - 1) * f - x * f1)]
+    shear(f, f1, l, x, μ) = [l * (l+1) * f, 2μ * l * (l+1) * ((l - 1) * f - x * f1), (l + 1) * f - x * f1, μ * ((2 * (l^2 - 1) - x^2) * f + 2x * f1)]
+
+    Tpp = zeros(Complex{T}, basis_order + 1)
+    Tsp = zeros(Complex{T}, basis_order + 1)
+
+    for l = 0:basis_order
+        # the incident, the scattered, and the internal pressure wave
+        gp = pressure(sbesselj(l, ap2), sbesselj(l+1, ap2), l, ap2, λ2, μ2)
+        hp = pressure(shankelh1(l, ap2), shankelh1(l+1, ap2), l, ap2, λ2, μ2)
+        jp = pressure(sbesselj(l, ap1), sbesselj(l+1, ap1), l, ap1, λ1, μ1)
+
+        if l == 0
+            # there are no shear waves, and no tangential components, for l = 0
+            Tpp[1] = ([-hp[1:2] jp[1:2]] \ gp[1:2])[1]
+        else
+            # the scattered shear wave multiplied by exp(-im * as2), and the internal shear wave
+            hs = shear(shankelh1x(l, as2), shankelh1x(l+1, as2), l, as2, μ2)
+            js = shear(sbesselj(l, as1), sbesselj(l+1, as1), l, as1, μ1)
+
+            # The incident wave plus the scattered waves equals the internal waves on the surface of the sphere. As hs is multiplied by exp(-im * as2), the coefficient of the scattered shear wave is multiplied by exp(im * as2).
+            coefficients = [-hp jp -hs js] \ gp
+            Tpp[l+1] = coefficients[1]
+            Tsp[l+1] = coefficients[3]
+        end
+    end
+
+    return Tpp, Tsp
+end
+
+"""
     internal_matrix(Particle{3,Elastic{3,T},Sphere{T,3}}, Elastic{3,T}, ω, order)
 
 Similar to the `T-matrix`, except returns the coefficients of the internal field expanded in a basis of regular spherical modes.
